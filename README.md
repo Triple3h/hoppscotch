@@ -1,299 +1,105 @@
 <div align="center">
-  <a href="https://hoppscotch.io">
-    <img
-      src="https://avatars.githubusercontent.com/u/56705483"
-      alt="Hoppscotch"
-      height="64"
-    />
-  </a>
   <h3>
     <b>
-      Hoppscotch
+      Hoppscotch (Desktop · Local-First)
     </b>
   </h3>
   <b>
-    Open Source API Development Ecosystem
+    Open Source API Development Client — 纯本地桌面包
   </b>
-  <p>
-
-[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen?logo=github)](CODE_OF_CONDUCT.md) [![Website](https://img.shields.io/website?url=https%3A%2F%2Fhoppscotch.io&logo=hoppscotch)](https://hoppscotch.io) [![Tests](https://github.com/hoppscotch/hoppscotch/actions/workflows/tests.yml/badge.svg)](https://github.com/hoppscotch/hoppscotch/actions) [![Tweet](https://img.shields.io/twitter/url?url=https%3A%2F%2Fhoppscotch.io%2F)](https://x.com/share?text=%F0%9F%91%BD%20Hoppscotch%20%E2%80%A2%20Open%20source%20API%20development%20ecosystem%20-%20Helps%20you%20create%20requests%20faster,%20saving%20precious%20time%20on%20development.&url=https://hoppscotch.io&hashtags=hoppscotch&via=hoppscotch_io)
-
-  </p>
-  <p>
-    <sub>
-      Built with ❤︎ by
-      <a href="https://github.com/hoppscotch/hoppscotch/graphs/contributors">
-        contributors
-      </a>
-    </sub>
-  </p>
-  <br />
-  <p>
-    <a href="https://hoppscotch.io">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="./packages/hoppscotch-common/public/images/banner-dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="./packages/hoppscotch-common/public/images/banner-light.png">
-        <img alt="Hoppscotch" src="./packages/hoppscotch-common/public/images/banner-dark.png">
-      </picture>
-    </a>
-  </p>
 </div>
 
-_We highly recommend you take a look at the [**Hoppscotch Documentation**](https://docs.hoppscotch.io) to learn more about the app._
+<br />
 
-#### **Support**
-
-[![Chat on Discord](https://img.shields.io/badge/chat-Discord-7289DA?logo=discord)](https://hoppscotch.io/discord) [![Chat on Telegram](https://img.shields.io/badge/chat-Telegram-2CA5E0?logo=telegram)](https://hoppscotch.io/telegram) [![Discuss on GitHub](https://img.shields.io/badge/discussions-GitHub-333333?logo=github)](https://github.com/hoppscotch/hoppscotch/discussions)
-
-### **Features**
-
-❤️ **Lightweight:** Crafted with minimalistic UI design.
-
-⚡️ **Fast:** Send requests and get responses in real time.
-
-🗄️ **HTTP Methods:** Request methods define the type of action you are requesting to be performed.
-
-- `GET` - Requests retrieve resource information
-- `POST` - The server creates a new entry in a database
-- `PUT` - Updates an existing resource
-- `PATCH` - Very similar to `PUT` but makes a partial update on a resource
-- `DELETE` - Deletes resource or related component
-- `HEAD` - Retrieve response headers identical to those of a GET request, but without the response body.
-- `CONNECT` - Establishes a tunnel to the server identified by the target resource
-- `OPTIONS` - Describe the communication options for the target resource
-- `TRACE` - Performs a message loop-back test along the path to the target resource
-- `<custom>` - Some APIs use custom request methods such as `LIST`. Type in your custom methods.
-
-🌈 **Theming:** Customizable combinations for background, foreground, and accent colors — [customize now](https://hoppscotch.io/settings).
-
-- Choose a theme: System preference, Light, Dark, and Black
-- Choose accent colors: Green, Teal, Blue, Indigo, Purple, Yellow, Orange, Red, and Pink
-- Distraction-free Zen mode
-
-_Customized themes are synced with your cloud/local session._
-
-🔥 **PWA:** Install as a [Progressive Web App](https://web.dev/progressive-web-apps) on your device.
-
-- Instant loading with Service Workers
-- Offline support
-- Low RAM/memory and CPU usage
-- Add to Home Screen
-- Desktop PWA
-
-🚀 **Request:** Retrieve response from endpoint instantly.
-
-1. Choose `method`
-2. Enter `URL`
-3. Send
-
-- Copy/share public "Share URL"
-- Generate/copy request code snippets for 10+ languages and frameworks
-- Import `cURL`
-- Label requests
-
-🔌 **WebSocket:** Establish full-duplex communication channels over a single TCP connection.
-
-📡 **Server-Sent Events:** Receive a stream of updates from a server over an HTTP connection without resorting to polling.
-
-🌩 **Socket.IO:** Send and Receive data with the SocketIO server.
-
-🦟 **MQTT:** Subscribe and Publish to topics of an MQTT Broker.
-
-🔮 **GraphQL:** GraphQL is a query language for APIs and a runtime for fulfilling those queries with your existing data.
-
-- Set endpoint and get schema
-- Multi-column docs
-- Set custom request headers
-- Query schema
-- Get query response
-
-🔐 **Authorization:** Allows to identify the end-user.
-
-- None
-- Basic
-- Bearer Token
-- OAuth 2.0
-- OIDC Access Token/PKCE
-
-📢 **Headers:** Describes the format the body of your request is being sent in.
-
-📫 **Parameters:** Use request parameters to set varying parts in simulated requests.
-
-📃 **Request Body:** Used to send and receive data via the REST API.
-
-- Set `Content Type`
-- FormData, JSON, and many more
-- Toggle between key-value and RAW input parameter list
-
-📮 **Response:** Contains the status line, headers, and the message/response body.
-
-- Copy the response to the clipboard
-- Download the response as a file
-- View response headers
-- View raw and preview HTML, image, JSON, and XML responses
-
-⏰ **History:** Request entries are synced with your cloud/local session storage.
-
-📁 **Collections:** Keep your API requests organized with collections and folders. Reuse them with a single click.
-
-- Unlimited collections, folders, and requests
-- Nested folders
-- Export and import as a file or GitHub gist
-
-_Collections are synced with your cloud/local session storage._
-
-📜 **Pre-Request Scripts:** Snippets of code associated with a request that is executed before the request is sent.
-
-- Set environment variables
-- Include timestamp in the request headers
-- Send a random alphanumeric string in the URL parameters
-- Any JavaScript functions
-
-👨‍👩‍👧‍👦 **Teams:** Helps you collaborate across your teams to design, develop, and test APIs faster.
-
-- Create unlimited teams
-- Create unlimited shared collections
-- Create unlimited team members
-- Role-based access control
-- Cloud sync
-- Multiple devices
-
-👥 **Workspaces:** Organize your personal and team collections environments into workspaces. Easily switch between workspaces to manage multiple projects.
-
-- Create unlimited workspaces
-- Switch between personal and team workspaces
-
-⌨️ **Keyboard Shortcuts:** Optimized for efficiency.
-
-> **[Read our documentation on Keyboard Shortcuts](https://docs.hoppscotch.io/documentation/features/shortcuts)**
-
-🌐 **Proxy:** Enable Proxy Mode from Settings to access blocked APIs.
-
-- Hide your IP address
-- Fixes [`CORS`](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) (Cross-Origin Resource Sharing) issues
-- Access APIs served in non-HTTPS (`http://`) endpoints
-- Use your Proxy URL
-
-_Official proxy server is hosted by Hoppscotch - **[GitHub](https://github.com/hoppscotch/proxyscotch)** - **[Privacy Policy](https://docs.hoppscotch.io/support/privacy)**._
-
-🌎 **i18n:** Experience the app in your language.
-
-Help us to translate Hoppscotch. Please read [`TRANSLATIONS`](TRANSLATIONS.md) for details on our [`CODE OF CONDUCT`](CODE_OF_CONDUCT.md) and the process for submitting pull requests to us.
-
-☁️ **Auth + Sync:** Sign in and sync your data in real-time across all your devices.
-
-**Sign in with:**
-
-- GitHub
-- Google
-- Microsoft
-- Email
-- SSO (Single Sign-On)[^EE]
-
-**🔄 Synchronize your data:** Handoff to continue tasks on your other devices.
-
-- Workspaces
-- History
-- Collections
-- Environments
-- Settings
-
-✅ **Post-Request Tests:** Write tests associated with a request that is executed after the request's response.
-
-- Check the status code as an integer
-- Filter response headers
-- Parse the response data
-- Set environment variables
-- Write JavaScript code
-
-🌱 **Environments:** Environment variables allow you to store and reuse values in your requests and scripts.
-
-- Unlimited environments and variables
-- Initialize through the pre-request script
-- Export as / import from GitHub gist
-
-<details>
-  <summary><i>Use-cases</i></summary>
+这是 Hoppscotch 的一个**私有化改造 fork**：只保留 **Tauri 桌面应用**形态，移除了一切需要联网/后端/账号的能力（登录、云同步、团队工作区、分享短链、发布文档、Mock Server、Admin 面板、后端与 CLI 等）。数据**全部保存在本机**（localStorage / Tauri store），打开即用、无账号。
 
 ---
 
-- By storing a value in a variable, you can reference it throughout your request section
-- If you need to update the value, you only have to change it in one place
-- Using variables increases your ability to work efficiently and minimizes the likelihood of error
+### 特性
+
+- 🚀 **REST**：`GET` / `POST` / `PUT` / `PATCH` / `DELETE` / `HEAD` / `OPTIONS` 及自定义方法；导入 `cURL`、标签管理、生成多语言代码片段。
+- 🔮 **GraphQL**：Endpoint + Schema 获取、多列文档、自定义请求头、查询 Schema 与响应。
+- 🔌 **WebSocket**、📡 **Server-Sent Events (SSE)**、🌩 **Socket.IO**、🦟 **MQTT**：完整的实时协议客户端。
+- 🔐 **Authorization**：None / Basic / Bearer / OAuth 2.0 / OIDC Access Token · PKCE。
+- 📃 **Request Body**：`Content-Type` 选择、FormData / JSON / 原始 / 二进制等。
+- 📮 **Response**：状态、头、JSON/XML/HTML/Image/PDF/Audio/Video 预览；复制、下载、保存为示例。
+- 📁 **Collections**：集合与嵌套文件夹、导入导出（文件）、环境变量管理。
+- 🌱 **Environments**：个人与全局环境变量，请求与脚本中复用。
+- 📜 **Pre-Request Scripts** 与 ✅ **Post-Request Tests**：脚本/测试断言（JavaScript sandbox 本地执行）。
+- 🧾 **History**：REST / GraphQL / 实时协议历史，随时回放。
+- ⏰ **本地持久化**：集合、历史、环境、标签、Cookie、设置全部保存在本机，无任何云同步。
+- 🌈 **主题**：系统 / 浅色 / 深色 / 黑色 + 强调色，专注模式。
+- ⌨️ **快捷键**：为效率优化；支持自定义键盘布局策略（含 AZERTY 等）。
+- 🌎 **i18n**：多语言界面（非英语翻译需与 `en.json` 保持子集一致）。
+
+> 已移除（不再可用）：登录 / 云账号同步、团队与多工作区、分享短链、发布文档、Mock Server、Access Tokens、导出为 GitHub Gist、Admin dashboard、PWA/浏览器扩展形态。
 
 ---
 
-</details>
+## 开发
 
-🚚 **Bulk Edit:** Edit key-value pairs in bulk.
+`pnpm` monorepo（强制 `pnpm install`，勿用 npm/yarn）。先装依赖：
 
-- Entries are separated by newline
-- Keys and values are separated by `:`
-- Prepend `#` to any row you want to add but keep disabled
+```bash
+pnpm install
+```
 
-🎛️ **Admin dashboard:** Manage your team and invite members.
+> 仓库根目录 `.env` 主要用于满足 GraphQL codegen 的 dotenv 加载；本地无后端，绝大多数变量为遗留项，缺省也能构建。
 
-- Insights
-- Manage users
-- Manage teams
+### 常用命令（仓库根目录）
 
-📦 **Add-ons:** Official add-ons for hoppscotch.
+| 用途 | 命令 |
+| --- | --- |
+| Lint | `pnpm lint` |
+| Lint fix | `pnpm lintfix` |
+| Typecheck | `pnpm typecheck` |
+| Test | `pnpm test` |
+| 构建 web 产物 | `pnpm --filter @hoppscotch/selfhost-web run build` |
+| 单测（common） | `pnpm --filter @hoppscotch/common exec vitest run src/<路径>` |
 
-- **[Hoppscotch CLI](https://github.com/hoppscotch/hoppscotch/tree/main/packages/hoppscotch-cli)** - Command-line interface for Hoppscotch.
-- **[Proxy](https://github.com/hoppscotch/proxyscotch)** - A simple proxy server created for Hoppscotch.
-- **[Browser Extensions](https://github.com/hoppscotch/hoppscotch-extension)** - Browser extensions that enhance your Hoppscotch experience.
+### 桌面应用开发与打包
 
-  [![Firefox](https://raw.github.com/alrra/browser-logos/master/src/firefox/firefox_16x16.png) **Firefox**](https://addons.mozilla.org/en-US/firefox/addon/hoppscotch) &nbsp;|&nbsp; [![Chrome](https://raw.github.com/alrra/browser-logos/master/src/chrome/chrome_16x16.png) **Chrome**](https://chrome.google.com/webstore/detail/hoppscotch-extension-for-c/amknoiejhlmhancpahfcfcfhllgkpbld)
+构建链：`selfhost-web` 构建 → Rust `webapp-bundler` 打包 → Tauri build。
 
-  > **Extensions fix `CORS` issues.**
+1. 一键流程（构建前端 + 打包 web bundle）：在 `packages/hoppscotch-desktop` 下执行 `pnpm prepare-web`。
 
-_Add-ons are developed and maintained under **[Hoppscotch Organization](https://github.com/hoppscotch)**._
+   或分步执行：
 
-**For a complete list of features, please read our [documentation](https://docs.hoppscotch.io).**
+   ```bash
+   pnpm --filter @hoppscotch/selfhost-web run build   # 产出 packages/hoppscotch-selfhost-web/dist
+   cd packages/hoppscotch-desktop/crates/webapp-bundler
+   cargo build --release
+   # 运行目录为 crates/webapp-bundler 时：
+   ./target/release/webapp-bundler \
+     --input ../../../hoppscotch-selfhost-web/dist \
+     --output ../../bundle.zip \
+     --manifest ../../manifest.json
+   ```
 
-## **Demo**
+   > `bundle.zip` 与 `manifest.json` 落在 `packages/hoppscotch-desktop/` 下，供 Tauri 内嵌。
 
-- Web : [hoppscotch.io](https://hoppscotch.io)
-- Windows/Linux/macOS : [Desktop Apps](https://docs.hoppscotch.io/documentation/clients/desktop#download-hoppscotch-desktop-app)
+2. 运行桌面应用（开发）：
 
-## Usage
+   ```bash
+   cd packages/hoppscotch-desktop
+   pnpm tauri dev        # 或 pnpm dev:full
+   ```
 
-1. Provide your API endpoint in the URL field
-2. Click "Send" to simulate the request
-3. View the response
+3. 构建安装包：
 
-## Developing
+   ```bash
+   pnpm tauri build      # 或 pnpm build:full
+   ```
 
-Follow our [self-hosting documentation](https://docs.hoppscotch.io/documentation/self-host/getting-started) to get started with the development environment.
+Tauri 平台依赖（Linux 需 `libwebkit2gtk-4.1` 等）详见 `packages/hoppscotch-desktop/README.md`。
 
-## Contributing
+---
 
-Please contribute using [GitHub Flow](https://guides.github.com/introduction/flow). Create a branch, add commits, and [open a pull request](https://github.com/hoppscotch/hoppscotch/compare).
+## 文档
 
-Please read [`CONTRIBUTING`](CONTRIBUTING.md) for details on our [`CODE OF CONDUCT`](CODE_OF_CONDUCT.md), and the process for submitting pull requests to us.
-
-## Continuous Integration
-
-We use [GitHub Actions](https://github.com/features/actions) for continuous integration. Check out our [build workflows](https://github.com/hoppscotch/hoppscotch/actions).
-
-## Changelog
-
-See the [`CHANGELOG`](CHANGELOG.md) file for details.
-
-## Authors
-
-This project owes its existence to the collective efforts of all those who contribute — [contribute now](CONTRIBUTING.md).
-
-<div align="center">
-  <a href="https://github.com/hoppscotch/hoppscotch/graphs/contributors">
-    <img src="https://opencollective.com/hoppscotch/contributors.svg?width=840&button=false"
-      alt="Contributors"
-      width="100%" />
-  </a>
-</div>
+- 仓库结构 / 架构约束 / 开发约定：见 [`AGENTS.md`](AGENTS.md)。
+- 桌面端细节与系统要求：见 [`packages/hoppscotch-desktop/README.md`](packages/hoppscotch-desktop/README.md)。
 
 ## License
 
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT) — see the [`LICENSE`](LICENSE) file for details.
-
-[^EE]: Enterprise edition feature. [Learn more](https://docs.hoppscotch.io/documentation/self-host/getting-started).
+MIT — 详见 [`LICENSE`](LICENSE)。

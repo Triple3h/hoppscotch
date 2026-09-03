@@ -26,7 +26,6 @@ import { CurrentValueService } from "~/services/current-environment-value.servic
 
 import IconEdit from "~icons/lucide/edit?raw"
 import IconUser from "~icons/lucide/user?raw"
-import IconUsers from "~icons/lucide/users?raw"
 import IconGlobe from "~icons/lucide/globe?raw"
 import IconVariable from "~icons/lucide/variable?raw"
 import IconLibrary from "~icons/lucide/library?raw"
@@ -197,11 +196,9 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
           ? IconGlobe
           : tooltipEnv?.sourceEnv === "RequestVariable"
             ? IconVariable
-            : selectedEnvType === "TEAM_ENV"
-              ? IconUsers
-              : tooltipEnv?.sourceEnv === "CollectionVariable"
-                ? IconLibrary
-                : IconUser
+            : tooltipEnv?.sourceEnv === "CollectionVariable"
+              ? IconLibrary
+              : IconUser
       }</span>`
 
       const appendEditAction = (tooltip: HTMLElement) => {
@@ -210,16 +207,13 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
           "ml-2 cursor-pointer text-accent hover:text-accentDark"
         editIcon.addEventListener("click", () => {
           let invokeActionType:
-            | "modals.my.environment.edit"
-            | "modals.team.environment.edit"
-            | "modals.global.environment.update" = "modals.my.environment.edit"
+            "modals.my.environment.edit" | "modals.global.environment.update" =
+            "modals.my.environment.edit"
 
           if (tooltipEnv?.sourceEnv === "Global")
             invokeActionType = "modals.global.environment.update"
           else if (selectedEnvType === "MY_ENV")
             invokeActionType = "modals.my.environment.edit"
-          else if (selectedEnvType === "TEAM_ENV")
-            invokeActionType = "modals.team.environment.edit"
           else {
             invokeActionType = "modals.my.environment.edit"
           }

@@ -66,11 +66,7 @@
       <p class="text-tiny text-secondaryLight !mt-1">
         {{ t("documentation.publish.sensitive_data_warning") }}
       </p>
-      <CollectionsDocumentationEnvironmentPicker
-        v-model="environmentModel"
-        :workspace-type="workspaceType"
-        :workspace-i-d="workspaceID"
-      />
+      <CollectionsDocumentationEnvironmentPicker v-model="environmentModel" />
     </div>
 
     <!-- Published URL (shown after publishing or in update mode) -->
@@ -108,7 +104,6 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import { useI18n } from "~/composables/i18n"
-import { WorkspaceType } from "~/helpers/backend/graphql"
 import IconCopy from "~icons/lucide/copy"
 import IconExternalLink from "~icons/lucide/external-link"
 
@@ -121,8 +116,6 @@ const props = defineProps<{
   selectedEnvironmentID: string | null
   publishedUrl: string | null
   isValidVersion: boolean
-  workspaceType: WorkspaceType
-  workspaceID: string
   mode: "create" | "update"
 }>()
 

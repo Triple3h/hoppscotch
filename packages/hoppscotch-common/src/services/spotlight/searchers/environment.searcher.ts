@@ -27,14 +27,10 @@ import IconLayers from "~icons/lucide/layers"
 import IconTrash2 from "~icons/lucide/trash-2"
 
 import { Container, Service } from "dioc"
-import * as TE from "fp-ts/TaskEither"
-import { pipe } from "fp-ts/function"
 import { cloneDeep } from "lodash-es"
 import MiniSearch from "minisearch"
 import { map } from "rxjs"
 import { useStreamStatic } from "~/composables/stream"
-import { GQLError, runGQLQuery } from "~/helpers/backend/GQLClient"
-import { createDuplicateEnvironment as duplicateTeamEnvironment } from "~/helpers/backend/mutations/TeamEnvironment"
 import {
   SelectedEnvironmentIndex,
   createEnvironment,
@@ -46,12 +42,8 @@ import {
   setSelectedEnvironmentIndex,
 } from "~/newstore/environments"
 
-import * as E from "fp-ts/Either"
 import IconCheckCircle from "~/components/app/spotlight/entry/IconSelected.vue"
 import { useToast } from "~/composables/toast"
-import { GetTeamEnvironmentsDocument } from "~/helpers/backend/graphql"
-import { TeamEnvironment } from "~/helpers/teams/TeamEnvironment"
-import { WorkspaceService } from "~/services/workspace.service"
 import IconCircle from "~icons/lucide/circle"
 
 type Doc = {
@@ -63,10 +55,7 @@ type Doc = {
 
 type SelectedEnv = {
   selected?: boolean
-} & (
-  | Omit<SelectedEnvironmentIndex & { type: "TEAM_ENV" }, "environment">
-  | (SelectedEnvironmentIndex & { type: "MY_ENV" })
-)
+} & SelectedEnvironmentIndex & { type: "MY_ENV" }
 
 /**
  *
@@ -211,20 +200,6 @@ export class EnvironmentsSpotlightSearcherService extends StaticSpotlightSearche
       duplicateEnvironment(this.selectedEnvIndex.value.index)
       // this.toast.success(`${t("environment.duplicated")}`)
     }
-
-    if (this.selectedEnvIndex.value?.type === "TEAM_ENV") {
-      pipe(
-        duplicateTeamEnvironment(this.selectedEnvIndex.value.teamEnvID),
-        TE.match(
-          (err: GQLError<string>) => {
-            console.error(err)
-          },
-          () => {
-            // this.toast.success(`${this.t("environment.duplicated")}`)
-          }
-        )
-      )()
-    }
   }
 
   public onDocSelected(id: string): void {
@@ -240,19 +215,9 @@ export class EnvironmentsSpotlightSearcherService extends StaticSpotlightSearche
         break
       case "edit_selected_env":
         if (this.selectedEnv.value) {
-          // Branch on the SELECTED environment's scope, not the workspace —
-          // a personal env can be selected inside a team workspace, and the
-          // team editor resolves by name (a collision would edit the wrong,
-          // team-shared environment)
-          if (this.selectedEnvIndex.value?.type === "TEAM_ENV") {
-            invokeAction(`modals.team.environment.edit`, {
-              envName: this.selectedEnv.value.name,
-            })
-          } else {
-            invokeAction(`modals.my.environment.edit`, {
-              envName: this.selectedEnv.value.name,
-            })
-          }
+          invokeAction(`modals.my.environment.edit`, {
+            envName: this.selectedEnv.value.name,
+          })
         }
         break
       case "delete_selected_env":
@@ -288,8 +253,6 @@ export class SwitchEnvSpotlightSearcherService
   public searcherSectionTitle = this.t("tab.environments")
 
   private readonly spotlight = this.bind(SpotlightService)
-  private readonly workspaceService = this.bind(WorkspaceService)
-  private teamEnvironmentList: TeamEnvironment[] = []
 
   override onServiceInit() {
     this.spotlight.registerSearcher(this)
@@ -314,37 +277,6 @@ export class SwitchEnvSpotlightSearcherService
       /* noop */
     }
   )[0]
-
-  async fetchTeamEnvironmentList(teamID: string): Promise<TeamEnvironment[]> {
-    const results: TeamEnvironment[] = []
-
-    const result = await runGQLQuery({
-      query: GetTeamEnvironmentsDocument,
-      variables: {
-        teamID: teamID,
-      },
-    })
-
-    if (E.isRight(result)) {
-      if (result.right.team) {
-        results.push(
-          ...result.right.team.teamEnvironments.map(
-            ({ id, teamID, name, variables }) =>
-              <TeamEnvironment>{
-                id: id,
-                teamID: teamID,
-                environment: {
-                  name: name,
-                  variables: JSON.parse(variables),
-                },
-              }
-          )
-        )
-      }
-    }
-
-    return results
-  }
 
   createSearchSession(
     query: Readonly<Ref<string>>
@@ -378,37 +310,6 @@ export class SwitchEnvSpotlightSearcherService
           }
         })
       )
-
-      const workspace = this.workspaceService.currentWorkspace
-
-      if (workspace.value?.type === "team") {
-        this.fetchTeamEnvironmentList(workspace.value.teamID).then(
-          (results) => {
-            this.teamEnvironmentList = results
-            minisearch.addAll(
-              results.map(({ teamID, id: teamEnvID, environment }) => {
-                const id: SelectedEnv = {
-                  type: "TEAM_ENV",
-                  teamID,
-                  teamEnvID,
-                }
-
-                if (
-                  this.selectedEnvIndex.value?.type === "TEAM_ENV" &&
-                  this.selectedEnvIndex.value.teamEnvID === teamEnvID
-                ) {
-                  id.selected = true
-                }
-                return {
-                  id: JSON.stringify(id),
-                  name: environment.name,
-                  alternates: ["environment", "change", environment.name],
-                }
-              })
-            )
-          }
-        )
-      }
     }
 
     const scopeHandle = effectScope()
@@ -468,21 +369,6 @@ export class SwitchEnvSpotlightSearcherService
         setSelectedEnvironmentIndex({
           type: "MY_ENV",
           index: selectedEnv.index,
-        })
-      }
-
-      if (selectedEnv.type === "TEAM_ENV") {
-        const teamEnv = this.teamEnvironmentList.find(
-          ({ id }) => id === selectedEnv.teamEnvID
-        )
-        if (!teamEnv) return
-
-        const { teamID, teamEnvID } = selectedEnv
-        setSelectedEnvironmentIndex({
-          type: "TEAM_ENV",
-          teamEnvID,
-          teamID,
-          environment: teamEnv.environment,
         })
       }
     } catch (e) {

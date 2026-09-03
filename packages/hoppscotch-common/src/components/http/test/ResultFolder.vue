@@ -32,7 +32,6 @@ import IconFolderOpen from "~icons/lucide/folder-open"
 import { ref, computed, watch } from "vue"
 import { HoppCollection } from "@hoppscotch/data"
 import { TippyComponent } from "vue-tippy"
-import { TeamCollection } from "~/helpers/teams/TeamCollection"
 
 type FolderType = "collection" | "folder"
 
@@ -40,7 +39,7 @@ const props = withDefaults(
   defineProps<{
     id: string
     parentID?: string | null
-    data: HoppCollection | TeamCollection
+    data: HoppCollection
     /**
      * Collection component can be used for both collections and folders.
      * folderType is used to determine which one it is.
@@ -48,7 +47,6 @@ const props = withDefaults(
     folderType: FolderType
     isOpen: boolean
     exportLoading?: boolean
-    hasNoTeamAccess?: boolean
     collectionMoveLoading?: string[]
     isLastItem?: boolean
   }>(),
@@ -58,7 +56,6 @@ const props = withDefaults(
     folderType: "collection",
     isOpen: false,
     exportLoading: false,
-    hasNoTeamAccess: false,
     isLastItem: false,
   }
 )
@@ -66,9 +63,7 @@ const props = withDefaults(
 const options = ref<TippyComponent | null>(null)
 
 const collectionName = computed(() => {
-  if ((props.data as HoppCollection).name)
-    return (props.data as HoppCollection).name
-  return (props.data as TeamCollection).title
+  return (props.data as HoppCollection).name
 })
 
 watch(

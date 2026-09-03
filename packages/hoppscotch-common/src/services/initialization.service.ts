@@ -14,7 +14,6 @@ import { performMigrations } from "~/helpers/migrations"
 import { initBackendGQLClient } from "~/helpers/backend/GQLClient"
 import { getKernelMode } from "@hoppscotch/kernel"
 import { diag } from "~/kernel/log"
-import { sync } from "~/lib/sync/defs"
 
 type InitEvent =
   | { type: "STORE_READY" }
@@ -136,13 +135,7 @@ export class InitializationService extends Service<InitEvent> {
       throw new Error("Cannot initialize remaining services before auth")
     }
 
-    await Promise.all([
-      sync.settings.initSettingsSync(),
-      sync.collections.initCollectionsSync(),
-      sync.history.initHistorySync(),
-      sync.environments.initEnvironmentsSync(),
-      platform.analytics?.initAnalytics(),
-    ])
+    await Promise.all([platform.analytics?.initAnalytics()])
 
     this.emit({ type: "SYNC_READY" })
   }

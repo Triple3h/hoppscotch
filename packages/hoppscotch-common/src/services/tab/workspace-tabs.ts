@@ -291,15 +291,6 @@ export class WorkspaceTabsService extends TabService<HoppTabDocument> {
   ) {
     if (tab.document.type === "test-runner") return false
 
-    // For `team-collection` request id can be considered unique
-    if (ctx?.originLocation === "team-collection") {
-      return (
-        tab.document.saveContext?.originLocation === "team-collection" &&
-        tab.document.saveContext.requestID === ctx.requestID &&
-        tab.document.saveContext.exampleID === ctx.exampleID
-      )
-    }
-
     const tabCtx = tab.document.saveContext
 
     if (tabCtx?.originLocation !== "user-collection") return false

@@ -1,10 +1,5 @@
 <template>
-  <div
-    class="flex flex-col"
-    :class="{
-      'space-y-2': !hasTeamWriteAccess,
-    }"
-  >
+  <div class="flex flex-col">
     <div class="flex flex-col space-y-2">
       <HoppSmartItem
         v-for="importer in importers"
@@ -14,7 +9,7 @@
         @click="emit('importer-selected', importer.id)"
       />
     </div>
-    <hr v-if="hasTeamWriteAccess" />
+    <hr />
     <div class="flex flex-col space-y-2">
       <template v-for="exporter in exporters" :key="exporter.id">
         <!-- adding the title to a span if the item is visible, otherwise the title won't be shown -->
@@ -69,7 +64,6 @@ type ImportExportEntryMeta = {
 defineProps<{
   importers: ImportExportEntryMeta[]
   exporters: ImportExportEntryMeta[]
-  hasTeamWriteAccess: boolean
 }>()
 
 const emit = defineEmits<{

@@ -21,8 +21,6 @@
         :published-url="publishedUrl"
         :show="show && mode === 'view'"
         :is-valid-version="isValidVersion"
-        :workspace-type="workspaceType"
-        :workspace-i-d="workspaceID"
         @copy-url="copyUrl"
         @view-published="viewPublished"
       />
@@ -36,8 +34,6 @@
         v-model:selected-environment-i-d="selectedEnvironmentID"
         :published-url="publishedUrl"
         :is-valid-version="isValidVersion"
-        :workspace-type="workspaceType"
-        :workspace-i-d="workspaceID"
         :mode="mode === 'update' ? 'update' : 'create'"
         @copy-url="copyUrl"
         @view-published="viewPublished"
@@ -117,8 +113,6 @@ const props = defineProps<{
   show: boolean
   collectionID: string
   collectionTitle: string
-  workspaceType: WorkspaceType
-  workspaceID: string
   mode?: "create" | "update" | "view"
   isFirstPublish?: boolean
   publishedDocId?: string
@@ -239,8 +233,8 @@ const handlePublish = () => {
     title: publishTitle.value.trim(),
     version: publishVersion.value.trim(),
     autoSync: autoSync.value,
-    workspaceType: props.workspaceType,
-    workspaceID: props.workspaceID,
+    workspaceType: WorkspaceType.User,
+    workspaceID: platform.auth.getCurrentUser()?.uid ?? "",
     collectionID: props.collectionID,
     metadata: "{}",
     environmentID: selectedEnvironmentID.value || undefined,

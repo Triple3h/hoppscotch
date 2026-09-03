@@ -55,7 +55,6 @@ import { useService } from "dioc/vue"
 import { DocumentationService } from "~/services/documentation.service"
 import { useI18n } from "~/composables/i18n"
 import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
-import { TeamCollectionsService } from "~/services/team-collection.service"
 import { cascadeParentCollectionForProperties } from "~/newstore/collections"
 
 const t = useI18n()
@@ -68,9 +67,7 @@ const props = withDefaults(
     collection: CollectionType
     pathOrID: string | null
     folderPath?: string
-    isTeamCollection?: boolean
     collectionPath?: string
-    teamID?: string
     readOnly?: boolean
     inheritedProperties?: HoppInheritedProperty
   }>(),
@@ -79,9 +76,7 @@ const props = withDefaults(
     collection: null,
     pathOrID: null,
     folderPath: "",
-    isTeamCollection: false,
     collectionPath: "",
-    teamID: "",
     readOnly: false,
     inheritedProperties: undefined,
   }
@@ -91,20 +86,12 @@ const emit = defineEmits<{
   (event: "update:documentationDescription", value: string): void
 }>()
 
-const teamCollectionsService = useService(TeamCollectionsService)
-
 const inheritedProperties = computed(() => {
   if (props.inheritedProperties) {
     return props.inheritedProperties
   }
 
-  if (props.isTeamCollection && props.teamID && props.folderPath) {
-    return teamCollectionsService.cascadeParentCollectionForProperties(
-      props.folderPath
-    )
-  }
-
-  if (!props.isTeamCollection && props.folderPath) {
+  if (props.folderPath) {
     return cascadeParentCollectionForProperties(props.folderPath, "rest")
   }
 
@@ -156,9 +143,7 @@ function handleBlur(): void {
       props.collection.id ?? props.collection._ref_id!,
       editableContent.value,
       {
-        isTeamItem: props.isTeamCollection,
         pathOrID: props.pathOrID ?? props.folderPath,
-        teamID: props.teamID,
         collectionData: props.collection as HoppCollection,
       }
     )

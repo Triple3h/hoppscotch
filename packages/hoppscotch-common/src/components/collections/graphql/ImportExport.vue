@@ -25,7 +25,6 @@ import { initializeDownloadFile } from "~/helpers/import-export/export"
 import { useReadonlyStream } from "~/composables/stream"
 
 import { platform } from "~/platform"
-import { sync } from "~/lib/sync/defs"
 import {
   appendGraphqlCollections,
   graphqlCollections$,
@@ -35,7 +34,6 @@ import { gqlCollectionsExporter } from "~/helpers/import-export/export/gqlCollec
 import { gistExporter } from "~/helpers/import-export/export/gist"
 import { computed } from "vue"
 import { hoppGQLImporter } from "~/helpers/import-export/import/hopp"
-import { ReqType } from "~/helpers/backend/graphql"
 import {
   ensureRefIds,
   populateLocalStoresFromCollectionTree,
@@ -99,7 +97,7 @@ const GqlCollectionsGistImporter: ImporterOrExporter = {
     name: "import.from_gist",
     icon: IconFolderPlus,
     title: "import.from_gist",
-    applicableTo: ["personal-workspace", "team-workspace"],
+    applicableTo: ["personal-workspace"],
     disabled: false,
   },
   component: GistSource({
@@ -138,7 +136,7 @@ const GqlCollectionsHoppExporter: ImporterOrExporter = {
     title: "action.download_file",
     icon: IconUser,
     disabled: false,
-    applicableTo: ["personal-workspace", "team-workspace"],
+    applicableTo: ["personal-workspace"],
   },
   action: async () => {
     if (!gqlCollections.value.length) {
@@ -239,13 +237,6 @@ const showImportFailedError = () => {
 const handleImportToStore = (gqlCollections: HoppCollection[]) => {
   const collectionsWithRefIds = gqlCollections.map(ensureRefIds)
   collectionsWithRefIds.forEach(populateLocalStoresFromCollectionTree)
-
-  if (sync.collections.importToPersonalWorkspace && currentUser.value) {
-    return sync.collections.importToPersonalWorkspace(
-      collectionsWithRefIds,
-      ReqType.Gql
-    )
-  }
 
   appendGraphqlCollections(
     collectionsWithRefIds.map(stripCollectionTreeForStore)

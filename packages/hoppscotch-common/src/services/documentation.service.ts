@@ -33,8 +33,6 @@ export interface PublishedDocInfo {
 export interface BaseDocumentationItem {
   id: string
   documentation: string
-  isTeamItem: boolean
-  teamID?: string
 }
 
 /**
@@ -44,21 +42,20 @@ export interface CollectionDocumentationItem extends BaseDocumentationItem {
   type: "collection"
 
   /**
-   * The path (for personal collections) or ID (for team collections) of the collection
+   * The path of the collection
    */
   pathOrID: string
   collectionData: HoppCollection
 }
 
 /**
- * Request documentation item (supports both team and personal requests)
+ * Request documentation item
  */
 export interface RequestDocumentationItem extends BaseDocumentationItem {
   type: "request"
   parentCollectionID: string
   folderPath: string
-  requestID?: string // For team requests
-  requestIndex?: number // For personal requests
+  requestIndex?: number
   requestData: HoppRESTRequest | HoppGQLRequest
 }
 
@@ -66,20 +63,9 @@ export type DocumentationItem =
   CollectionDocumentationItem | RequestDocumentationItem
 
 /**
- * Base options for setting documentation
- */
-export interface BaseDocumentationOptions {
-  isTeamItem: boolean
-  teamID?: string
-}
-
-/**
  * Options for setting collection documentation
  */
-export interface SetCollectionDocumentationOptions extends BaseDocumentationOptions {
-  /**
-   * The path (for personal collections) or ID (for team collections) of the collection
-   */
+export interface SetCollectionDocumentationOptions {
   pathOrID: string
   collectionData: HoppCollection
 }
@@ -87,11 +73,10 @@ export interface SetCollectionDocumentationOptions extends BaseDocumentationOpti
 /**
  * Request documentation
  */
-export interface SetRequestDocumentationOptions extends BaseDocumentationOptions {
+export interface SetRequestDocumentationOptions {
   parentCollectionID: string
   folderPath: string
-  requestID?: string // For team requests
-  requestIndex?: number // For personal requests
+  requestIndex?: number
   requestData: HoppRESTRequest | HoppGQLRequest
 }
 
@@ -148,8 +133,6 @@ export class DocumentationService extends Service {
       type: "collection",
       id,
       documentation,
-      isTeamItem: options.isTeamItem,
-      teamID: options.teamID,
       pathOrID: options.pathOrID,
       collectionData: options.collectionData,
     }
@@ -170,12 +153,9 @@ export class DocumentationService extends Service {
       type: "request",
       id,
       documentation,
-      isTeamItem: options.isTeamItem,
-      teamID: options.teamID,
       parentCollectionID: options.parentCollectionID,
       folderPath: options.folderPath,
-      requestID: options.requestID, // Will be defined for team requests
-      requestIndex: options.requestIndex, // Will be defined for personal requests
+      requestIndex: options.requestIndex,
       requestData: options.requestData,
     }
 
@@ -313,52 +293,6 @@ export class DocumentationService extends Service {
       // If a newer request has started, ignore this error
       if (requestId !== this.fetchRequestId) return
       console.error("Failed to fetch user published docs:", error)
-    }
-  }
-
-  /**
-   * Fetches published docs for team collections
-   */
-  public async fetchTeamPublishedDocs(teamID: string) {
-    // Increment request ID to invalidate any previous pending requests
-    const requestId = ++this.fetchRequestId
-
-    try {
-      // Fetch all published docs for the team (collectionID is optional now)
-      const result = await platform.backend.getTeamPublishedDocs(teamID)()
-
-      // If a newer request has started, ignore this result
-      if (requestId !== this.fetchRequestId) return
-
-      if (E.isRight(result)) {
-        const docs = result.right
-        const newMap = new Map<string, PublishedDocInfo[]>()
-        docs.forEach((doc) => {
-          if (doc.collection?.id) {
-            const existing = newMap.get(doc.collection.id) || []
-            existing.push({
-              id: doc.id,
-              title: doc.title,
-              version: doc.version,
-              autoSync: doc.autoSync,
-              url: doc.url,
-              collection: {
-                id: doc.collection.id,
-              },
-              createdOn: doc.createdOn,
-              updatedOn: doc.updatedOn,
-            })
-            newMap.set(doc.collection.id, existing)
-          }
-        })
-        this.publishedDocsMap.value = newMap
-      } else {
-        console.error("Failed to fetch team published docs:", result.left)
-      }
-    } catch (error) {
-      // If a newer request has started, ignore this error
-      if (requestId !== this.fetchRequestId) return
-      console.error("Failed to fetch team published docs:", error)
     }
   }
 

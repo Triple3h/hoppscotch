@@ -4,9 +4,6 @@
     modal-title="modal.collections"
     :importer-modules="importerModules"
     :exporter-modules="exporterModules"
-    :has-team-write-access="
-      hasTeamWriteAccess || collectionsType.type === 'my-collections'
-    "
     @hide-modal="emit('hide-modal')"
   />
 </template>
@@ -15,7 +12,6 @@
 import { HoppCollection } from "@hoppscotch/data"
 import * as E from "fp-ts/Either"
 import { PropType, Ref, computed, ref } from "vue"
-import { transformCollectionForImport } from "~/helpers/collection/collection"
 
 import { FileSource } from "~/helpers/import-export/import/import-sources/FileSource"
 import { UrlSource } from "~/helpers/import-export/import/import-sources/UrlSource"
@@ -30,7 +26,6 @@ import {
   hoppOpenAPIImporter,
   hoppPostmanImporter,
   hoppRESTImporter,
-  toTeamsImporter,
 } from "~/helpers/import-export/import/importers"
 
 import { defineStep } from "~/composables/step-components"
@@ -42,7 +37,6 @@ import { useToast } from "~/composables/toast"
 import { appendRESTCollections, restCollections$ } from "~/newstore/collections"
 import {
   ensureRefIds,
-  flushUnmatchedRefIdsFromTree,
   populateLocalStoresFromCollectionTree,
   stripCollectionTreeForStore,
 } from "~/helpers/clientLocalVariables"
@@ -57,10 +51,7 @@ import IconLink from "~icons/lucide/link"
 import { useReadonlyStream } from "~/composables/stream"
 import IconUser from "~icons/lucide/user"
 
-import { getTeamCollectionJSON } from "~/helpers/backend/helpers"
-
 import { platform } from "~/platform"
-import { sync } from "~/lib/sync/defs"
 
 import {
   initializeDownloadFile,
@@ -69,13 +60,10 @@ import {
 import { gistExporter } from "~/helpers/import-export/export/gist"
 import { myCollectionsExporter } from "~/helpers/import-export/export/myCollections"
 import { hoppCollectionsToOpenAPI } from "~/helpers/import-export/export/openapi"
-import { teamCollectionsExporter } from "~/helpers/import-export/export/teamCollections"
 
 import { ImporterOrExporter } from "~/components/importExport/types"
 import { GistSource } from "~/helpers/import-export/import/import-sources/GistSource"
-import { TeamWorkspace } from "~/services/workspace.service"
 import { invokeAction } from "~/helpers/actions"
-import { ReqType } from "~/helpers/backend/graphql"
 import { sanitizeCollection } from "~/helpers/import-export/import"
 
 const isInsomniaImporterInProgress = ref(false)
@@ -88,19 +76,13 @@ const isGistImporterInProgress = ref(false)
 const t = useI18n()
 const toast = useToast()
 
-type CollectionType =
-  | {
-      type: "team-collections"
-      selectedTeam: TeamWorkspace
-    }
-  | { type: "my-collections" }
+type CollectionType = { type: "my-collections" }
 
-const props = defineProps({
+defineProps({
   collectionsType: {
     type: Object as PropType<CollectionType>,
     default: () => ({
       type: "my-collections",
-      selectedTeam: undefined,
     }),
     required: true,
   },
@@ -118,10 +100,7 @@ const showImportFailedError = () => {
 }
 
 const handleImportToStore = async (collections: HoppCollection[]) => {
-  const importResult =
-    props.collectionsType.type === "my-collections"
-      ? await importToPersonalWorkspace(collections)
-      : await importToTeamsWorkspace(collections)
+  const importResult = await importToPersonalWorkspace(collections)
 
   if (E.isRight(importResult)) {
     toast.success(t("state.file_imported"))
@@ -143,54 +122,7 @@ const importToPersonalWorkspace = (collections: HoppCollection[]) => {
 
   sanitizedCollections.forEach(populateLocalStoresFromCollectionTree)
 
-  if (sync.collections.importToPersonalWorkspace && currentUser.value) {
-    // The SH adds the id to the collection and folders but for safety we remove it by sanitizeCollection
-    return sync.collections.importToPersonalWorkspace(
-      sanitizedCollections,
-      ReqType.Rest
-    )
-  }
-
   appendRESTCollections(sanitizedCollections.map(stripCollectionTreeForStore))
-  return E.right({ success: true })
-}
-
-/**
- * Import collections to teams workspace. Stamps `_ref_id` and seeds the
- * device-local secret stores under it; on the team-collection-added
- * subscription, `TeamCollectionsService.addCollection` migrates entries
- * from `_ref_id` to the backend-assigned `id`. Wire payload is stripped
- * of secrets via `transformCollectionForImport`; secrets stay
- * device-local per the team-isolation model.
- */
-const importToTeamsWorkspace = async (collections: HoppCollection[]) => {
-  if (!hasTeamWriteAccess.value || !selectedTeamID.value) {
-    return E.left({
-      success: false,
-    })
-  }
-
-  const collectionsWithRefIds = collections.map(ensureRefIds)
-  collectionsWithRefIds.forEach(populateLocalStoresFromCollectionTree)
-
-  const transformedCollection = collectionsWithRefIds.map((collection) =>
-    transformCollectionForImport(collection)
-  )
-
-  const res = await toTeamsImporter(
-    JSON.stringify(transformedCollection),
-    selectedTeamID.value
-  )()
-
-  if (E.isLeft(res)) {
-    // Backend rejected — flush ONLY `_ref_id`-keyed entries we just
-    // seeded. `flushLocalStoresForCollectionTree` would also delete by
-    // `node.id`, which could be a live backend id from a same-workspace
-    // re-import and would wipe existing collections' in-memory secrets.
-    // Empty `keptRefIds` ⇒ every `_ref_id` in the tree is flushed.
-    flushUnmatchedRefIdsFromTree(collectionsWithRefIds, new Set())
-    return E.left({ success: false })
-  }
   return E.right({ success: true })
 }
 
@@ -201,10 +133,6 @@ const emit = defineEmits<{
 const isWorkspaceExportInProgress = ref(false)
 const isHoppGistCollectionExporterInProgress = ref(false)
 const isPostmanImporterInProgress = ref(false)
-
-const isTeamWorkspace = computed(() => {
-  return props.collectionsType.type === "team-collections"
-})
 
 const currentImportSummary: Ref<{
   showImportSummary: boolean
@@ -295,7 +223,7 @@ const HoppRESTImporter: ImporterOrExporter = {
     title: "import.from_json_description",
     icon: IconFolderPlus,
     disabled: false,
-    applicableTo: ["personal-workspace", "team-workspace", "url-import"],
+    applicableTo: ["personal-workspace", "url-import"],
     format: "hoppscotch",
   },
   importSummary: currentImportSummary,
@@ -315,7 +243,7 @@ const HoppRESTImporter: ImporterOrExporter = {
           type: "HOPP_IMPORT_COLLECTION",
           importer: "import.from_json",
           platform: "rest",
-          workspaceType: isTeamWorkspace.value ? "team" : "personal",
+          workspaceType: "personal",
         })
       } else {
         showImportFailedError()
@@ -337,7 +265,7 @@ const HoppAllCollectionImporter: ImporterOrExporter = {
     title: "import.from_all_collections_description",
     icon: IconUser,
     disabled: false,
-    applicableTo: ["personal-workspace", "team-workspace"],
+    applicableTo: ["personal-workspace"],
     format: "hoppscotch",
   },
   onSelect() {
@@ -361,7 +289,7 @@ const HoppAllCollectionImporter: ImporterOrExporter = {
         // our analytics consider this as an export event, so keeping compatibility with that
         platform.analytics?.logEvent({
           type: "HOPP_EXPORT_COLLECTION",
-          exporter: "import_to_teams",
+          exporter: "json",
           platform: "rest",
         })
       } catch (_e) {
@@ -381,7 +309,7 @@ const HoppOpenAPIImporter: ImporterOrExporter = {
     title: "import.from_openapi_description",
     icon: IconOpenAPI,
     disabled: false,
-    applicableTo: ["personal-workspace", "team-workspace", "url-import"],
+    applicableTo: ["personal-workspace", "url-import"],
     format: "openapi",
   },
   importSummary: currentImportSummary,
@@ -408,7 +336,7 @@ const HoppOpenAPIImporter: ImporterOrExporter = {
               platform: "rest",
               type: "HOPP_IMPORT_COLLECTION",
               importer: "import.from_openapi",
-              workspaceType: isTeamWorkspace.value ? "team" : "personal",
+              workspaceType: "personal",
             })
           } else {
             showImportFailedError()
@@ -442,7 +370,7 @@ const HoppOpenAPIImporter: ImporterOrExporter = {
               platform: "rest",
               type: "HOPP_IMPORT_COLLECTION",
               importer: "import.from_openapi",
-              workspaceType: isTeamWorkspace.value ? "team" : "personal",
+              workspaceType: "personal",
             })
           } else {
             showImportFailedError()
@@ -465,7 +393,7 @@ const HoppPostmanImporter: ImporterOrExporter = {
     title: "import.from_postman_description",
     icon: IconPostman,
     disabled: false,
-    applicableTo: ["personal-workspace", "team-workspace", "url-import"],
+    applicableTo: ["personal-workspace", "url-import"],
     format: "postman",
   },
   importSummary: currentImportSummary,
@@ -492,7 +420,7 @@ const HoppPostmanImporter: ImporterOrExporter = {
           platform: "rest",
           type: "HOPP_IMPORT_COLLECTION",
           importer: "import.from_postman",
-          workspaceType: isTeamWorkspace.value ? "team" : "personal",
+          workspaceType: "personal",
         })
       } else {
         showImportFailedError()
@@ -513,7 +441,7 @@ const HoppInsomniaImporter: ImporterOrExporter = {
     title: "import.from_insomnia_description",
     icon: IconInsomnia,
     disabled: false,
-    applicableTo: ["personal-workspace", "team-workspace", "url-import"],
+    applicableTo: ["personal-workspace", "url-import"],
     format: "insomnia",
   },
   importSummary: currentImportSummary,
@@ -535,7 +463,7 @@ const HoppInsomniaImporter: ImporterOrExporter = {
           platform: "rest",
           type: "HOPP_IMPORT_COLLECTION",
           importer: "import.from_insomnia",
-          workspaceType: isTeamWorkspace.value ? "team" : "personal",
+          workspaceType: "personal",
         })
       } else {
         showImportFailedError()
@@ -556,7 +484,7 @@ const HoppGistImporter: ImporterOrExporter = {
     title: "import.from_gist_description",
     icon: IconGithub,
     disabled: false,
-    applicableTo: ["personal-workspace", "team-workspace", "url-import"],
+    applicableTo: ["personal-workspace", "url-import"],
     format: "hoppscotch",
   },
   importSummary: currentImportSummary,
@@ -582,7 +510,7 @@ const HoppGistImporter: ImporterOrExporter = {
           platform: "rest",
           type: "HOPP_IMPORT_COLLECTION",
           importer: "import.from_gist",
-          workspaceType: isTeamWorkspace.value ? "team" : "personal",
+          workspaceType: "personal",
         })
       } else {
         showImportFailedError()
@@ -597,67 +525,34 @@ const HoppGistImporter: ImporterOrExporter = {
 }
 
 /**
- * Resolve the array of HoppCollections for the current workspace. For the
- * team workspace we have to fetch + parse the GraphQL JSON; for personal it's
- * already a reactive ref.
+ * Resolve the array of HoppCollections for the current workspace (personal).
  */
 const getWorkspaceCollections = async (): Promise<{
   collections: HoppCollection[]
   workspaceName: string
   fileBaseName: string
 } | null> => {
-  if (props.collectionsType.type === "my-collections") {
-    if (!myCollections.value.length) {
-      toast.error(t("error.no_collections_to_export"))
-      return null
-    }
-    return {
-      collections: myCollections.value,
-      workspaceName: "Hoppscotch personal collections",
-      fileBaseName: "hoppscotch-personal-collections",
-    }
-  }
-
-  if (!props.collectionsType.selectedTeam) return null
-  const team = props.collectionsType.selectedTeam
-  const res = await teamCollectionsExporter(team.teamID)
-  if (E.isLeft(res)) {
-    toast.error(res.left)
-    return null
-  }
-
-  let collections: HoppCollection[]
-  try {
-    collections = JSON.parse(res.right) as HoppCollection[]
-  } catch {
-    toast.error(t("error.something_went_wrong"))
-    return null
-  }
-  if (!collections.length) {
+  if (!myCollections.value.length) {
     toast.error(t("error.no_collections_to_export"))
     return null
   }
-
   return {
-    collections,
-    workspaceName: team.teamName ?? "Hoppscotch team",
-    fileBaseName: "hoppscotch-team-collections",
+    collections: myCollections.value,
+    workspaceName: "Hoppscotch personal collections",
+    fileBaseName: "hoppscotch-personal-collections",
   }
 }
 
 const onWorkspaceExportHopp = async () => {
-  // Keep the modal open during the GraphQL fetch (team workspaces) and
-  // serialization. Closing early hid that latency from the user.
+  // Keep the modal open during serialization. Closing early hid that latency
+  // from the user.
   isWorkspaceExportInProgress.value = true
   let saved = false
   try {
     const ctx = await getWorkspaceCollections()
     if (!ctx) return
 
-    const json =
-      props.collectionsType.type === "my-collections"
-        ? myCollectionsExporter(ctx.collections)
-        : JSON.stringify(ctx.collections, null, 2)
+    const json = myCollectionsExporter(ctx.collections)
 
     const message = await initializeDownloadFile(json, ctx.fileBaseName)
     if (E.isRight(message)) {
@@ -756,7 +651,7 @@ const HoppCollectionsExporter: ImporterOrExporter = {
     title: "export.choose_format",
     icon: IconDownload,
     disabled: false,
-    applicableTo: ["personal-workspace", "team-workspace"],
+    applicableTo: ["personal-workspace"],
     isLoading: isWorkspaceExportInProgress,
   },
   importSummary: currentImportSummary,
@@ -777,7 +672,7 @@ const HoppGistCollectionsExporter: ImporterOrExporter = {
       currentUser?.value?.provider === "github.com"
         ? "export.create_secret_gist_tooltip_text"
         : "export.require_github",
-    applicableTo: ["personal-workspace", "team-workspace"],
+    applicableTo: ["personal-workspace"],
     isLoading: isHoppGistCollectionExporterInProgress,
   },
   action: async () => {
@@ -824,7 +719,7 @@ const HARImporter: ImporterOrExporter = {
     title: "import.from_har_description",
     icon: IconFile,
     disabled: false,
-    applicableTo: ["personal-workspace", "team-workspace"],
+    applicableTo: ["personal-workspace"],
     format: "har",
   },
   importSummary: currentImportSummary,
@@ -846,7 +741,7 @@ const HARImporter: ImporterOrExporter = {
           type: "HOPP_IMPORT_COLLECTION",
           importer: "import.from_har",
           platform: "rest",
-          workspaceType: isTeamWorkspace.value ? "team" : "personal",
+          workspaceType: "personal",
         })
       } else {
         showImportFailedError()
@@ -871,17 +766,12 @@ const importerModules = computed(() => {
     HARImporter,
   ]
 
-  const isTeams = props.collectionsType.type === "team-collections"
-
   return enabledImporters.filter((importer) => {
     if (importer.metadata.disabled) {
       return false
     }
 
-    return isTeams
-      ? importer.metadata.applicableTo.includes("team-workspace") &&
-          hasTeamWriteAccess.value
-      : importer.metadata.applicableTo.includes("personal-workspace")
+    return importer.metadata.applicableTo.includes("personal-workspace")
   })
 })
 
@@ -893,54 +783,12 @@ const exporterModules = computed(() => {
   }
 
   return enabledExporters.filter((exporter) => {
-    return exporter.metadata.applicableTo.includes(
-      props.collectionsType.type === "my-collections"
-        ? "personal-workspace"
-        : "team-workspace"
-    )
+    return exporter.metadata.applicableTo.includes("personal-workspace")
   })
 })
 
-const hasTeamWriteAccess = computed(() => {
-  const { collectionsType } = props
-
-  const isTeamCollection = collectionsType.type === "team-collections"
-
-  if (!isTeamCollection || !collectionsType.selectedTeam) {
-    return false
-  }
-
-  return (
-    collectionsType.selectedTeam.role === "EDITOR" ||
-    collectionsType.selectedTeam.role === "OWNER"
-  )
-})
-
-const selectedTeamID = computed(() => {
-  const { collectionsType } = props
-
-  return collectionsType.type === "team-collections"
-    ? collectionsType.selectedTeam?.teamID
-    : undefined
-})
-
 const getCollectionJSON = async () => {
-  if (
-    props.collectionsType.type === "team-collections" &&
-    props.collectionsType.selectedTeam?.teamID
-  ) {
-    const res = await getTeamCollectionJSON(
-      props.collectionsType.selectedTeam?.teamID
-    )
-
-    return E.isRight(res) ? E.right(res.right) : E.left(res.left)
-  }
-
-  if (props.collectionsType.type === "my-collections") {
-    const stripped = myCollections.value.map(stripCollectionTreeForStore)
-    return E.right(JSON.stringify(stripped, stripRefIdReplacer, 2))
-  }
-
-  return E.left("INVALID_SELECTED_TEAM_OR_INVALID_COLLECTION_TYPE")
+  const stripped = myCollections.value.map(stripCollectionTreeForStore)
+  return E.right(JSON.stringify(stripped, stripRefIdReplacer, 2))
 }
 </script>

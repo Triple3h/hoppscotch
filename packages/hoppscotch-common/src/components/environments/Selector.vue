@@ -73,11 +73,7 @@
           />
           <HoppSmartTabs
             v-model="selectedEnvTab"
-            :styles="`sticky overflow-x-auto mb-2  border border-divider rounded flex-shrink-0 z-10 top-0 bg-primary ${
-              !isTeamSelected || workspace.type === 'personal'
-                ? 'bg-primaryLight'
-                : ''
-            }`"
+            :styles="`sticky overflow-x-auto mb-2 border border-divider rounded flex-shrink-0 z-10 top-0 bg-primaryLight`"
             render-inactive-tabs
           >
             <HoppSmartTab
@@ -124,71 +120,6 @@
                   <icon-lucide-search class="svg-icons opacity-75" />
                 </template>
               </HoppSmartPlaceholder>
-            </HoppSmartTab>
-
-            <HoppSmartTab
-              :id="'team-environments'"
-              :label="`${t('environment.team_environments')}`"
-              :disabled="!isTeamSelected || workspace.type === 'personal'"
-            >
-              <div
-                v-if="teamListLoading"
-                class="flex flex-col items-center justify-center p-4"
-              >
-                <HoppSmartSpinner class="my-4" />
-                <span class="text-secondaryLight">
-                  {{ t("state.loading") }}
-                </span>
-              </div>
-              <div v-if="isTeamSelected" class="flex flex-col">
-                <HoppSmartItem
-                  v-for="{ env, index } in filteredAndAlphabetizedTeamEnvs"
-                  :key="`gen-team-${index}`"
-                  :icon="IconLayers"
-                  :label="env.environment.name"
-                  :info-icon="isEnvActive(env.id) ? IconCheck : undefined"
-                  :active-info-icon="isEnvActive(env.id)"
-                  @click="
-                    () => {
-                      handleEnvironmentChange(index, {
-                        type: 'team-environment',
-                        environment: env,
-                      })
-                      hide()
-                    }
-                  "
-                />
-                <HoppSmartPlaceholder
-                  v-if="filteredAndAlphabetizedTeamEnvs.length === 0"
-                  class="break-words"
-                  :src="
-                    filteredAndAlphabetizedTeamEnvs.length === 0 && !filterText
-                      ? `/images/states/${colorMode.value}/blockchain.svg`
-                      : undefined
-                  "
-                  :alt="
-                    filterText
-                      ? `${t('empty.search_environment')}`
-                      : t('empty.environments')
-                  "
-                  :text="
-                    filterText
-                      ? `${t('empty.search_environment')} '${filterText}'`
-                      : t('empty.environments')
-                  "
-                >
-                  <template v-if="filterText" #icon>
-                    <icon-lucide-search class="svg-icons opacity-75" />
-                  </template>
-                </HoppSmartPlaceholder>
-              </div>
-              <div
-                v-if="!teamListLoading && teamAdapterError"
-                class="flex flex-col items-center py-4"
-              >
-                <icon-lucide-help-circle class="svg-icons mb-4" />
-                {{ t(getEnvActionErrorMessage(teamAdapterError)) }}
-              </div>
             </HoppSmartTab>
           </HoppSmartTabs>
         </div>
@@ -346,30 +277,21 @@ import { useColorMode } from "@composables/theming"
 import { Environment, GlobalEnvironment } from "@hoppscotch/data"
 import { breakpointsTailwind, useBreakpoints } from "@vueuse/core"
 import { useService } from "dioc/vue"
-import { computed, onMounted, ref, watch } from "vue"
+import { computed, onMounted, ref } from "vue"
 import { TippyComponent } from "vue-tippy"
 import { useI18n } from "~/composables/i18n"
 import { useReadonlyStream, useStream } from "~/composables/stream"
 import { invokeAction } from "~/helpers/actions"
-import { GetMyTeamsQuery } from "~/helpers/backend/graphql"
-import { getEnvActionErrorMessage } from "~/helpers/error-messages"
-import { TeamEnvironment } from "~/helpers/teams/TeamEnvironment"
-import TeamEnvironmentAdapter from "~/helpers/teams/TeamEnvironmentAdapter"
-import {
-  sortPersonalEnvironmentsAlphabetically,
-  sortTeamEnvironmentsAlphabetically,
-} from "~/helpers/utils/sortEnvironmentsAlphabetically"
+import { sortPersonalEnvironmentsAlphabetically } from "~/helpers/utils/sortEnvironmentsAlphabetically"
+import { maskSecretValue } from "~/helpers/utils/secretMask"
 import {
   environments$,
   globalEnv$,
   selectedEnvironmentIndex$,
   setSelectedEnvironmentIndex,
 } from "~/newstore/environments"
-import { useLocalState } from "~/newstore/localstate"
 import { CurrentValueService } from "~/services/current-environment-value.service"
 import { SecretEnvironmentService } from "~/services/secret-environment.service"
-import { maskSecretValue } from "~/helpers/utils/secretMask"
-import { WorkspaceService } from "~/services/workspace.service"
 import IconCheck from "~icons/lucide/check"
 import IconEdit from "~icons/lucide/edit"
 import IconEye from "~icons/lucide/eye"
@@ -386,10 +308,6 @@ export type Scope =
       environment: Environment
       index: number
     }
-  | {
-      type: "team-environment"
-      environment: TeamEnvironment
-    }
 const props = defineProps<{
   isScopeSelector?: boolean
   modelValue?: Scope
@@ -405,55 +323,15 @@ const t = useI18n()
 
 const colorMode = useColorMode()
 
-type EnvironmentType = "my-environments" | "team-environments"
+type EnvironmentType = "my-environments"
 
 const filterText = ref("")
 
 const myEnvironments = useReadonlyStream(environments$, [])
 
-const workspaceService = useService(WorkspaceService)
-const workspace = workspaceService.currentWorkspace
-
 const currentEnvironmentValueService = useService(CurrentValueService)
 
 const secretEnvironmentService = useService(SecretEnvironmentService)
-
-// TeamList-Adapter
-const teamListAdapter = workspaceService.acquireTeamListAdapter(null)
-const myTeams = useReadonlyStream(teamListAdapter.teamList$, null)
-const teamListFetched = ref(false)
-const REMEMBERED_TEAM_ID = useLocalState("REMEMBERED_TEAM_ID")
-
-const switchToTeamWorkspace = (team: GetMyTeamsQuery["myTeams"][number]) => {
-  REMEMBERED_TEAM_ID.value = team.id
-  workspaceService.changeWorkspace({
-    teamID: team.id,
-    teamName: team.name,
-    type: "team",
-    role: team.myRole,
-  })
-}
-watch(
-  () => myTeams.value,
-  (newTeams) => {
-    if (newTeams && !teamListFetched.value) {
-      teamListFetched.value = true
-      if (REMEMBERED_TEAM_ID.value) {
-        const team = newTeams.find((t) => t.id === REMEMBERED_TEAM_ID.value)
-        if (team) switchToTeamWorkspace(team)
-      }
-    }
-  }
-)
-
-// TeamEnv List Adapter
-const teamEnvListAdapter = new TeamEnvironmentAdapter(undefined)
-const teamListLoading = useReadonlyStream(teamEnvListAdapter.loading$, false)
-const teamAdapterError = useReadonlyStream(teamEnvListAdapter.error$, null)
-const teamEnvironmentList = useReadonlyStream(
-  teamEnvListAdapter.teamEnvironmentList$,
-  []
-)
 
 // Sort environments alphabetically by default and filter based on search
 const filteredAndAlphabetizedPersonalEnvs = computed(() => {
@@ -462,8 +340,7 @@ const filteredAndAlphabetizedPersonalEnvs = computed(() => {
     "asc"
   )
 
-  if (selectedEnvTab.value !== "my-environments" || !filterText.value)
-    return envs
+  if (!filterText.value) return envs
 
   // Ensure specifying whitespace characters alone result in the empty state for no search results
   const trimmedFilterText = filterText.value.trim().toLowerCase()
@@ -475,62 +352,24 @@ const filteredAndAlphabetizedPersonalEnvs = computed(() => {
   )
 })
 
-const filteredAndAlphabetizedTeamEnvs = computed(() => {
-  const envs = sortTeamEnvironmentsAlphabetically(
-    teamEnvironmentList.value,
-    "asc"
-  )
-
-  if (selectedEnvTab.value !== "team-environments" || !filterText.value)
-    return envs
-
-  // Ensure specifying whitespace characters alone result in the empty state for no search results
-  const trimmedFilterText = filterText.value.trim().toLowerCase()
-
-  return envs.filter(({ env }) =>
-    trimmedFilterText
-      ? env.environment.name.toLowerCase().includes(trimmedFilterText)
-      : false
-  )
-})
-
 const handleEnvironmentChange = (
   index: number,
-  env?:
-    | {
-        type: "my-environment"
-        environment: Environment
-      }
-    | {
-        type: "team-environment"
-        environment: TeamEnvironment
-      }
+  env?: {
+    type: "my-environment"
+    environment: Environment
+  }
 ) => {
   if (props.isScopeSelector && env) {
-    if (env.type === "my-environment") {
-      emit("update:modelValue", {
-        type: "my-environment",
-        environment: env.environment,
-        index,
-      })
-    } else if (env.type === "team-environment") {
-      emit("update:modelValue", {
-        type: "team-environment",
-        environment: env.environment,
-      })
-    }
+    emit("update:modelValue", {
+      type: "my-environment",
+      environment: env.environment,
+      index,
+    })
   } else {
-    if (env && env.type === "my-environment") {
+    if (env) {
       selectedEnvironmentIndex.value = {
         type: "MY_ENV",
         index,
-      }
-    } else if (env && env.type === "team-environment") {
-      selectedEnvironmentIndex.value = {
-        type: "TEAM_ENV",
-        teamEnvID: env.environment.id,
-        teamID: env.environment.teamID,
-        environment: env.environment.environment,
       }
     }
   }
@@ -539,21 +378,11 @@ const isEnvActive = (id: string | number) => {
   if (props.isScopeSelector) {
     if (props.modelValue?.type === "my-environment") {
       return props.modelValue.index === id
-    } else if (props.modelValue?.type === "team-environment") {
-      return (
-        props.modelValue?.type === "team-environment" &&
-        props.modelValue.environment &&
-        props.modelValue.environment.id === id
-      )
     }
   } else {
     if (selectedEnvironmentIndex.value.type === "MY_ENV") {
       return selectedEnv.value.index === id
     }
-    return (
-      selectedEnvironmentIndex.value.type === "TEAM_ENV" &&
-      selectedEnv.value.teamEnvID === id
-    )
   }
 }
 
@@ -563,26 +392,7 @@ const selectedEnvironmentIndex = useStream(
   setSelectedEnvironmentIndex
 )
 
-const isTeamSelected = computed(
-  () => workspace.value.type === "team" && workspace.value.teamID !== undefined
-)
-
 const selectedEnvTab = ref<EnvironmentType>("my-environments")
-
-watch(
-  () => workspace.value,
-  (newVal) => {
-    if (newVal.type === "personal") {
-      selectedEnvTab.value = "my-environments"
-    } else {
-      selectedEnvTab.value = "team-environments"
-      if (newVal.teamID) {
-        teamEnvListAdapter.changeTeamID(newVal.teamID)
-      }
-    }
-  },
-  { immediate: true }
-)
 
 const selectedEnv = computed(() => {
   if (props.isScopeSelector) {
@@ -592,14 +402,6 @@ const selectedEnv = computed(() => {
         index: props.modelValue.index,
         name: props.modelValue.environment?.name,
         variables: props.modelValue.environment?.variables,
-        id: props.modelValue.environment.id,
-      }
-    } else if (props.modelValue?.type === "team-environment") {
-      return {
-        type: "TEAM_ENV",
-        name: props.modelValue.environment.environment.name,
-        teamEnvID: props.modelValue.environment.id,
-        variables: props.modelValue.environment.environment.variables,
         id: props.modelValue.environment.id,
       }
     }
@@ -619,23 +421,6 @@ const selectedEnv = computed(() => {
       variables: environment.variables,
       id: environment.id,
     }
-  } else if (selectedEnvironmentIndex.value.type === "TEAM_ENV") {
-    const teamEnv = teamEnvironmentList.value.find(
-      (env) =>
-        env.id ===
-        (selectedEnvironmentIndex.value.type === "TEAM_ENV" &&
-          selectedEnvironmentIndex.value.teamEnvID)
-    )
-    if (teamEnv) {
-      return {
-        type: "TEAM_ENV",
-        name: teamEnv.environment.name,
-        teamEnvID: selectedEnvironmentIndex.value.teamEnvID,
-        variables: teamEnv.environment.variables,
-        id: teamEnv.id,
-      }
-    }
-    return { type: "NO_ENV_SELECTED" }
   }
   return { type: "NO_ENV_SELECTED" }
 })
@@ -652,24 +437,6 @@ onMounted(() => {
         environment: myEnvironments.value[selectedEnvironmentIndex.value.index],
         index: selectedEnvironmentIndex.value.index,
       })
-    } else if (
-      selectedEnvironmentIndex.value.type === "TEAM_ENV" &&
-      selectedEnvironmentIndex.value.teamEnvID &&
-      teamEnvironmentList.value &&
-      teamEnvironmentList.value.length > 0
-    ) {
-      const teamEnv = teamEnvironmentList.value.find(
-        (env) =>
-          env.id ===
-          (selectedEnvironmentIndex.value.type === "TEAM_ENV" &&
-            selectedEnvironmentIndex.value.teamEnvID)
-      )
-      if (teamEnv) {
-        emit("update:modelValue", {
-          type: "team-environment",
-          environment: teamEnv,
-        })
-      }
     } else {
       emit("update:modelValue", {
         type: "global",
@@ -738,10 +505,6 @@ const editGlobalEnv = () => {
 const editEnv = () => {
   if (selectedEnv.value.type === "MY_ENV" && selectedEnv.value.name) {
     invokeAction("modals.my.environment.edit", {
-      envName: selectedEnv.value.name,
-    })
-  } else if (selectedEnv.value.type === "TEAM_ENV" && selectedEnv.value.name) {
-    invokeAction("modals.team.environment.edit", {
       envName: selectedEnv.value.name,
     })
   }

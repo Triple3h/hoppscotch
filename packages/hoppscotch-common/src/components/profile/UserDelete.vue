@@ -20,61 +20,30 @@
       @close="showDeleteAccountModal = false"
     >
       <template #body>
-        <div v-if="loading" class="flex flex-col items-center justify-center">
-          <HoppSmartSpinner class="mb-4" />
-          <span class="text-secondaryLight">{{ t("state.loading") }}</span>
-        </div>
         <div
-          v-else-if="myTeams.length"
-          class="bg-bannerInfo flex flex-col space-y-2 rounded-lg border border-red-500 p-4 text-secondaryDark"
+          class="bg-bannerInfo mb-4 flex flex-col space-y-2 rounded-lg border border-red-500 p-4 text-secondaryDark"
         >
           <h2 class="font-bold text-red-500">
             {{ t("error.danger_zone") }}
           </h2>
-          <div>
-            {{ t("error.delete_account") }}
-            <ul class="my-4 ml-8 list-disc space-y-2">
-              <li v-for="team in myTeams" :key="team.id">
-                {{ team.name }}
-
-                <component
-                  :is="platform.ui.additionalUserDeletionSoleTeamOwnerInfo"
-                  v-if="platform.ui?.additionalUserDeletionSoleTeamOwnerInfo"
-                  :team="team"
-                />
-              </li>
-            </ul>
-            <span class="font-semibold">
-              {{ t("error.delete_account_description") }}
-            </span>
+          <div class="font-medium text-secondaryDark">
+            {{ deleteAccountDescription }}
           </div>
         </div>
-        <div v-else>
-          <div
-            class="bg-bannerInfo mb-4 flex flex-col space-y-2 rounded-lg border border-red-500 p-4 text-secondaryDark"
-          >
-            <h2 class="font-bold text-red-500">
-              {{ t("error.danger_zone") }}
-            </h2>
-            <div class="font-medium text-secondaryDark">
-              {{ deleteAccountDescription }}
-            </div>
-          </div>
-          <div class="flex flex-col">
-            <input
-              id="deleteUserAccount"
-              v-model="userVerificationInput"
-              class="input floating-input"
-              placeholder=" "
-              type="text"
-              autocomplete="off"
-            />
-            <label for="deleteUserAccount">
-              Type
-              <span class="font-bold"> delete my account </span>
-              to confirm
-            </label>
-          </div>
+        <div class="flex flex-col">
+          <input
+            id="deleteUserAccount"
+            v-model="userVerificationInput"
+            class="input floating-input"
+            placeholder=" "
+            type="text"
+            autocomplete="off"
+          />
+          <label for="deleteUserAccount">
+            Type
+            <span class="font-bold"> delete my account </span>
+            to confirm
+          </label>
         </div>
       </template>
       <template #footer>
@@ -84,11 +53,7 @@
             :loading="deletingUser"
             filled
             outline
-            :disabled="
-              loading ||
-              myTeams.length > 0 ||
-              userVerificationInput !== 'delete my account'
-            "
+            :disabled="userVerificationInput !== 'delete my account'"
             class="!hover:bg-red-600 !hover:border-red-600 !border-red-500 !bg-red-500"
             @click="deleteUserAccount"
           />
@@ -108,11 +73,9 @@
 import { pipe } from "fp-ts/function"
 import * as TE from "fp-ts/TaskEither"
 import { GQLError } from "~/helpers/backend/GQLClient"
-import * as E from "fp-ts/Either"
-import { computed, ref, watch } from "vue"
+import { ref } from "vue"
 import { useRouter } from "vue-router"
 import { useI18n } from "~/composables/i18n"
-import { GetMyTeamsQuery } from "~/helpers/backend/graphql"
 import { useToast } from "~/composables/toast"
 import { deleteUser } from "~/helpers/backend/mutations/Profile"
 import { platform } from "~/platform"
@@ -123,16 +86,6 @@ const router = useRouter()
 
 const showDeleteAccountModal = ref(false)
 const userVerificationInput = ref("")
-
-const loading = ref(true)
-
-const myTeams = ref<GetMyTeamsQuery["myTeams"]>([])
-
-watch(showDeleteAccountModal, (isModalOpen) => {
-  if (isModalOpen) {
-    fetchMyTeams()
-  }
-})
 
 const deleteAccountLabel = computed(() =>
   platform.organization
@@ -145,24 +98,6 @@ const deleteAccountDescription = computed(() =>
     ? t("organization.delete_account_description")
     : t("settings.delete_account_description")
 )
-
-const fetchMyTeams = async () => {
-  loading.value = true
-
-  const result = await platform.backend.getUserTeams(undefined, true)
-
-  loading.value = false
-
-  if (E.isLeft(result)) {
-    throw new Error(
-      `Failed fetching teams list: ${JSON.stringify(result.left)}`
-    )
-  }
-
-  myTeams.value = result.right.myTeams.filter((team) => {
-    return team.ownersCount === 1 && team.myRole === "OWNER"
-  })
-}
 
 const deletingUser = ref(false)
 

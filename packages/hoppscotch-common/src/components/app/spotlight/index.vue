@@ -111,12 +111,7 @@ import { RequestSpotlightSearcherService } from "~/services/spotlight/searchers/
 import { ResponseSpotlightSearcherService } from "~/services/spotlight/searchers/response.searcher"
 import { SettingsSpotlightSearcherService } from "~/services/spotlight/searchers/settings.searcher"
 import { TabSpotlightSearcherService } from "~/services/spotlight/searchers/tab.searcher"
-import { TeamsSpotlightSearcherService } from "~/services/spotlight/searchers/teamRequest.searcher"
 import { UserSpotlightSearcherService } from "~/services/spotlight/searchers/user.searcher"
-import {
-  SwitchWorkspaceSpotlightSearcherService,
-  WorkspaceSpotlightSearcherService,
-} from "~/services/spotlight/searchers/workspace.searcher"
 
 const t = useI18n()
 
@@ -142,10 +137,7 @@ useService(ResponseSpotlightSearcherService)
 useService(RequestSpotlightSearcherService)
 useService(EnvironmentsSpotlightSearcherService)
 useService(SwitchEnvSpotlightSearcherService)
-useService(WorkspaceSpotlightSearcherService)
-useService(SwitchWorkspaceSpotlightSearcherService)
 useService(KernelInterceptorSpotlightSearcherService)
-useService(TeamsSpotlightSearcherService)
 
 platform.spotlight?.additionalSearchers?.forEach((searcher) =>
   useService(searcher)

@@ -1,3 +1,0 @@
-query ExportCollectionToJSON($teamID: ID!, $collectionID: ID!) {
-  exportCollectionToJSON(teamID: $teamID, collectionID: $collectionID)
-}

@@ -76,8 +76,6 @@ import {
 import { ref, reactive, watch, computed } from "vue"
 import IconCheveronsDown from "~icons/lucide/chevrons-down"
 import IconCheveronsUp from "~icons/lucide/chevrons-up"
-import { useService } from "dioc/vue"
-import { TeamCollectionsService } from "~/services/team-collection.service"
 import { useI18n } from "~/composables/i18n"
 
 const t = useI18n()
@@ -115,8 +113,6 @@ const emit = defineEmits<{
 
 const expandedFolders = reactive<ExpandedFoldersType>({})
 const allExpanded = ref<boolean>(props.initiallyExpanded || false)
-
-const teamCollectionService = useService(TeamCollectionsService)
 
 const collectionFolders = computed<HoppCollection[]>(() => {
   return props.collection.folders || []
@@ -175,7 +171,6 @@ watch(
 
 const toggleFolder = async (folderId: string) => {
   expandedFolders[folderId] = !expandedFolders[folderId]
-  await teamCollectionService.expandCollection(folderId)
 }
 
 const toggleAllFolders = () => {

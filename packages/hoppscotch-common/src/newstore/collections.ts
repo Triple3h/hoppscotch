@@ -1735,7 +1735,7 @@ export type RESTCollectionInheritedProps = {
 function computeCollectionInheritedProps(
   collection: HoppCollection,
   ref_id: string,
-  type: "my-collections" | "team-collections" = "my-collections",
+  type: "my-collections" = "my-collections",
   parentAuth: HoppRESTAuth | null = null,
   parentHeaders: HoppRESTHeaders | null = null,
   parentVariables: HoppCollectionVariable[] | null = null,
@@ -1769,10 +1769,7 @@ function computeCollectionInheritedProps(
   ]
 
   // Check if the current collection matches the target reference ID
-  const isTargetCollection =
-    type === "my-collections"
-      ? collection._ref_id === ref_id
-      : collection.id === ref_id
+  const isTargetCollection = collection._ref_id === ref_id
 
   if (isTargetCollection) {
     return {
@@ -1813,7 +1810,7 @@ function computeCollectionInheritedProps(
 export function getRESTCollectionInheritedProps(
   collectionID: string,
   collections: HoppCollection[] = restCollectionStore.value.state,
-  type: "my-collections" | "team-collections" = "my-collections"
+  type: "my-collections" = "my-collections"
 ): RESTCollectionInheritedProps | null {
   for (const collection of collections) {
     const result = computeCollectionInheritedProps(

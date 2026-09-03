@@ -3,7 +3,7 @@
  * the select item in the save request dialog
  * The save request dialog can be used
  * to save a request, folder, or a collection
- * separately for 'my' and 'teams' for REST.
+ * separately for 'my' collections.
  * also for graphQL collections
  */
 export type Picked =
@@ -19,18 +19,6 @@ export type Picked =
   | {
       pickedType: "my-collection"
       collectionIndex: number
-    }
-  | {
-      pickedType: "teams-request"
-      requestID: string
-    }
-  | {
-      pickedType: "teams-folder"
-      folderID: string
-    }
-  | {
-      pickedType: "teams-collection"
-      collectionID: string
     }
   | {
       pickedType: "gql-my-request"

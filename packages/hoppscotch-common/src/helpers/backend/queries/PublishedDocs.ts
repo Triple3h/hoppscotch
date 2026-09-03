@@ -3,9 +3,7 @@ import * as E from "fp-ts/Either"
 import { runGQLQuery } from "../GQLClient"
 import {
   UserPublishedDocsListDocument,
-  TeamPublishedDocsListDocument,
   type UserPublishedDocsListQuery,
-  type TeamPublishedDocsListQuery,
   PublishedDocDocument,
   PublishedDocs,
   type PublishedDocQuery as GqlPublishedDocQuery,
@@ -21,8 +19,6 @@ import {
 import type { CollectionDataProps } from "../helpers"
 
 type GetUserPublishedDocsError = "user/not_authenticated"
-
-type GetTeamPublishedDocsError = "team/not_found" | "team/access_denied"
 
 // Type for a published doc item returned from list queries
 export type PublishedDocListItem = {
@@ -193,71 +189,6 @@ export const getUserPublishedDocs = (skip: number = 0, take: number = 100) =>
     },
     (error) => error as GetUserPublishedDocsError
   )
-
-export const getTeamPublishedDocs = (
-  teamID: string,
-  collectionID?: string,
-  skip: number = 0,
-  take: number = 100
-) =>
-  TE.tryCatch(
-    async () => {
-      const result = await runGQLQuery({
-        query: TeamPublishedDocsListDocument,
-        variables: { teamID, collectionID, skip, take },
-      })
-
-      if (E.isLeft(result)) {
-        throw result.left
-      }
-
-      const data = result.right as TeamPublishedDocsListQuery
-      return data.teamPublishedDocsList
-    },
-    (error) => error as GetTeamPublishedDocsError
-  )
-
-// Helper to find published doc for a specific collection
-export const findPublishedDocForCollection = (
-  collectionID: string,
-  isTeam: boolean,
-  teamID?: string
-): TE.TaskEither<
-  | GetUserPublishedDocsError
-  | GetTeamPublishedDocsError
-  | "published_docs/not_found",
-  PublishedDocListItem
-> => {
-  const query: TE.TaskEither<
-    GetUserPublishedDocsError | GetTeamPublishedDocsError,
-    PublishedDocListItem[]
-  > = (
-    isTeam && teamID
-      ? getTeamPublishedDocs(teamID, collectionID)
-      : getUserPublishedDocs()
-  ) as TE.TaskEither<
-    GetUserPublishedDocsError | GetTeamPublishedDocsError,
-    PublishedDocListItem[]
-  >
-
-  return TE.chain(
-    (
-      docs: PublishedDocListItem[]
-    ): TE.TaskEither<
-      | GetUserPublishedDocsError
-      | GetTeamPublishedDocsError
-      | "published_docs/not_found",
-      PublishedDocListItem
-    > => {
-      const publishedDoc = docs.find(
-        (doc) => doc.collection.id === collectionID
-      )
-      return publishedDoc
-        ? TE.right(publishedDoc)
-        : TE.left("published_docs/not_found" as const)
-    }
-  )(query)
-}
 
 type GetPublishedDocError =
   "published_docs/not_found" | "published_docs/unauthorized"

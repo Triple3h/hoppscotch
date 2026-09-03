@@ -479,7 +479,6 @@ import {
   HoppGQLRequest,
 } from "@hoppscotch/data"
 import { computed, PropType, ref, Ref, toRef } from "vue"
-import { GetMyTeamsQuery } from "~/helpers/backend/graphql"
 import { ChildrenResult, SmartTreeAdapter } from "@hoppscotch/ui/helpers"
 import { useI18n } from "@composables/i18n"
 import { useColorMode } from "@composables/theming"
@@ -521,14 +520,7 @@ type Requests = {
 const t = useI18n()
 const colorMode = useColorMode()
 
-type SelectedTeam = GetMyTeamsQuery["myTeams"][number] | undefined
-
-type CollectionType =
-  | {
-      type: "team-collections"
-      selectedTeam: SelectedTeam
-    }
-  | { type: "my-collections"; selectedTeam: undefined }
+type CollectionType = { type: "my-collections" }
 
 const props = defineProps({
   filteredCollections: {
@@ -538,7 +530,7 @@ const props = defineProps({
   },
   collectionsType: {
     type: Object as PropType<CollectionType>,
-    default: () => ({ type: "my-collections", selectedTeam: undefined }),
+    default: () => ({ type: "my-collections" }),
     required: true,
   },
   filterText: {

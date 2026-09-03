@@ -7,8 +7,6 @@ import {
   generateUniqueRefId,
   makeCollection,
 } from "@hoppscotch/data"
-import { createNewRootCollection } from "~/helpers/backend/mutations/TeamCollection"
-import { createRequestInCollection } from "~/helpers/backend/mutations/TeamRequest"
 import { runMutation } from "~/helpers/backend/GQLClient"
 import {
   CreateRestRootUserCollectionDocument,
@@ -193,60 +191,6 @@ export function getExampleMockRequests(): HoppRESTRequest[] {
   ]
 
   return requests
-}
-
-/**
- * Create a mock collection for team workspace
- */
-export async function createMockCollectionForTeam(
-  teamID: string,
-  collectionName: string
-): Promise<E.Either<string, { id: string; name: string }>> {
-  // Create the root collection
-  const collectionResult = await pipe(
-    createNewRootCollection(collectionName, teamID),
-    TE.match(
-      (error) => E.left(`Failed to create collection: ${error}`),
-      (collection) => E.right(collection)
-    )
-  )()
-
-  if (E.isLeft(collectionResult)) {
-    return collectionResult
-  }
-
-  const collectionID = collectionResult.right.createRootCollection.id
-
-  // Create requests in the collection
-  const requests = getExampleMockRequests()
-
-  for (const request of requests) {
-    const requestResult = await pipe(
-      createRequestInCollection(collectionID, {
-        request: JSON.stringify(request),
-        teamID,
-        title: request.name,
-      }),
-      TE.match(
-        (error) => E.left(`Failed to create request: ${error}`),
-        (req) => E.right(req)
-      )
-    )()
-
-    if (E.isLeft(requestResult)) {
-      // Log error but continue with other requests
-      console.error(
-        "Failed to create request:",
-        request.name,
-        requestResult.left
-      )
-    }
-  }
-
-  return E.right({
-    id: collectionID,
-    name: collectionName,
-  })
 }
 
 /**

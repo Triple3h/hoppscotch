@@ -3,13 +3,9 @@ import { distinctUntilChanged, pluck } from "rxjs"
 import DispatchingStore, { defineDispatchers } from "./DispatchingStore"
 import { useStream } from "@composables/stream"
 
-type LocalState = {
-  REMEMBERED_TEAM_ID: string | undefined
-}
+type LocalState = Record<string, never>
 
-const defaultLocalState: LocalState = {
-  REMEMBERED_TEAM_ID: undefined,
-}
+const defaultLocalState: LocalState = {}
 
 type ApplyLocalState = {
   [K in keyof LocalState]: {

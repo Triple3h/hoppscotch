@@ -1,3 +1,0 @@
-subscription TeamRootCollectionsSorted($teamID: ID!) {
-  teamRootCollectionsSorted(teamID: $teamID)
-}

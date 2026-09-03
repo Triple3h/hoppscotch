@@ -82,7 +82,6 @@
           :collection-path="collectionPath"
           :folder-path="folderPath"
           :request-index="requestIndex"
-          :team-i-d="teamID"
           :inherited-properties="inheritedProperties"
           :environment-variables="environmentVariables"
         />
@@ -139,7 +138,6 @@ import IconGraphql from "~icons/hopp/graphql"
 import { useToast } from "~/composables/toast"
 import { useService } from "dioc/vue"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
-import { TeamCollectionsService } from "~/services/team-collection.service"
 import { DocumentationService } from "~/services/documentation.service"
 import { cascadeParentCollectionForProperties } from "~/newstore/collections"
 import { cloneDeep } from "lodash-es"
@@ -165,7 +163,6 @@ const props = withDefaults(
     folderPath?: string | null
     requestIndex?: number | null
     requestID?: string | null
-    teamID?: string
     readOnly?: boolean
     inheritedProperties?: HoppInheritedProperty
     environmentVariables?: Environment["variables"]
@@ -178,7 +175,6 @@ const props = withDefaults(
     folderPath: null,
     requestIndex: null,
     requestID: null,
-    teamID: undefined,
     readOnly: false,
     inheritedProperties: undefined,
     environmentVariables: () => [],
@@ -191,7 +187,6 @@ const emit = defineEmits<{
 }>()
 
 const workspaceTabs = useService(WorkspaceTabsService)
-const teamCollectionsService = useService(TeamCollectionsService)
 const documentationService = useService(DocumentationService)
 
 const isGqlRequest = computed<boolean>(() =>
@@ -233,12 +228,6 @@ const getCurrentValue = (env: AggregateEnvironment) => {
 
 const inheritedProperties = computed(() => {
   if (props.inheritedProperties) return props.inheritedProperties
-
-  if (props.teamID && props.folderPath) {
-    return teamCollectionsService.cascadeParentCollectionForProperties(
-      props.folderPath.split("/")[0]
-    )
-  }
 
   if (props.folderPath) {
     return cascadeParentCollectionForProperties(props.folderPath, "rest")
@@ -349,22 +338,7 @@ function handleBlur(): void {
 
   // Store changes in documentation service if request ID exists and content changed
   if (hasChanged && requestId.value && props.request) {
-    const isTeamRequest = !!props.teamID && props.requestID
-
-    if (isTeamRequest && props.requestID) {
-      documentationService.setRequestDocumentation(
-        requestId.value,
-        editableContent.value,
-        {
-          parentCollectionID: props.collectionID,
-          isTeamItem: true,
-          folderPath: props.folderPath || "",
-          requestID: props.requestID,
-          teamID: props.teamID,
-          requestData: props.request,
-        }
-      )
-    } else if (
+    if (
       props.folderPath !== null &&
       props.folderPath !== undefined &&
       props.requestIndex !== null &&
@@ -375,10 +349,8 @@ function handleBlur(): void {
         editableContent.value,
         {
           parentCollectionID: props.collectionID,
-          isTeamItem: false,
           folderPath: props.folderPath,
           requestIndex: props.requestIndex,
-          teamID: props.teamID,
           requestData: props.request,
         }
       )
@@ -484,46 +456,7 @@ const openInNewTab = () => {
 
     let saveContext = null
 
-    // Determine if this is a team collection or user collection
-    const isTeamCollection = props.teamID && props.folderPath
-
-    if (isTeamCollection) {
-      saveContext = {
-        originLocation: "team-collection" as const,
-        requestID: props.requestID || requestId.value || "",
-        collectionID: props.folderPath!,
-      }
-
-      const possibleTeamTab =
-        workspaceTabs.getTabRefWithSaveContext(saveContext)
-
-      if (possibleTeamTab) {
-        workspaceTabs.setActiveTab(possibleTeamTab.value.id)
-      } else if (isGqlRequest.value) {
-        workspaceTabs.createNewTab({
-          type: "gql-request",
-          request: cloneDeep(props.request) as HoppGQLRequest,
-          isDirty: false,
-          cursorPosition: 0,
-          saveContext,
-          inheritedProperties:
-            teamCollectionsService.cascadeParentCollectionForProperties(
-              props.folderPath!
-            ),
-        })
-      } else {
-        workspaceTabs.createNewTab({
-          type: "request",
-          request: cloneDeep(props.request) as HoppRESTRequest,
-          isDirty: false,
-          saveContext,
-          inheritedProperties:
-            teamCollectionsService.cascadeParentCollectionForProperties(
-              props.folderPath!
-            ),
-        })
-      }
-    } else if (props.folderPath !== null && props.requestIndex !== null) {
+    if (props.folderPath !== null && props.requestIndex !== null) {
       saveContext = {
         originLocation: "user-collection" as const,
         folderPath: props.folderPath,

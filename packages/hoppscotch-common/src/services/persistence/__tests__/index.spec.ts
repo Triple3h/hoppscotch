@@ -450,7 +450,7 @@ describe("PersistenceService", () => {
 
       it(`shows an error and sets the entry as a backup in localStorage if "${localStateKey}" read from localStorage has a value which is not a "string" or "undefined"`, async () => {
         const localStateData = {
-          REMEMBERED_TEAM_ID: null,
+          LEGACY_REMOVED_KEY: null,
         }
         await setStoreItem(localStateKey, localStateData)
 
@@ -522,9 +522,7 @@ describe("PersistenceService", () => {
           }
         })
 
-        const localStateData = {
-          REMEMBERED_TEAM_ID: "test-id",
-        }
+        const localStateData = {}
         await setStoreItem(localStateKey, localStateData)
 
         const getItemSpy = spyOnGetItem()

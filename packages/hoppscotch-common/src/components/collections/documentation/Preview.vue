@@ -28,10 +28,7 @@
             :documentation-description="selectedFolder.description || ''"
             :folder-path="folderPath ?? undefined"
             :path-or-i-d="pathOrID"
-            :is-team-collection="isTeamCollection"
             :collection-path="collectionPath || undefined"
-            :team-i-d="teamID"
-            :read-only="!hasTeamWriteAccess"
           />
           <CollectionsDocumentationRequestPreview
             v-else-if="selectedRequest"
@@ -41,8 +38,6 @@
             :collection-path="collectionPath"
             :folder-path="folderPath"
             :request-index="requestIndex"
-            :team-i-d="teamID"
-            :read-only="!hasTeamWriteAccess"
             @update:documentation-description="
               (value) => {
                 if (selectedRequest) {
@@ -59,10 +54,7 @@
             :documentation-description="documentationDescription"
             :folder-path="folderPath ?? undefined"
             :path-or-i-d="pathOrID"
-            :is-team-collection="isTeamCollection"
             :collection-path="collectionPath || undefined"
-            :team-i-d="teamID"
-            :read-only="!hasTeamWriteAccess"
             @update:documentation-description="
               (value) => emit('update:documentationDescription', value)
             "
@@ -77,10 +69,7 @@
               :collection="collection"
               :folder-path="folderPath ?? undefined"
               :path-or-i-d="pathOrID"
-              :is-team-collection="isTeamCollection"
               :collection-path="collectionPath || undefined"
-              :team-i-d="teamID"
-              :read-only="!hasTeamWriteAccess"
             />
           </div>
 
@@ -116,8 +105,6 @@
                     :folder-path="item.folderPath"
                     :request-index="item.requestIndex"
                     :request-i-d="item.requestID"
-                    :team-i-d="teamID"
-                    :read-only="!hasTeamWriteAccess"
                     @update:documentation-description="
                       (value) =>
                         setRequestDescription(item.item as DocRequest, value)
@@ -132,10 +119,7 @@
                     "
                     :folder-path="item.folderPath ?? undefined"
                     :path-or-i-d="item.pathOrID ?? null"
-                    :is-team-collection="isTeamCollection"
                     :collection-path="collectionPath || undefined"
-                    :team-i-d="teamID"
-                    :read-only="!hasTeamWriteAccess"
                     @update:documentation-description="
                       (value) =>
                         ((item.item as HoppCollection).description = value)
@@ -176,13 +160,11 @@
 <script lang="ts" setup>
 import { ref, watch, nextTick, computed } from "vue"
 import { useVModel, useIntersectionObserver } from "@vueuse/core"
-import { useService } from "dioc/vue"
 import {
   HoppCollection,
   HoppGQLRequest,
   HoppRESTRequest,
 } from "@hoppscotch/data"
-import { TeamCollectionsService } from "~/services/team-collection.service"
 import { DocumentationItem } from "~/composables/useDocumentationWorker"
 import LazyDocumentationItem from "./LazyDocumentationItem.vue"
 import { useI18n } from "~/composables/i18n"
@@ -209,14 +191,11 @@ const props = withDefaults(
     pathOrID?: string | null
     requestIndex?: number | null
     requestID?: string | null
-    teamID?: string
-    isTeamCollection?: boolean
     allItems?: Array<DocumentationItem>
     showAllDocumentation?: boolean
     isProcessingDocumentation?: boolean
     processingProgress?: number
     isExternalLoading?: boolean
-    hasTeamWriteAccess?: boolean
   }>(),
   {
     documentationDescription: "",
@@ -227,14 +206,11 @@ const props = withDefaults(
     pathOrID: null,
     requestIndex: null,
     requestID: null,
-    teamID: undefined,
-    isTeamCollection: false,
     allItems: () => [],
     showAllDocumentation: false,
     isProcessingDocumentation: false,
     processingProgress: 0,
     isExternalLoading: false,
-    hasTeamWriteAccess: true,
   }
 )
 
@@ -242,8 +218,6 @@ const emit = defineEmits<{
   (event: "update:documentationDescription", value: string): void
   (event: "close-modal"): void
 }>()
-
-const teamCollectionService = useService(TeamCollectionsService)
 
 const collectionDescription = useVModel(
   props,
@@ -290,13 +264,9 @@ useIntersectionObserver(
 /**
  * Computed property to determine if the collection is loading
  * Loads when the collection is processing or external loading is active
- * or when the team collection is loading
  */
 const isLoading = computed(
-  () =>
-    props.isProcessingDocumentation ||
-    props.isExternalLoading ||
-    teamCollectionService.loadingCollections.value.length !== 0
+  () => props.isProcessingDocumentation || props.isExternalLoading
 )
 
 /**

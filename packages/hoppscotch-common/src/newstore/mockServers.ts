@@ -2,22 +2,10 @@ import { pipe } from "fp-ts/function"
 import * as TE from "fp-ts/TaskEither"
 import { BehaviorSubject } from "rxjs"
 import { pluck } from "rxjs/operators"
-import { getService } from "~/modules/dioc"
-import { WorkspaceService } from "~/services/workspace.service"
 import { platform } from "~/platform"
 import DispatchingStore, { defineDispatchers } from "./DispatchingStore"
 
 import type { MockServer } from "~/helpers/backend/types/MockServer"
-import { WorkspaceType } from "~/helpers/backend/graphql"
-
-export type CreateMockServerInput = {
-  name: string
-  collectionID: string
-  workspaceType?: WorkspaceType
-  workspaceID?: string
-  delayInMs?: number
-  isPublic?: boolean
-}
 
 export type UpdateMockServerInput = {
   name?: string
@@ -140,60 +128,14 @@ export const showCreateMockServerModal$ = new BehaviorSubject(
   defaultCreateMockServerModalState
 )
 
-// Load mock servers from backend (workspace-aware)
+// Load mock servers from backend (personal workspace)
 export function loadMockServers(skip?: number, take?: number) {
-  try {
-    const workspaceService = getService(WorkspaceService)
-    const currentWorkspace = workspaceService.currentWorkspace.value
-
-    if (currentWorkspace.type === "team" && currentWorkspace.teamID) {
-      return loadTeamMockServers(currentWorkspace.teamID, skip, take)
-    }
-    setLoading(true)
-    return pipe(
-      platform.backend.getMyMockServers(skip, take),
-      TE.match(
-        (error) => {
-          console.error("Failed to load mock servers:", error)
-          // Clear mock servers on error to prevent stale data
-          setMockServers([])
-        },
-        (mockServers) => {
-          setMockServers(mockServers)
-        }
-      )
-    )()
-  } catch (_error) {
-    // Fallback to user mock servers if workspace service is not available
-    setLoading(true)
-    return pipe(
-      platform.backend.getMyMockServers(skip, take),
-      TE.match(
-        (error) => {
-          console.error("Failed to load mock servers:", error)
-          // Clear mock servers on error to prevent stale data
-          setMockServers([])
-        },
-        (mockServers) => {
-          setMockServers(mockServers)
-        }
-      )
-    )()
-  }
-}
-
-// Load team mock servers from backend
-export function loadTeamMockServers(
-  teamID: string,
-  skip?: number,
-  take?: number
-) {
   setLoading(true)
   return pipe(
-    platform.backend.getTeamMockServers(teamID, skip, take),
+    platform.backend.getMyMockServers(skip, take),
     TE.match(
       (error) => {
-        console.error("Failed to load team mock servers:", error)
+        console.error("Failed to load mock servers:", error)
         // Clear mock servers on error to prevent stale data
         setMockServers([])
       },
@@ -202,20 +144,4 @@ export function loadTeamMockServers(
       }
     )
   )()
-}
-
-// Load mock servers based on workspace context
-export function loadMockServersForWorkspace(
-  workspaceType: "personal" | "team",
-  teamID?: string,
-  skip?: number,
-  take?: number
-) {
-  // Clear existing mock servers first to prevent stale data
-  setMockServers([])
-
-  if (workspaceType === "team" && teamID) {
-    return loadTeamMockServers(teamID, skip, take)
-  }
-  return loadMockServers(skip, take)
 }

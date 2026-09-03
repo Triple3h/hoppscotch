@@ -16,7 +16,7 @@
         disabled
         class="!rounded-none"
         :icon="IconPlus"
-        :title="t('team.no_access')"
+        :title="t('workspace.no_access')"
         :label="t('action.new')"
       />
       <span class="flex">

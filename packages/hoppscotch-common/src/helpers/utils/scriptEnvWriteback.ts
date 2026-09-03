@@ -6,7 +6,7 @@
  * `currentValue` (client-local); the shared `initialValue` that syncs to the
  * backend is never authored by a script — it is preserved for a pre-existing
  * NON-secret variable and cleared for one the script created (so a script's
- * runtime value, or a resolved secret, can't become a team-wide default). The
+ * runtime value, or a resolved secret, can't become a shared default). The
  * `initialValue` field is the environment editor's to change.
  */
 

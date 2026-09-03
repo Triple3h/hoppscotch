@@ -211,17 +211,10 @@
   <HttpTestRunnerModal
     v-if="showCollectionsRunnerModal"
     :same-tab="true"
-    :collection-runner-data="
-      tab.document.collectionType === 'my-collections'
-        ? {
-            type: 'my-collections',
-            collectionID: tab.document.collectionID,
-          }
-        : {
-            type: 'team-collections',
-            collectionID: tab.document.collectionID,
-          }
-    "
+    :collection-runner-data="{
+      type: 'my-collections',
+      collectionID: tab.document.collectionID,
+    }"
     :prev-config="testRunnerConfig"
     :prev-selection="tab.document.selectedRequestRefIds"
     @hide-modal="showCollectionsRunnerModal = false"
@@ -230,24 +223,13 @@
 
 <script setup lang="ts">
 import { useI18n } from "@composables/i18n"
-import {
-  HoppCollection,
-  HoppCollectionVariable,
-  HoppRESTHeader,
-} from "@hoppscotch/data"
+import { HoppCollection, HoppCollectionVariable } from "@hoppscotch/data"
 import { SmartTreeAdapter } from "@hoppscotch/ui"
 import { useVModel } from "@vueuse/core"
 import { useService } from "dioc/vue"
-import { pipe } from "fp-ts/lib/function"
-import * as TE from "fp-ts/TaskEither"
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useColorMode } from "~/composables/theming"
 import { useToast } from "~/composables/toast"
-import { GQLError } from "~/helpers/backend/GQLClient"
-import {
-  getCompleteCollectionTree,
-  teamCollToHoppRESTColl,
-} from "~/helpers/backend/helpers"
 import {
   HoppTestRunnerDocument,
   TestRunnerIterationResult,
@@ -256,9 +238,7 @@ import {
   CollectionNode,
   TestRunnerCollectionsAdapter,
 } from "~/helpers/runner/adapter"
-import { getErrorMessage } from "~/helpers/runner/collection-tree"
 import { collectRequestIDs } from "~/helpers/runner/selection"
-import { populateValuesInInheritedCollectionVars } from "~/helpers/utils/inheritedCollectionVarTransformer"
 import {
   getRESTCollectionByRefId,
   getRESTCollectionInheritedProps,
@@ -270,7 +250,6 @@ import {
 } from "~/newstore/environments"
 import { HoppTab } from "~/services/tab"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
-import { TeamCollectionsService } from "~/services/team-collection.service"
 import {
   TestRunnerRequest,
   TestRunnerService,
@@ -288,9 +267,6 @@ import * as E from "fp-ts/Either"
 const t = useI18n()
 const toast = useToast()
 const colorMode = useColorMode()
-
-const teamCollectionService = useService(TeamCollectionsService)
-const teamCollectionList = teamCollectionService.collections
 
 const props = defineProps<{ modelValue: HoppTab<HoppTestRunnerDocument> }>()
 
@@ -383,23 +359,17 @@ const showResult = computed(() => {
 })
 
 const runTests = async () => {
-  const { collectionID, collectionType } = tab.value.document
+  const { collectionID } = tab.value.document
 
   tab.value.document.environmentName =
     getSelectedEnvironmentType() === "NO_ENV_SELECTED"
       ? "Global"
       : getCurrentEnvironment().name
 
-  const isPersonalWorkspace = collectionType === "my-collections"
-
-  const collections = isPersonalWorkspace
-    ? restCollectionStore.value.state
-    : teamCollectionList.value.map(teamCollToHoppRESTColl)
-
   const collectionInheritedProps = getRESTCollectionInheritedProps(
     collectionID,
-    collections,
-    collectionType
+    restCollectionStore.value.state,
+    "my-collections"
   )
 
   let resolvedCollection: HoppCollection = collection.value
@@ -413,91 +383,31 @@ const runTests = async () => {
   // runner never re-resolves a merged array under a single ID.
   let ancestorVariables: HoppCollectionVariable[] = []
 
-  if (!isPersonalWorkspace) {
-    const requestAuth = tab.value.document.inheritedProperties?.auth
-      .inheritedAuth ?? {
-      authActive: true,
-      authType: "none",
-    }
+  const {
+    auth,
+    headers,
+    ancestorVariables: varAncestors,
+    ancestorPreRequestScripts: preAncestors,
+    ancestorTestScripts: testAncestors,
+  } = collectionInheritedProps ?? {
+    auth: { authActive: true, authType: "none" },
+    headers: [],
+    ancestorVariables: [],
+    ancestorPreRequestScripts: [],
+    ancestorTestScripts: [],
+  }
 
-    const requestHeaders = tab.value.document.inheritedProperties?.headers.map(
-      (header) => {
-        if (header.inheritedHeader) {
-          return header.inheritedHeader
-        }
-        return []
-      }
-    )
+  ancestorPreRequestScripts = preAncestors
+  ancestorTestScripts = testAncestors
+  ancestorVariables = varAncestors
 
-    // Ancestors only — the run root's own level is excluded. Each level is
-    // resolved under its OWNING collection's server id (the key client-local
-    // team values are stored with); the root's own RAW variables go on
-    // `resolvedCollection.variables` for the plan walk, mirroring the
-    // personal path, so the runner never re-resolves a merged array under a
-    // single ID.
-    ancestorVariables = (
-      tab.value.document.inheritedProperties?.variables ?? []
-    )
-      .filter((group) => group.parentID !== collectionID)
-      .flatMap((group) =>
-        // `showSecret` — execution-only output; never written back to the
-        // document or persisted.
-        populateValuesInInheritedCollectionVars(
-          group.inheritedVariables,
-          group.parentID,
-          undefined,
-          true
-        )
-      )
-
-    // Team cascade includes the selected node itself in its scripts array;
-    // drop it here because runTestCollection will cascade that node's scripts
-    // as part of the normal tree walk, and we must not double-run them.
-    const inheritedScripts = (
-      tab.value.document.inheritedProperties?.scripts ?? []
-    ).filter((s) => s.parentID !== collectionID)
-    ancestorPreRequestScripts = inheritedScripts
-      .map((s) => s.preRequestScript)
-      .filter((s) => s && s.trim().length > 0)
-    ancestorTestScripts = inheritedScripts
-      .map((s) => s.testScript)
-      .filter((s) => s && s.trim().length > 0)
-
-    resolvedCollection = {
-      ...collection.value,
-      auth: requestAuth,
-      // `inheritedProperties` is optional on the doc — without the fallback
-      // the runner gets `headers: undefined`.
-      headers: (requestHeaders ?? []) as HoppRESTHeader[],
-      variables: collection.value.variables ?? [],
-    }
-  } else {
-    const {
-      auth,
-      headers,
-      ancestorVariables: varAncestors,
-      ancestorPreRequestScripts: preAncestors,
-      ancestorTestScripts: testAncestors,
-    } = collectionInheritedProps ?? {
-      auth: { authActive: true, authType: "none" },
-      headers: [],
-      ancestorVariables: [],
-      ancestorPreRequestScripts: [],
-      ancestorTestScripts: [],
-    }
-
-    ancestorPreRequestScripts = preAncestors
-    ancestorTestScripts = testAncestors
-    ancestorVariables = varAncestors
-
-    resolvedCollection = {
-      ...collection.value,
-      auth,
-      headers,
-      // The run root keeps its own RAW variable list — the plan walk resolves
-      // it; ancestors travel separately, already resolved.
-      variables: collection.value.variables ?? [],
-    }
+  resolvedCollection = {
+    ...collection.value,
+    auth,
+    headers,
+    // The run root keeps its own RAW variable list — the plan walk resolves
+    // it; ancestors travel separately, already resolved.
+    variables: collection.value.variables ?? [],
   }
 
   testRunnerStopRef.value = false // when testRunnerStopRef is false, the test runner will start running
@@ -548,9 +458,9 @@ const runAgain = async () => {
 
 /**
  * Re-resolves the stored request selection against a freshly fetched tree —
- * positional IDs shift when the collection is edited, and team `_ref_id`s
- * regenerate on every fetch. Keeps whatever still resolves; if nothing does,
- * falls back to running the full collection and says so.
+ * positional IDs shift when the collection is edited. Keeps whatever still
+ * resolves; if nothing does, falls back to running the full collection and
+ * says so.
  */
 const reconcileRequestSelection = (collection: HoppCollection) => {
   const stored = tab.value.document.selectedRequestRefIds
@@ -717,23 +627,7 @@ const iterationAdapters = computed<IterationAdapterEntry[]>(() =>
  */
 const refetchCollectionTree = async () => {
   if (!tab.value.document.collectionID) return
-  const type = tab.value.document.collectionType
-  if (type === "my-collections") {
-    return getRESTCollectionByRefId(tab.value.document.collectionID)
-  }
-
-  return pipe(
-    getCompleteCollectionTree(tab.value.document.collectionID),
-    TE.match(
-      (err: GQLError<string>) => {
-        toast.error(`${getErrorMessage(err, t)}`)
-        return
-      },
-      async (coll) => {
-        return teamCollToHoppRESTColl(coll)
-      }
-    )
-  )()
+  return getRESTCollectionByRefId(tab.value.document.collectionID)
 }
 
 function checkIfCollectionIsEmpty(collection: HoppCollection): boolean {

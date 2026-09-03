@@ -70,16 +70,11 @@
 </template>
 
 <script lang="ts" setup>
+import { GlobalEnvironment } from "@hoppscotch/data"
 import { useService } from "dioc/vue"
-import * as TE from "fp-ts/TaskEither"
-import { pipe } from "fp-ts/function"
 import { ref, watch } from "vue"
 import { useI18n } from "~/composables/i18n"
 import { useToast } from "~/composables/toast"
-import { GQLError } from "~/helpers/backend/GQLClient"
-import { updateTeamEnvironment } from "~/helpers/backend/mutations/TeamEnvironment"
-import { getEnvActionErrorMessage } from "~/helpers/error-messages"
-import { stripClientLocalValuesForWire } from "~/helpers/clientLocalVariables"
 import {
   setGlobalEnvVariables,
   updateEnvironment,
@@ -87,7 +82,6 @@ import {
 import { CurrentValueService } from "~/services/current-environment-value.service"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
 import { Scope } from "./Selector.vue"
-import { GlobalEnvironment } from "@hoppscotch/data"
 
 const t = useI18n()
 const toast = useToast()
@@ -137,7 +131,7 @@ const replaceWithVariable = ref(false)
 const editingName = ref(props.name)
 const editingValue = ref(props.value)
 
-const addEnvironment = async () => {
+const addEnvironment = () => {
   if (!editingName.value) {
     toast.error(`${t("environment.invalid_name")}`)
     return
@@ -193,48 +187,6 @@ const addEnvironment = async () => {
       }
     )
     toast.success(`${t("environment.updated")}`)
-  } else {
-    const newVariables = [
-      ...scope.value.environment.environment.variables,
-      {
-        key: editingName.value,
-        initialValue: editingValue.value,
-        currentValue: "",
-        secret: false,
-      },
-    ]
-
-    await pipe(
-      updateTeamEnvironment(
-        JSON.stringify(stripClientLocalValuesForWire(newVariables)),
-        scope.value.environment.id,
-        scope.value.environment.environment.name
-      ),
-      TE.match(
-        (err: GQLError<string>) => {
-          console.error(err)
-          toast.error(t(getEnvActionErrorMessage(err)))
-        },
-        () => {
-          if (scope.value.type === "team-environment") {
-            currentEnvironmentValueService.addEnvironmentVariable(
-              scope.value.environment.id,
-              {
-                key: editingName.value,
-                currentValue: editingValue.value,
-                isSecret: false,
-                // The new variable is appended at index `length` of the
-                // pre-append array; `length - 1` collided with the previous
-                // last variable's slot.
-                varIndex: scope.value.environment.environment.variables.length,
-              }
-            )
-          }
-          hideModal()
-          toast.success(`${t("environment.updated")}`)
-        }
-      )
-    )()
   }
   if (replaceWithVariable.value) {
     //replace the current tab endpoint with the variable name with << and >>

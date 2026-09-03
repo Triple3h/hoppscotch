@@ -13,7 +13,6 @@ import IconPlusCircle from "~icons/lucide/plus-circle"
 import {
   aggregateEnvsWithCurrentValue$,
   getCurrentEnvironment,
-  getSelectedEnvironmentType,
 } from "~/newstore/environments"
 import { invokeAction } from "~/helpers/actions"
 import { useStreamStatic } from "~/composables/stream"
@@ -242,16 +241,12 @@ export class EnvironmentInspectorService extends Service implements Inspector {
             }
 
             // Pick the right modal to open for editing
-            const currentEnvironmentType = getSelectedEnvironmentType()
             const invokeActionType:
               | "modals.my.environment.edit"
-              | "modals.team.environment.edit"
               | "modals.global.environment.update" =
               env.sourceEnv === "Global"
                 ? "modals.global.environment.update"
-                : currentEnvironmentType === "TEAM_ENV"
-                  ? "modals.team.environment.edit"
-                  : "modals.my.environment.edit"
+                : "modals.my.environment.edit"
 
             newErrors.push({
               id: `environment-empty-${newErrors.length}`,

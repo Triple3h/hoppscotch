@@ -24,7 +24,6 @@ import {
   HoppGQLRequest,
   HoppRESTRequest,
 } from "@hoppscotch/data"
-import { WorkspaceService } from "~/services/workspace.service"
 import { invokeAction } from "~/helpers/actions"
 import { isGQLRequest } from "~/helpers/request-type"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
@@ -50,7 +49,6 @@ export class CollectionsSpotlightSearcherService
   private readonly gqlTab = this.bind(GQLTabService)
 
   private readonly spotlight = this.bind(SpotlightService)
-  private readonly workspaceService = this.bind(WorkspaceService)
 
   override onServiceInit() {
     this.spotlight.registerSearcher(this)
@@ -179,16 +177,7 @@ export class CollectionsSpotlightSearcherService
     }
 
     scopeHandle.run(() => {
-      const isPersonalWorkspace = computed(
-        () => this.workspaceService.currentWorkspace.value.type === "personal"
-      )
-
       watch(query, (query) => {
-        if (!isPersonalWorkspace.value) {
-          results.value = []
-          return
-        }
-
         if (pageCategory === "other") {
           results.value = []
           return
@@ -299,12 +288,6 @@ export class CollectionsSpotlightSearcherService
     if (type === "rest") {
       const folderPath = path.split("/").map((x) => parseInt(x))
       const reqIndex = folderPath.pop()!
-
-      if (this.workspaceService.currentWorkspace.value.type !== "personal") {
-        this.workspaceService.changeWorkspace({
-          type: "personal",
-        })
-      }
 
       const resolvedFolderPath = folderPath.join("/")
 

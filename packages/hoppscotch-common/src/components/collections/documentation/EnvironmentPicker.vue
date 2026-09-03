@@ -96,10 +96,6 @@ import { Environment } from "@hoppscotch/data"
 import { useI18n } from "~/composables/i18n"
 import { useReadonlyStream } from "~/composables/stream"
 import { environments$ } from "~/newstore/environments"
-import { WorkspaceType } from "~/helpers/backend/graphql"
-import { runGQLQuery } from "~/helpers/backend/GQLClient"
-import { GetTeamEnvironmentsDocument } from "~/helpers/backend/graphql"
-import * as E from "fp-ts/Either"
 import IconCheck from "~icons/lucide/check"
 import IconLayers from "~icons/lucide/layers"
 
@@ -110,8 +106,6 @@ type EnvironmentOption = {
 
 const props = defineProps<{
   modelValue: string | null
-  workspaceType: WorkspaceType
-  workspaceID: string
 }>()
 
 defineEmits<{
@@ -150,29 +144,12 @@ const fetchEnvironments = async () => {
   availableEnvironments.value = []
 
   try {
-    if (props.workspaceType === WorkspaceType.Team && props.workspaceID) {
-      const result = await runGQLQuery({
-        query: GetTeamEnvironmentsDocument,
-        variables: { teamID: props.workspaceID },
-      })
-
-      if (E.isRight(result)) {
-        const teamEnvs = (result.right as any).team?.teamEnvironments || []
-        availableEnvironments.value = teamEnvs.map(
-          (env: { id: string; name: string }) => ({
-            id: env.id,
-            name: env.name,
-          })
-        )
-      }
-    } else {
-      availableEnvironments.value = personalEnvironments.value
-        .filter((env: Environment) => env.name)
-        .map((env: Environment, index: number) => ({
-          id: env.id || `personal-${index}`,
-          name: env.name,
-        }))
-    }
+    availableEnvironments.value = personalEnvironments.value
+      .filter((env: Environment) => env.name)
+      .map((env: Environment, index: number) => ({
+        id: env.id || `personal-${index}`,
+        name: env.name,
+      }))
   } catch (error) {
     console.error("Error fetching environments:", error)
   } finally {
@@ -180,9 +157,9 @@ const fetchEnvironments = async () => {
   }
 }
 
-// Fetch environments when workspace props change or environment list changes
+// Fetch environments when the environment list changes
 watch(
-  [() => props.workspaceType, () => props.workspaceID, personalEnvironments],
+  personalEnvironments,
   () => {
     fetchEnvironments()
   },

@@ -1,12 +1,8 @@
 import { HoppCollection } from "@hoppscotch/data"
 import { getAffectedIndexes } from "./affectedIndex"
-import { GetSingleRequestDocument } from "../backend/graphql"
-import { runGQLQuery } from "../backend/GQLClient"
-import * as E from "fp-ts/Either"
 import { getService } from "~/modules/dioc"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
 import { GQLTabService } from "~/services/tab/graphql"
-import { TeamCollectionsService } from "~/services/team-collection.service"
 import { cascadeParentCollectionForProperties } from "~/newstore/collections"
 import { stripClientLocalValuesForWire } from "../clientLocalVariables"
 import { CollectionDataProps } from "../backend/helpers"
@@ -80,23 +76,6 @@ export function resolveSaveContextOnCollectionReorder(
 }
 
 /**
- * Helper to transform team collection IDs when folders move and trim leading slashes.
- * @param currentID Current collection ID
- * @param oldPath Old collection path
- * @param newPath New collection path
- * @returns Updated collection ID
- */
-const updateCollectionIDPath = (
-  currentID: string | undefined,
-  oldPath: string,
-  newPath: string | null
-): string | undefined => {
-  if (!currentID) return currentID
-  const replaced = currentID.replace(oldPath, newPath ?? "")
-  return replaced.replace(/^\/+/, "")
-}
-
-/**
  * Returns the last folder path from the given path.
  *  * @param path Path can be folder path or collection path
  * @returns Get the last folder path from the given path
@@ -120,12 +99,10 @@ export function updateSaveContextForAffectedRequests(
   const tabs = tabService.getTabsRefTo((tab) => {
     if (tab.document.type === "test-runner") return false
 
-    return tab.document.saveContext?.originLocation === "user-collection"
-      ? tab.document.saveContext.folderPath.startsWith(oldFolderPath)
-      : tab.document.saveContext?.originLocation === "team-collection"
-        ? tab.document.saveContext.collectionID!.startsWith(oldFolderPath) ||
-          tab.document.saveContext.collectionID === oldFolderPath
-        : false
+    return (
+      tab.document.saveContext?.originLocation === "user-collection" &&
+      tab.document.saveContext.folderPath.startsWith(oldFolderPath)
+    )
   })
 
   for (const tab of tabs) {
@@ -142,17 +119,6 @@ export function updateSaveContextForAffectedRequests(
           newFolderPath
         ),
       }
-    } else if (
-      tab.value.document.saveContext?.originLocation === "team-collection"
-    ) {
-      tab.value.document.saveContext = {
-        ...tab.value.document.saveContext,
-        collectionID: updateCollectionIDPath(
-          tab.value.document.saveContext.collectionID,
-          oldFolderPath,
-          newFolderPath
-        ),
-      }
     }
   }
 }
@@ -165,17 +131,13 @@ export function updateInheritedPropertiesForAffectedRequests(
     type === "rest"
       ? getService(WorkspaceTabsService)
       : getService(GQLTabService)
-  const teamCollectionService = getService(TeamCollectionsService)
 
   const effectedTabs = tabService.getTabsRefTo((tab) => {
     if ("type" in tab.document && tab.document.type === "test-runner")
       return false
     const saveContext = tab.document.saveContext
 
-    const saveContextPath =
-      saveContext?.originLocation === "team-collection"
-        ? saveContext.collectionID
-        : saveContext?.folderPath
+    const saveContextPath = saveContext?.folderPath
 
     return (
       (saveContextPath?.startsWith(path) ||
@@ -192,16 +154,6 @@ export function updateInheritedPropertiesForAffectedRequests(
     )
       return
     if (!("inheritedProperties" in tab.value.document)) return
-
-    if (
-      tab.value.document.saveContext?.originLocation === "team-collection" &&
-      tab.value.document.inheritedProperties
-    ) {
-      tab.value.document.inheritedProperties =
-        teamCollectionService.cascadeParentCollectionForProperties(
-          tab.value.document.saveContext.collectionID!
-        )
-    }
 
     if (
       tab.value.document.saveContext?.originLocation === "user-collection" &&
@@ -244,44 +196,6 @@ function resetSaveContextForAffectedRequests(folderPath: string) {
   }
 }
 
-/**
- * Reset save context to null if requests are deleted from the team collection or its folder
- * only runs when collection or folder is deleted
- */
-export async function resetTeamRequestsContext() {
-  const tabService = getService(WorkspaceTabsService)
-  const tabs = tabService.getTabsRefTo((tab) => {
-    if (tab.document.type === "test-runner") return false
-    return tab.document.saveContext?.originLocation === "team-collection"
-  })
-
-  for (const tab of tabs) {
-    if (tab.value.document.type === "test-runner") return
-    if (tab.value.document.saveContext?.originLocation === "team-collection") {
-      const data = await runGQLQuery({
-        query: GetSingleRequestDocument,
-        variables: { requestID: tab.value.document.saveContext.requestID },
-      })
-
-      if (E.isRight(data) && data.right.request === null) {
-        tab.value.document.saveContext = null
-        tab.value.document.isDirty = true
-
-        if (tab.value.document.type === "request") {
-          // since the request is deleted, we need to remove the saved responses as well
-          tab.value.document.request.responses = {}
-
-          // remove inherited properties
-          tab.value.document.inheritedProperties = undefined
-        } else if (tab.value.document.type === "gql-request") {
-          // GQL requests have no saved responses; just drop inherited properties
-          tab.value.document.inheritedProperties = undefined
-        }
-      }
-    }
-  }
-}
-
 export function getFoldersByPath(
   collections: HoppCollection[],
   path: string
@@ -320,9 +234,9 @@ export function transformCollectionForImport(
     auth: collection.auth,
     headers: collection.headers,
     variables: stripClientLocalValuesForWire(collection.variables ?? []),
-    // Round-trip the local-store key so the team-collection-added handler
-    // (`TeamCollectionsService.addCollection`) can migrate the importer's
-    // secret entries from this `_ref_id` to the backend-assigned `id`.
+    // Round-trip the local-store key so the collection-added handler can
+    // migrate the importer's secret entries from this `_ref_id` to the
+    // backend-assigned `id`.
     _ref_id: collection._ref_id,
     description: collection.description,
     preRequestScript: collection.preRequestScript ?? "",

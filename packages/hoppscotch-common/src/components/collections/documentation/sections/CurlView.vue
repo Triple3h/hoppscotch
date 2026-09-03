@@ -207,7 +207,6 @@ const props = withDefaults(
     collectionPath?: string | null
     folderPath?: string | null
     requestIndex?: number | null
-    teamID?: string
     inheritedProperties?: HoppInheritedProperty
     environmentVariables?: Environment["variables"]
   }>(),
@@ -217,7 +216,6 @@ const props = withDefaults(
     collectionPath: null,
     folderPath: null,
     requestIndex: null,
-    teamID: undefined,
     environmentVariables: () => [],
   }
 )

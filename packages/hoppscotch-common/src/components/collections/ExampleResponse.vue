@@ -41,7 +41,7 @@
       </span>
     </div>
 
-    <div v-if="!hasNoTeamAccess" class="flex">
+    <div class="flex">
       <span>
         <tippy
           ref="options"
@@ -138,7 +138,7 @@ import findStatusGroup from "@helpers/findStatusGroup"
 
 const t = useI18n()
 
-type CollectionType = "my-collections" | "team-collections"
+type CollectionType = "my-collections"
 
 type SaveContext = {
   requestID: string | number
@@ -158,11 +158,6 @@ const props = defineProps({
     type: String,
     default: "",
     required: true,
-  },
-  hasNoTeamAccess: {
-    type: Boolean,
-    default: false,
-    required: false,
   },
   saveContext: {
     type: Object as PropType<SaveContext>,
@@ -195,19 +190,10 @@ const pathToIndex = (path: string) => {
 }
 
 const getSaveContext = (): HoppTabSaveContext => {
-  if (props.saveContext.collectionsType === "my-collections") {
-    return {
-      originLocation: "user-collection",
-      folderPath: props.saveContext.parentID,
-      requestIndex: Number(pathToIndex(props.saveContext.requestID.toString())),
-      exampleID: props.saveContext.exampleID,
-    }
-  }
-
   return {
-    originLocation: "team-collection",
-    requestID: props.saveContext.requestID.toString() as string,
-    collectionID: props.saveContext.parentID,
+    originLocation: "user-collection",
+    folderPath: props.saveContext.parentID,
+    requestIndex: Number(pathToIndex(props.saveContext.requestID.toString())),
     exampleID: props.saveContext.exampleID,
   }
 }
@@ -218,14 +204,6 @@ const isActiveExample = computed(() => {
   const saveCtx = getSaveContext()
 
   if (!saveCtx) return
-
-  if (saveCtx.originLocation === "team-collection") {
-    return (
-      active.value?.originLocation === "team-collection" &&
-      active.value?.requestID === saveCtx.requestID &&
-      active.value?.exampleID === saveCtx.exampleID
-    )
-  }
 
   return (
     active.value?.originLocation === "user-collection" &&

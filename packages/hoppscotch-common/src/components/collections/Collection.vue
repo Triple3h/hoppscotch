@@ -22,7 +22,7 @@
       ></div>
       <div
         class="z-[3] group pointer-events-auto relative flex cursor-pointer items-stretch"
-        :draggable="!hasNoTeamAccess"
+        :draggable="true"
         @dragstart="dragStart"
         @drop="handelDrop($event)"
         @dragover="handleDragOver($event)"
@@ -88,15 +88,8 @@
           </span>
         </div>
 
-        <div
-          v-if="isCollectionLoading && !isOpen"
-          class="flex items-center px-2"
-        >
-          <HoppSmartSpinner />
-        </div>
-        <div v-else class="flex">
+        <div class="flex">
           <HoppButtonSecondary
-            v-if="!hasNoTeamAccess"
             v-tippy="{ theme: 'tooltip' }"
             :icon="IconFilePlus"
             :title="t('request.add')"
@@ -104,7 +97,6 @@
             @click="emit('add-request')"
           />
           <HoppButtonSecondary
-            v-if="!hasNoTeamAccess"
             v-tippy="{ theme: 'tooltip' }"
             :icon="IconFolderPlus"
             :title="t('folder.new')"
@@ -153,7 +145,6 @@
                   @keyup.escape="hide()"
                 >
                   <HoppSmartItem
-                    v-if="!hasNoTeamAccess"
                     ref="requestAction"
                     :icon="IconFilePlus"
                     :label="t('request.new')"
@@ -166,7 +157,7 @@
                     "
                   />
                   <HoppSmartItem
-                    v-if="!hasNoTeamAccess && isGqlWorkspaceEnabled"
+                    v-if="isGqlWorkspaceEnabled"
                     ref="gqlRequestAction"
                     :icon="IconGraphql"
                     :label="t('request.new_gql')"
@@ -179,7 +170,6 @@
                     "
                   />
                   <HoppSmartItem
-                    v-if="!hasNoTeamAccess"
                     ref="folderAction"
                     :icon="IconFolderPlus"
                     :label="t('folder.new')"
@@ -217,11 +207,7 @@
                     "
                   />
                   <HoppSmartItem
-                    v-if="
-                      !hasNoTeamAccess &&
-                      isRootCollection &&
-                      isMockServerVisible
-                    "
+                    v-if="isRootCollection && isMockServerVisible"
                     ref="mockServerAction"
                     :icon="IconServer"
                     :label="t('mock_server.create_mock_server')"
@@ -234,7 +220,6 @@
                     "
                   />
                   <HoppSmartItem
-                    v-if="!hasNoTeamAccess"
                     ref="edit"
                     :icon="IconEdit"
                     :label="t('action.edit')"
@@ -247,7 +232,7 @@
                     "
                   />
                   <HoppSmartItem
-                    v-if="!hasNoTeamAccess && isChildrenSortable"
+                    v-if="isChildrenSortable"
                     ref="sortAction"
                     :icon="IconArrowUpDown"
                     :label="t('action.sort')"
@@ -260,7 +245,6 @@
                     "
                   />
                   <HoppSmartItem
-                    v-if="!hasNoTeamAccess"
                     ref="duplicateAction"
                     :icon="IconCopy"
                     :label="t('action.duplicate')"
@@ -268,13 +252,12 @@
                     :shortcut="['D']"
                     @click="
                       () => {
-                        ;(emit('duplicate-collection'),
-                          collectionsType === 'my-collections' ? hide() : null)
+                        emit('duplicate-collection')
+                        hide()
                       }
                     "
                   />
                   <HoppSmartItem
-                    v-if="!hasNoTeamAccess"
                     ref="exportAction"
                     :icon="IconDownload"
                     :label="t('export.collection')"
@@ -301,7 +284,6 @@
                   />
 
                   <HoppSmartItem
-                    v-if="!hasNoTeamAccess"
                     ref="deleteAction"
                     :icon="IconTrash2"
                     :label="t('action.delete')"
@@ -345,7 +327,6 @@ import { HoppCollection } from "@hoppscotch/data"
 import { computed, ref, watch } from "vue"
 import { TippyComponent } from "vue-tippy"
 import { useReadonlyStream } from "~/composables/stream"
-import { TeamCollection } from "~/helpers/teams/TeamCollection"
 import {
   changeCurrentReorderStatus,
   currentReorderingStatus$,
@@ -375,7 +356,7 @@ import { invokeAction } from "~/helpers/actions"
 import { DocumentationService } from "~/services/documentation.service"
 import IconGlobe from "~icons/lucide/globe"
 
-type CollectionType = "my-collections" | "team-collections"
+type CollectionType = "my-collections"
 type FolderType = "collection" | "folder"
 
 const t = useI18n()
@@ -384,7 +365,7 @@ const props = withDefaults(
   defineProps<{
     id: string
     parentID?: string | null
-    data: HoppCollection | TeamCollection
+    data: HoppCollection
     /**
      * Collection component can be used for both collections and folders.
      * folderType is used to determine which one it is.
@@ -394,11 +375,9 @@ const props = withDefaults(
     isOpen: boolean
     isSelected?: boolean | null
     exportLoading?: boolean
-    hasNoTeamAccess?: boolean
     collectionMoveLoading?: string[]
     isLastItem?: boolean
     duplicateCollectionLoading?: boolean
-    teamLoadingCollections?: string[]
   }>(),
   {
     id: "",
@@ -408,11 +387,9 @@ const props = withDefaults(
     isOpen: false,
     isSelected: false,
     exportLoading: false,
-    hasNoTeamAccess: false,
     isLastItem: false,
     duplicateCollectionLoading: false,
     collectionMoveLoading: () => [],
-    teamLoadingCollections: () => [],
   }
 )
 
@@ -476,19 +453,11 @@ const dropItemID = ref("")
 const isChildrenSortable = computed(() => {
   if (!props.data) return false
 
-  if (props.collectionsType === "my-collections") {
-    const collection = props.data as HoppCollection
-    const req = collection.requests.length
-    const fol = collection.folders.length
+  const collection = props.data as HoppCollection
+  const req = collection.requests.length
+  const fol = collection.folders.length
 
-    return req > 1 || fol > 1 || (req === 1 && fol === 1)
-  }
-
-  const teamCollection = props.data as TeamCollection
-  const req = teamCollection.requests?.length ?? 0
-  const child = teamCollection.children?.length ?? 0
-
-  return req > 1 || child > 1 || (req === 1 && child === 1)
+  return req > 1 || fol > 1 || (req === 1 && fol === 1)
 })
 
 const currentReorderingStatus = useReadonlyStream(currentReorderingStatus$, {
@@ -500,19 +469,13 @@ const currentReorderingStatus = useReadonlyStream(currentReorderingStatus$, {
 const currentSortValuesService = useService(CurrentSortValuesService)
 
 const collectionRefID = computed(() => {
-  return props.collectionsType === "my-collections"
-    ? (props.data as HoppCollection)._ref_id
-    : props.id
+  return (props.data as HoppCollection)._ref_id
 })
 
 const currentSortOrder = ref<"asc" | "desc">(
   currentSortValuesService.getSortOption(collectionRefID.value ?? "personal")
     ?.sortOrder ?? "asc"
 )
-const isCollectionLoading = computed(() => {
-  return props.teamLoadingCollections!.includes(props.id)
-})
-
 // Mock Server Status
 const { isMockServerVisible } = useMockServerVisibility()
 const { getMockServerStatus } = useMockServerStatus()
@@ -523,10 +486,7 @@ const mockServerStatus = computed(() => {
   }
 
   const collectionId =
-    props.collectionsType === "my-collections"
-      ? ((props.data as HoppCollection).id ??
-        (props.data as HoppCollection)._ref_id)
-      : (props.data as TeamCollection).id
+    (props.data as HoppCollection).id ?? (props.data as HoppCollection)._ref_id
 
   return getMockServerStatus(collectionId || "")
 })
@@ -536,10 +496,7 @@ const documentationService = useService(DocumentationService)
 
 const publishedDocStatus = computed(() => {
   const collectionId =
-    props.collectionsType === "my-collections"
-      ? ((props.data as HoppCollection).id ??
-        (props.data as HoppCollection)._ref_id)
-      : (props.data as TeamCollection).id
+    (props.data as HoppCollection).id ?? (props.data as HoppCollection)._ref_id
 
   return documentationService.getPublishedDocStatus(collectionId || "")
 })
@@ -570,9 +527,7 @@ const collectionIcon = computed(() => {
 })
 
 const collectionName = computed(() => {
-  if ((props.data as HoppCollection).name)
-    return (props.data as HoppCollection).name
-  return (props.data as TeamCollection).title
+  return (props.data as HoppCollection).name
 })
 
 watch(

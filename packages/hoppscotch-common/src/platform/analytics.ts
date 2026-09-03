@@ -2,7 +2,7 @@ export type HoppRequestEvent =
   | {
       platform: "rest"
       strategy: string
-      workspaceType: "personal" | "team"
+      workspaceType: "personal"
     }
   | {
       platform: "graphql-query" | "graphql-schema"
@@ -23,19 +23,18 @@ export type AnalyticsEvent =
   | ({ type: "HOPP_REQUEST_RUN" } & HoppRequestEvent)
   | {
       type: "HOPP_CREATE_ENVIRONMENT"
-      workspaceType: "personal" | "team"
+      workspaceType: "personal"
     }
   | {
       type: "HOPP_CREATE_COLLECTION"
       platform: "rest" | "gql"
       isRootCollection: boolean
-      workspaceType: "personal" | "team"
+      workspaceType: "personal"
     }
-  | { type: "HOPP_CREATE_TEAM" }
   | {
       type: "HOPP_SAVE_REQUEST"
       createdNow: boolean
-      workspaceType: "personal" | "team"
+      workspaceType: "personal"
       platform: "rest" | "gql"
     }
   | { type: "HOPP_SHORTCODE_CREATED" }
@@ -44,12 +43,12 @@ export type AnalyticsEvent =
   | {
       type: "HOPP_IMPORT_COLLECTION"
       importer: string
-      workspaceType: "personal" | "team"
+      workspaceType: "personal"
       platform: "rest" | "gql"
     }
   | {
       type: "HOPP_IMPORT_ENVIRONMENT"
-      workspaceType: "personal" | "team"
+      workspaceType: "personal"
       platform: "rest" | "gql"
     }
   | {

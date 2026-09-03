@@ -20,9 +20,7 @@ type HoppImporter<T, StepsType, Errors> = (
   stepValues: StepsOutputList<StepsType>
 ) => TE.TaskEither<Errors, T>
 
-type HoppImporterApplicableTo = Array<
-  "team-collections" | "my-collections" | "url-import"
->
+type HoppImporterApplicableTo = Array<"my-collections" | "url-import">
 
 /**
  * Definition for importers

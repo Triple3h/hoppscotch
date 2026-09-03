@@ -21,7 +21,6 @@ vi.mock("~/platform", () => ({
   platform: {
     backend: {
       getUserPublishedDocs: vi.fn(),
-      getTeamPublishedDocs: vi.fn(),
     },
   },
 }))
@@ -60,32 +59,14 @@ describe("DocumentationService", () => {
   })
 
   const mockCollectionOptions: SetCollectionDocumentationOptions = {
-    isTeamItem: false,
     pathOrID: "test-path",
     collectionData: mockCollection,
   }
 
-  const mockTeamCollectionOptions: SetCollectionDocumentationOptions = {
-    isTeamItem: true,
-    teamID: "team-456",
-    pathOrID: "team-collection-789",
-    collectionData: mockCollection,
-  }
-
   const mockRequestOptions: SetRequestDocumentationOptions = {
-    isTeamItem: false,
     parentCollectionID: "collection-123",
     folderPath: "test-folder",
     requestIndex: 0,
-    requestData: mockRequest,
-  }
-
-  const mockTeamRequestOptions: SetRequestDocumentationOptions = {
-    isTeamItem: true,
-    teamID: "team-456",
-    parentCollectionID: "collection-123",
-    folderPath: "team-folder",
-    requestID: "request-789",
     requestData: mockRequest,
   }
 
@@ -130,30 +111,9 @@ describe("DocumentationService", () => {
         type: "collection",
         id: collectionId,
         documentation,
-        isTeamItem: false,
-        teamID: undefined,
         pathOrID: "test-path",
         collectionData: mockCollection,
       })
-    })
-
-    it("should handle team collection documentation", () => {
-      const collectionId = "team-collection-789"
-      const documentation = "# Team Collection\nThis is a team collection."
-
-      service.setCollectionDocumentation(
-        collectionId,
-        documentation,
-        mockTeamCollectionOptions
-      )
-
-      const item = service.getDocumentationItem(
-        "collection",
-        collectionId
-      ) as CollectionDocumentationItem
-
-      expect(item.isTeamItem).toBe(true)
-      expect(item.teamID).toBe("team-456")
     })
 
     it("should update existing collection documentation", () => {
@@ -192,7 +152,7 @@ describe("DocumentationService", () => {
       expect(service.getDocumentation("request", requestId)).toBe(documentation)
     })
 
-    it("should store complete request documentation item for personal requests", () => {
+    it("should store complete request documentation item", () => {
       const requestId = "request-456"
       const documentation = "## Test Request\nThis is a test request."
 
@@ -211,41 +171,9 @@ describe("DocumentationService", () => {
         type: "request",
         id: requestId,
         documentation,
-        isTeamItem: false,
-        teamID: undefined,
         parentCollectionID: "collection-123",
         folderPath: "test-folder",
-        requestID: undefined,
         requestIndex: 0,
-        requestData: mockRequest,
-      })
-    })
-
-    it("should store complete request documentation item for team requests", () => {
-      const requestId = "team-request-789"
-      const documentation = "## Team Request\nThis is a team request."
-
-      service.setRequestDocumentation(
-        requestId,
-        documentation,
-        mockTeamRequestOptions
-      )
-
-      const item = service.getDocumentationItem(
-        "request",
-        requestId
-      ) as RequestDocumentationItem
-
-      expect(item).toEqual({
-        type: "request",
-        id: requestId,
-        documentation,
-        isTeamItem: true,
-        teamID: "team-456",
-        parentCollectionID: "collection-123",
-        folderPath: "team-folder",
-        requestID: "request-789",
-        requestIndex: undefined,
         requestData: mockRequest,
       })
     })
@@ -503,42 +431,6 @@ describe("DocumentationService", () => {
       ])
     })
 
-    it("should fetch team published docs and update map", async () => {
-      const mockDocs = [
-        {
-          id: "doc-2",
-          title: "Doc 2",
-          version: "v2",
-          autoSync: false,
-          url: "url-2",
-          collection: { id: "col-2" },
-          createdOn: new Date().toISOString(),
-          updatedOn: new Date().toISOString(),
-        },
-      ]
-
-      vi.mocked(platform.backend.getTeamPublishedDocs).mockReturnValue(() =>
-        Promise.resolve(E.right(mockDocs as any))
-      )
-
-      await service.fetchTeamPublishedDocs("team-1")
-
-      const status = service.getPublishedDocStatus("col-2")
-
-      expect(status).toEqual([
-        {
-          id: "doc-2",
-          title: "Doc 2",
-          version: "v2",
-          autoSync: false,
-          url: "url-2",
-          collection: { id: "col-2" },
-          createdOn: mockDocs[0].createdOn,
-          updatedOn: mockDocs[0].updatedOn,
-        },
-      ])
-    })
-
     it("should handle error when fetching user published docs", async () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
       vi.mocked(platform.backend.getUserPublishedDocs).mockReturnValue(() =>
@@ -550,21 +442,6 @@ describe("DocumentationService", () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         "Failed to fetch user published docs:",
         "user/not_authenticated"
-      )
-      consoleSpy.mockRestore()
-    })
-
-    it("should handle error when fetching team published docs", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-      vi.mocked(platform.backend.getTeamPublishedDocs).mockReturnValue(() =>
-        Promise.resolve(E.left("team/not_required" as any))
-      )
-
-      await service.fetchTeamPublishedDocs("team-1")
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Failed to fetch team published docs:",
-        "team/not_required"
       )
       consoleSpy.mockRestore()
     })

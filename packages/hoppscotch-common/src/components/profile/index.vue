@@ -57,41 +57,6 @@
       </div>
     </section>
 
-    <section class="p-4">
-      <h4 class="font-semibold text-secondaryDark">
-        {{ t("settings.sync") }}
-      </h4>
-      <div class="my-1 text-secondaryLight">
-        {{ t("settings.sync_description") }}
-      </div>
-      <div class="space-y-4 py-4">
-        <div class="flex items-center">
-          <HoppSmartToggle
-            :on="SYNC_COLLECTIONS"
-            @change="toggleSetting('syncCollections')"
-          >
-            {{ t("settings.sync_collections") }}
-          </HoppSmartToggle>
-        </div>
-        <div class="flex items-center">
-          <HoppSmartToggle
-            :on="SYNC_ENVIRONMENTS"
-            @change="toggleSetting('syncEnvironments')"
-          >
-            {{ t("settings.sync_environments") }}
-          </HoppSmartToggle>
-        </div>
-        <div class="flex items-center">
-          <HoppSmartToggle
-            :on="SYNC_HISTORY"
-            @change="toggleSetting('syncHistory')"
-          >
-            {{ t("settings.sync_history") }}
-          </HoppSmartToggle>
-        </div>
-      </div>
-    </section>
-
     <template v-if="platform.ui?.additionalProfileSections?.length">
       <template
         v-for="(item, index) in platform.ui?.additionalProfileSections"
@@ -112,18 +77,12 @@ import { computed, ref, watchEffect } from "vue"
 import { platform } from "~/platform"
 
 import { useI18n } from "@composables/i18n"
-import { useSetting } from "@composables/settings"
 import { useReadonlyStream } from "@composables/stream"
 import { useToast } from "@composables/toast"
-
-import { toggleSetting } from "~/newstore/settings"
 
 const t = useI18n()
 const toast = useToast()
 
-const SYNC_COLLECTIONS = useSetting("syncCollections")
-const SYNC_ENVIRONMENTS = useSetting("syncEnvironments")
-const SYNC_HISTORY = useSetting("syncHistory")
 const currentUser = useReadonlyStream(
   platform.auth.getCurrentUserStream(),
   platform.auth.getCurrentUser()

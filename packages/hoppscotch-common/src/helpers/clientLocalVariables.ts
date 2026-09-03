@@ -174,7 +174,7 @@ export const repopulateLoadedCollectionTree = (
 
 /**
  * Flush every node's local-store entries on delete. Flushes by both
- * `_ref_id` (personal) and `id` (team); services no-op on missing keys.
+ * `_ref_id` and `id`; services no-op on missing keys.
  */
 export const flushLocalStoresForCollectionTree = (
   collection: HoppCollection
@@ -219,28 +219,4 @@ export const flushUnmatchedRefIdsFromTree = (
     })
   }
   walk(tree)
-}
-
-/**
- * Flush a team-collection subtree by backend `id`, walking `children`
- * (team shape — not `HoppCollection.folders`) so nested folders' entries
- * aren't left orphaned on delete.
- */
-type TeamCollectionNode = {
-  id: string
-  children: TeamCollectionNode[] | null | undefined
-}
-
-export const flushLocalStoresForTeamCollectionTree = (
-  collection: TeamCollectionNode
-) => {
-  const secretEnvironmentService = getService(SecretEnvironmentService)
-  const currentEnvironmentValueService = getService(CurrentValueService)
-
-  const walk = (node: TeamCollectionNode) => {
-    secretEnvironmentService.deleteSecretEnvironment(node.id)
-    currentEnvironmentValueService.deleteEnvironment(node.id)
-    ;(node.children ?? []).forEach(walk)
-  }
-  walk(collection)
 }

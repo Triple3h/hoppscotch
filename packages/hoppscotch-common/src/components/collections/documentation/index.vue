@@ -20,14 +20,11 @@
               :folder-path="folderPath"
               :request-index="requestIndex"
               :request-i-d="requestID"
-              :team-i-d="teamID"
-              :is-team-collection="isTeamCollection"
               :all-items="allItems"
               :show-all-documentation="showAllDocumentation"
               :is-processing-documentation="isProcessingDocumentation"
               :processing-progress="processingProgress"
-              :is-external-loading="loadingState || isLoadingTeamCollection"
-              :has-team-write-access="hasTeamWriteAccess"
+              :is-external-loading="loadingState"
               @close-modal="hideModal"
               @toggle-all-documentation="handleToggleAllDocumentation"
             />
@@ -40,7 +37,6 @@
               :folder-path="folderPath"
               :request-index="requestIndex"
               :request-i-d="requestID"
-              :team-i-d="teamID"
               class="p-4"
               @close-modal="hideModal"
             />
@@ -52,7 +48,6 @@
       <div class="flex justify-between items-center w-full">
         <span class="flex space-x-2">
           <HoppButtonPrimary
-            v-if="hasTeamWriteAccess"
             :label="t('action.save')"
             :loading="isSavingDocumentation"
             :disabled="isSavingDocumentation"
@@ -73,11 +68,7 @@
           <div v-if="showAllDocumentation">
             <!-- Publish Button - when not published -->
             <HoppButtonSecondary
-              v-if="
-                currentCollection &&
-                !isCollectionPublished &&
-                hasTeamWriteAccess
-              "
+              v-if="currentCollection && !isCollectionPublished"
               :icon="IconShare2"
               :label="t('documentation.publish.button')"
               outline
@@ -85,9 +76,7 @@
               @click="openPublishModal"
             />
             <tippy
-              v-else-if="
-                currentCollection && isCollectionPublished && hasTeamWriteAccess
-              "
+              v-else-if="currentCollection && isCollectionPublished"
               ref="publishedDropdown"
               interactive
               trigger="click"
@@ -238,8 +227,6 @@
     :collection-title="
       currentCollection.name || t('documentation.untitled_collection')
     "
-    :workspace-type="isTeamCollection ? WorkspaceType.Team : WorkspaceType.User"
-    :workspace-i-d="isTeamCollection ? teamID || '' : ''"
     :mode="publishModalMode"
     :is-first-publish="!isCollectionPublished && !isCreatingNewVersion"
     :published-doc-id="publishedDocId"
@@ -264,7 +251,6 @@ import {
   HoppGQLRequest,
   HoppRESTRequest,
 } from "@hoppscotch/data"
-import { TeamCollection } from "~/helpers/teams/TeamCollection"
 
 import {
   editRESTCollection,
@@ -272,16 +258,6 @@ import {
   editRESTRequest,
 } from "~/newstore/collections"
 
-import { updateTeamCollection } from "~/helpers/backend/mutations/TeamCollection"
-import { updateTeamRequest } from "~/helpers/backend/mutations/TeamRequest"
-import { stripClientLocalValuesForWire } from "~/helpers/clientLocalVariables"
-import {
-  CollectionDataProps,
-  getSingleTeamCollectionJSON,
-  teamCollToHoppRESTColl,
-} from "~/helpers/backend/helpers"
-import { GQLError } from "~/helpers/backend/GQLClient"
-import { getErrorMessage } from "~/helpers/backend/mutations/MockServer"
 import { HoppTabSaveContext } from "~/helpers/tab/document"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
 
@@ -303,13 +279,11 @@ import IconPlus from "~icons/lucide/plus"
 import IconEye from "~icons/lucide/eye"
 
 import {
-  WorkspaceType,
   CreatePublishedDocsArgs,
   UpdatePublishedDocsArgs,
 } from "~/helpers/backend/graphql"
 import { platform } from "~/platform"
 
-import * as E from "fp-ts/Either"
 import * as TE from "fp-ts/TaskEither"
 import { pipe } from "fp-ts/function"
 import { refAutoReset, useClipboard } from "@vueuse/core"
@@ -321,29 +295,23 @@ const props = withDefaults(
   defineProps<{
     show?: boolean
     loadingState?: boolean
-    hasTeamWriteAccess?: boolean
     collectionID?: string
     pathOrID: string | null
-    collection?: HoppCollection | TeamCollection | null
+    collection?: HoppCollection | null
     folderPath?: string | null
     requestIndex?: number | null
     requestID?: string | null
     request?: HoppRESTRequest | HoppGQLRequest | null
-    teamID?: string
-    isTeamCollection?: boolean
   }>(),
   {
     show: false,
     loadingState: false,
-    hasTeamWriteAccess: true,
-    isTeamCollection: false,
     collectionID: "",
     collection: null,
     folderPath: null,
     requestIndex: null,
     requestID: null,
     request: null,
-    teamID: undefined,
   }
 )
 
@@ -379,7 +347,6 @@ const syncOpenRequestTabDescription = (
   }
 }
 
-const isLoadingTeamCollection = ref<boolean>(false)
 const isSavingDocumentation = ref<boolean>(false)
 const isProcessingPublish = ref<boolean>(false)
 
@@ -499,7 +466,7 @@ const publishModalMode = computed<"create" | "update" | "view">(() => {
 })
 
 const isDocumentationProcessing = computed(() => {
-  return isProcessingDocumentation.value || isLoadingTeamCollection.value
+  return isProcessingDocumentation.value
 })
 
 const {
@@ -508,65 +475,15 @@ const {
   processDocumentation,
 } = useDocumentationWorker()
 
-// Store the full collection data with all nested folders and requests
-const fullCollectionData = ref<HoppCollection | null>(null)
-
-const fetchTeamCollection = async () => {
-  if (!props.isTeamCollection || !props.collection?.id || !props.teamID) {
-    return
-  }
-
-  isLoadingTeamCollection.value = true
-
-  try {
-    const data = await getSingleTeamCollectionJSON(
-      props.teamID,
-      props.collection.id
-    )
-
-    if (data && E.isRight(data)) {
-      const parsedCollection = JSON.parse(data.right)
-      fullCollectionData.value = parsedCollection
-    } else {
-      fullCollectionData.value = teamCollToHoppRESTColl(
-        props.collection as TeamCollection
-      )
-    }
-  } catch (_error) {
-    fullCollectionData.value = teamCollToHoppRESTColl(
-      props.collection as TeamCollection
-    )
-  } finally {
-    isLoadingTeamCollection.value = false
-  }
-}
-
-// Get the current collection - use fetched data only after toggleAllDocumentation is clicked
+// Get the current collection
 const currentCollection = computed<HoppCollection | null>(() => {
   if (!props.collection) return null
-
-  // For team collections, use the full collection data only if available (after toggle)
-  if (props.isTeamCollection && fullCollectionData.value) {
-    return fullCollectionData.value
-  }
-
-  if (props.isTeamCollection) {
-    return teamCollToHoppRESTColl(props.collection as TeamCollection)
-  }
-
-  // Use the prop collection by default
   return props.collection as HoppCollection
 })
 
 // Handle toggle all documentation - process items in parent
 const handleToggleAllDocumentation = async () => {
   if (!showAllDocumentation.value) {
-    // For team collections, fetch latest collection data first
-    if (props.isTeamCollection && props.collection?.id && props.teamID) {
-      await fetchTeamCollection()
-      await nextTick() // Wait for collection to update
-    }
-
     const collectionToProcess = currentCollection.value
     if (!collectionToProcess) {
       return
@@ -576,8 +493,7 @@ const handleToggleAllDocumentation = async () => {
       // Process documentation in parent
       const items = await processDocumentation(
         collectionToProcess as HoppCollection,
-        props.pathOrID,
-        props.isTeamCollection
+        props.pathOrID
       )
 
       // Set processed items and toggle state - child will react automatically
@@ -601,8 +517,6 @@ watch(
   (newVal) => {
     if (!newVal) {
       // Reset when modal closes
-      fullCollectionData.value = null
-      isLoadingTeamCollection.value = false
       // Clear all processed items
       allItems.value = []
       showAllDocumentation.value = false
@@ -700,11 +614,6 @@ const emit = defineEmits<{
 }>()
 
 const saveDocumentation = async () => {
-  if (!props.hasTeamWriteAccess) {
-    toast.error(t("documentation.no_write_access"))
-    return
-  }
-
   try {
     // Get all changed items from documentation service
     const changedItems = documentationService.getChangedItems()
@@ -764,53 +673,24 @@ const saveDocumentation = async () => {
 const saveCollectionDocumentation = async () => {
   const collection = currentCollection.value!
 
-  if (props.isTeamCollection) {
-    // Set loading state for team operations only
-    isSavingDocumentation.value = true
-
-    // Team collection data
-    const data: CollectionDataProps = {
-      auth: collection.auth || { authType: "inherit", authActive: true },
-      headers: collection.headers || [],
-      variables: stripClientLocalValuesForWire(collection.variables || []),
-      description: documentationDescription.value,
-      preRequestScript: collection.preRequestScript || "",
-      testScript: collection.testScript || "",
-    }
-
-    pipe(
-      updateTeamCollection(collection.id!, data),
-      TE.match(
-        (err: GQLError<string>) => {
-          toast.error(`${getErrorMessage(err)}`)
-          isSavingDocumentation.value = false
-        },
-        () => {
-          toast.success(t("documentation.save_success"))
-          isSavingDocumentation.value = false
-        }
-      )
-    )()
-  } else {
-    // Personal collection (no loading state)
-    const updatedCollection = {
-      ...collection,
-      description: documentationDescription.value,
-    }
-
-    // Check if this is a root collection or a folder
-    const pathSegments = props.pathOrID!.split("/")
-    if (pathSegments.length === 1) {
-      editRESTCollection(parseInt(props.pathOrID!), updatedCollection)
-    } else {
-      editRESTFolder(props.pathOrID!, updatedCollection)
-    }
-    toast.success(t("documentation.save_success"))
+  // Personal collection (no loading state)
+  const updatedCollection = {
+    ...collection,
+    description: documentationDescription.value,
   }
+
+  // Check if this is a root collection or a folder
+  const pathSegments = props.pathOrID!.split("/")
+  if (pathSegments.length === 1) {
+    editRESTCollection(parseInt(props.pathOrID!), updatedCollection)
+  } else {
+    editRESTFolder(props.pathOrID!, updatedCollection)
+  }
+  toast.success(t("documentation.save_success"))
 }
 
 const saveRequestDocumentation = async () => {
-  // The editor stays live while the team mutation is in flight — sync the tab
+  // The editor stays live while the mutation is in flight — sync the tab
   // with what was persisted, not whatever the editor holds when it resolves
   const savedDescription = documentationDescription.value
 
@@ -819,49 +699,18 @@ const saveRequestDocumentation = async () => {
     description: savedDescription,
   }
 
-  if (props.isTeamCollection && props.requestID) {
-    // Set loading state for team operations only
-    isSavingDocumentation.value = true
-
-    const data = {
-      request: JSON.stringify(updatedRequest),
-      title: updatedRequest.name,
-    }
-
-    pipe(
-      updateTeamRequest(props.requestID!, data),
-      TE.match(
-        (err: GQLError<string>) => {
-          toast.error(`${getErrorMessage(err)}`)
-          isSavingDocumentation.value = false
-        },
-        () => {
-          syncOpenRequestTabDescription(
-            {
-              originLocation: "team-collection",
-              requestID: props.requestID!,
-            },
-            savedDescription
-          )
-          toast.success(t("documentation.save_success"))
-          isSavingDocumentation.value = false
-        }
-      )
-    )()
-  } else {
-    // Personal request
-    editRESTRequest(props.folderPath!, props.requestIndex!, updatedRequest)
-    syncOpenRequestTabDescription(
-      {
-        originLocation: "user-collection",
-        folderPath: props.folderPath!,
-        requestIndex: props.requestIndex!,
-        requestRefID: updatedRequest._ref_id ?? updatedRequest.id,
-      },
-      savedDescription
-    )
-    toast.success(t("documentation.save_success"))
-  }
+  // Personal request
+  editRESTRequest(props.folderPath!, props.requestIndex!, updatedRequest)
+  syncOpenRequestTabDescription(
+    {
+      originLocation: "user-collection",
+      folderPath: props.folderPath!,
+      requestIndex: props.requestIndex!,
+      requestRefID: updatedRequest._ref_id ?? updatedRequest.id,
+    },
+    savedDescription
+  )
+  toast.success(t("documentation.save_success"))
 }
 
 // Save collection documentation by ID
@@ -871,50 +720,8 @@ const saveCollectionDocumentationById = async (
   // Type guard to ensure it's a collection item
   if (item.type !== "collection") return false
 
-  const {
-    id: collectionId,
-    documentation,
-    isTeamItem,
-    pathOrID,
-    collectionData,
-  } = item
+  const { documentation, pathOrID, collectionData } = item
 
-  if (isTeamItem) {
-    // Set loading state for team operations only
-    isSavingDocumentation.value = true
-
-    // Use the stored collection data from the service
-    if (collectionData) {
-      const data: CollectionDataProps = {
-        auth: collectionData.auth || { authType: "inherit", authActive: true },
-        headers: collectionData.headers || [],
-        variables: stripClientLocalValuesForWire(
-          collectionData.variables || []
-        ),
-        description: documentation,
-        preRequestScript: collectionData.preRequestScript || "",
-        testScript: collectionData.testScript || "",
-      }
-
-      const result = await pipe(
-        updateTeamCollection(collectionId, data),
-        TE.match(
-          (err: GQLError<string>) => {
-            console.error(getErrorMessage(err))
-            return false
-          },
-          () => {
-            return true
-          }
-        )
-      )()
-      isSavingDocumentation.value = false
-      return result
-    }
-    console.error("Collection data not found in service")
-    isSavingDocumentation.value = false
-    return false
-  }
   if (pathOrID && collectionData) {
     const updatedCollection = {
       ...collectionData,
@@ -946,50 +753,8 @@ const saveRequestDocumentationById = async (
 ): Promise<boolean> => {
   if (item.type !== "request") return false
 
-  const { documentation, isTeamItem, folderPath, requestData } = item
+  const { documentation, folderPath, requestData } = item
 
-  if (isTeamItem) {
-    // Set loading state for team operations only
-    isSavingDocumentation.value = true
-
-    // For team requests, check if requestID exists
-    if (requestData && item.requestID) {
-      const updatedRequest = {
-        ...requestData,
-        description: documentation,
-      }
-
-      const data = {
-        request: JSON.stringify(updatedRequest),
-        title: updatedRequest.name,
-      }
-
-      const result = await pipe(
-        updateTeamRequest(item.requestID, data),
-        TE.match(
-          (err: GQLError<string>) => {
-            console.error(getErrorMessage(err))
-            return false
-          },
-          () => {
-            syncOpenRequestTabDescription(
-              {
-                originLocation: "team-collection",
-                requestID: item.requestID!,
-              },
-              documentation
-            )
-            return true
-          }
-        )
-      )()
-      isSavingDocumentation.value = false
-      return result
-    }
-    console.error("Team request data not found in service")
-    isSavingDocumentation.value = false
-    return false
-  }
   if (
     folderPath !== undefined &&
     item.requestIndex !== undefined &&

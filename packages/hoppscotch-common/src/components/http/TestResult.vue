@@ -212,15 +212,6 @@
       :env-vars="getAdditionVars"
       @hide-modal="displayModalAdd(false)"
     />
-    <EnvironmentsTeamsDetails
-      :show="showTeamEnvironmentDetailsModal"
-      action="new"
-      :env-vars="getAdditionVars"
-      :editing-team-id="
-        workspace.type === 'team' ? workspace.teamID : undefined
-      "
-      @hide-modal="displayModalAdd(false)"
-    />
   </div>
 </template>
 
@@ -245,10 +236,8 @@ import IconDownload from "~icons/lucide/download"
 
 import { GlobalEnvironment } from "@hoppscotch/data"
 import { useVModel } from "@vueuse/core"
-import { useService } from "dioc/vue"
 import { useColorMode } from "~/composables/theming"
 import { invokeAction } from "~/helpers/actions"
-import { WorkspaceService } from "~/services/workspace.service"
 
 const props = withDefaults(
   defineProps<{
@@ -271,16 +260,10 @@ const testResults = useVModel(props, "modelValue", emit)
 const t = useI18n()
 const colorMode = useColorMode()
 
-const workspaceService = useService(WorkspaceService)
-const workspace = workspaceService.currentWorkspace
-
 const showMyEnvironmentDetailsModal = ref(false)
-const showTeamEnvironmentDetailsModal = ref(false)
 
 const displayModalAdd = (shouldDisplay: boolean) => {
-  if (workspace.value.type === "personal")
-    showMyEnvironmentDetailsModal.value = shouldDisplay
-  else showTeamEnvironmentDetailsModal.value = shouldDisplay
+  showMyEnvironmentDetailsModal.value = shouldDisplay
 }
 
 /**

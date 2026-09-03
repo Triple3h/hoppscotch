@@ -244,8 +244,6 @@ import { useVModel } from "@vueuse/core"
 import * as E from "fp-ts/Either"
 import { computed, ref, onUnmounted, watch } from "vue"
 import { defineActionHandler, invokeAction } from "~/helpers/actions"
-import { runMutation } from "~/helpers/backend/GQLClient"
-import { UpdateRequestDocument } from "~/helpers/backend/graphql"
 import { getPlatformSpecialKey as getSpecialKey } from "~/helpers/platformutils"
 import { runRESTRequest$ } from "~/helpers/RequestRunner"
 import { HoppRESTResponse } from "~/helpers/types/HoppRESTResponse"
@@ -607,38 +605,6 @@ const saveRequest = async () => {
     } catch (_e) {
       tab.value.document.saveContext = undefined
       saveRequest()
-    }
-  } else if (saveCtx.originLocation === "team-collection") {
-    const req = tab.value.document.request
-
-    // TODO: handle error case (NOTE: overwriteRequestTeams is async)
-    try {
-      platform.analytics?.logEvent({
-        type: "HOPP_SAVE_REQUEST",
-        platform: "rest",
-        createdNow: false,
-        workspaceType: "team",
-      })
-
-      runMutation(UpdateRequestDocument, {
-        requestID: saveCtx.requestID,
-        data: {
-          title: req.name,
-          request: JSON.stringify(req),
-        },
-      })().then((result) => {
-        if (E.isLeft(result)) {
-          toast.error(`${t("profile.no_permission")}`)
-        } else {
-          tab.value.document.isDirty = false
-
-          toast.success(`${t("request.saved")}`)
-        }
-      })
-    } catch (error) {
-      showSaveRequestModal.value = true
-      toast.error(`${t("error.something_went_wrong")}`)
-      console.error(error)
     }
   }
 }

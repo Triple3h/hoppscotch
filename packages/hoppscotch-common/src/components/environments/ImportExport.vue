@@ -16,7 +16,7 @@ import {
   stripClientLocalValuesForWire,
 } from "~/helpers/clientLocalVariables"
 import * as E from "fp-ts/Either"
-import { ref } from "vue"
+import { computed, ref } from "vue"
 
 import { ImporterOrExporter } from "~/components/importExport/types"
 import { useI18n } from "~/composables/i18n"
@@ -35,14 +35,9 @@ import {
 import { useService } from "dioc/vue"
 import { CurrentValueService } from "~/services/current-environment-value.service"
 import { SecretEnvironmentService } from "~/services/secret-environment.service"
-import { GQLError } from "~/helpers/backend/GQLClient"
-import { CreateTeamEnvironmentMutation } from "~/helpers/backend/graphql"
-import { createTeamEnvironment } from "~/helpers/backend/mutations/TeamEnvironment"
 import { insomniaEnvImporter } from "~/helpers/import-export/import/insomnia/insomniaEnv"
 import { postmanEnvImporter } from "~/helpers/import-export/import/postmanEnv"
-import { TeamEnvironment } from "~/helpers/teams/TeamEnvironment"
 
-import { computed } from "vue"
 import { useReadonlyStream } from "~/composables/stream"
 import { initializeDownloadFile } from "~/helpers/import-export/export"
 import { transformEnvironmentVariables } from "~/helpers/import-export/export/environment"
@@ -57,10 +52,11 @@ import IconUser from "~icons/lucide/user"
 const t = useI18n()
 const toast = useToast()
 
-const props = defineProps<{
-  teamEnvironments?: TeamEnvironment[]
-  teamId?: string | undefined
-  environmentType: "MY_ENV" | "TEAM_ENV"
+// The app is personal-workspace-only, so environment imports/exports always
+// target personal environments. The prop is retained because the parent
+// (environments/my/index.vue) still passes `environment-type="MY_ENV"`.
+defineProps<{
+  environmentType: "MY_ENV"
 }>()
 
 const myEnvironments = useReadonlyStream(environments$, [])
@@ -80,23 +76,11 @@ const isGistImporterInProgress = ref(false)
 
 const isEnvironmentGistExportInProgress = ref(false)
 
-const isTeamEnvironment = computed(() => {
-  return props.environmentType === "TEAM_ENV"
-})
-
 const environmentJson = computed(() => {
-  if (isTeamEnvironment.value && props.teamEnvironments) {
-    return props.teamEnvironments.map(({ environment }) =>
-      transformEnvironmentVariables(environment)
-    )
-  }
-
   return myEnvironments.value.map(transformEnvironmentVariables)
 })
 
-const workspaceType = computed(() =>
-  isTeamEnvironment.value ? "team" : "personal"
-)
+const workspaceType = "personal"
 
 const HoppEnvironmentsImport: ImporterOrExporter = {
   metadata: {
@@ -104,7 +88,7 @@ const HoppEnvironmentsImport: ImporterOrExporter = {
     name: "import.from_json",
     icon: IconFolderPlus,
     title: "import.from_json",
-    applicableTo: ["personal-workspace", "team-workspace"],
+    applicableTo: ["personal-workspace"],
     disabled: false,
   },
   component: FileSource({
@@ -121,7 +105,7 @@ const HoppEnvironmentsImport: ImporterOrExporter = {
         platform.analytics?.logEvent({
           type: "HOPP_IMPORT_ENVIRONMENT",
           platform: "rest",
-          workspaceType: isTeamEnvironment.value ? "team" : "personal",
+          workspaceType: "personal",
         })
 
         emit("hide-modal")
@@ -141,7 +125,7 @@ const PostmanEnvironmentsImport: ImporterOrExporter = {
     name: "import.from_postman",
     icon: IconPostman,
     title: "import.from_json",
-    applicableTo: ["personal-workspace", "team-workspace"],
+    applicableTo: ["personal-workspace"],
     disabled: false,
   },
   component: FileSource({
@@ -158,7 +142,7 @@ const PostmanEnvironmentsImport: ImporterOrExporter = {
         platform.analytics?.logEvent({
           type: "HOPP_IMPORT_ENVIRONMENT",
           platform: "rest",
-          workspaceType: isTeamEnvironment.value ? "team" : "personal",
+          workspaceType: "personal",
         })
 
         emit("hide-modal")
@@ -178,7 +162,7 @@ const insomniaEnvironmentsImport: ImporterOrExporter = {
     name: "import.from_insomnia",
     icon: IconInsomnia,
     title: "import.from_json",
-    applicableTo: ["personal-workspace", "team-workspace"],
+    applicableTo: ["personal-workspace"],
     disabled: false,
   },
   component: FileSource({
@@ -202,7 +186,7 @@ const insomniaEnvironmentsImport: ImporterOrExporter = {
         platform.analytics?.logEvent({
           type: "HOPP_IMPORT_ENVIRONMENT",
           platform: "rest",
-          workspaceType: isTeamEnvironment.value ? "team" : "personal",
+          workspaceType: "personal",
         })
 
         emit("hide-modal")
@@ -222,7 +206,7 @@ const EnvironmentsImportFromGIST: ImporterOrExporter = {
     name: "import.environments_from_gist",
     icon: IconFolderPlus,
     title: "import.environments_from_gist",
-    applicableTo: ["personal-workspace", "team-workspace"],
+    applicableTo: ["personal-workspace"],
     disabled: false,
   },
   component: GistSource({
@@ -243,7 +227,7 @@ const EnvironmentsImportFromGIST: ImporterOrExporter = {
         platform.analytics?.logEvent({
           type: "HOPP_IMPORT_ENVIRONMENT",
           platform: "rest",
-          workspaceType: isTeamEnvironment.value ? "team" : "personal",
+          workspaceType: "personal",
         })
         emit("hide-modal")
       } else {
@@ -263,7 +247,7 @@ const HoppEnvironmentsExport: ImporterOrExporter = {
     title: "action.download_file",
     icon: IconUser,
     disabled: false,
-    applicableTo: ["personal-workspace", "team-workspace"],
+    applicableTo: ["personal-workspace"],
   },
   action: async () => {
     if (!environmentJson.value.length) {
@@ -272,7 +256,7 @@ const HoppEnvironmentsExport: ImporterOrExporter = {
 
     const message = await initializeDownloadFile(
       environmentsExporter(environmentJson.value),
-      `hoppscotch-${workspaceType.value}-environments`
+      `hoppscotch-${workspaceType}-environments`
     )
 
     if (E.isLeft(message)) {
@@ -303,7 +287,7 @@ const HoppEnvironmentsGistExporter: ImporterOrExporter = {
     disabled: !currentUser.value
       ? true
       : currentUser.value?.provider !== "github.com",
-    applicableTo: ["personal-workspace", "team-workspace"],
+    applicableTo: ["personal-workspace"],
     isLoading: isEnvironmentGistExportInProgress,
   },
   action: async () => {
@@ -372,9 +356,9 @@ const handleImportToStore = async (
   environments: Environment[],
   globalEnvs: Environment[] = []
 ) => {
-  // Per-env populate happens inside MY_ENV / TEAMS branches below, each
-  // keyed appropriately. Globals share the single `"Global"` key and must
-  // merge with existing entries — hydrate, concat, populate once.
+  // Per-env populate happens inside the MY_ENV branch below, each keyed
+  // appropriately. Globals share the single `"Global"` key and must merge
+  // with existing entries — hydrate, concat, populate once.
   if (globalEnvs.length > 0) {
     const importedGlobals = globalEnvs.flatMap(({ variables }) => variables)
 
@@ -425,71 +409,30 @@ const handleImportToStore = async (
     )
   }
 
-  if (props.environmentType === "MY_ENV") {
-    // Always stamp a fresh temp id, even if the export carried one —
-    // re-using the exported `id` would land the populate on a store
-    // entry already owned by the original environment (then the sync
-    // remap would migrate that entry away, blanking the original's
-    // secrets). A fresh id guarantees no collision with anything in
-    // the store before the sync handler creates the new backend row.
-    const envsWithIds = environments.map((env) => ({
-      ...env,
-      id: generateUniqueRefId("env"),
-    }))
+  // Always stamp a fresh temp id, even if the export carried one —
+  // re-using the exported `id` would land the populate on a store
+  // entry already owned by the original environment (then the sync
+  // remap would migrate that entry away, blanking the original's
+  // secrets). A fresh id guarantees no collision with anything in
+  // the store before the sync handler creates the new backend row.
+  const envsWithIds = environments.map((env) => ({
+    ...env,
+    id: generateUniqueRefId("env"),
+  }))
 
-    envsWithIds.forEach((env) => {
-      populateLocalStoresFromVariables(
-        env.id,
-        promoteInitialValueForImport(env.variables)
-      )
-    })
-
-    const strippedEnvironments = envsWithIds.map((env) => ({
-      ...env,
-      variables: stripClientLocalValuesForWire(env.variables),
-    }))
-    appendEnvironments(strippedEnvironments)
-    toast.success(t("state.file_imported"))
-  } else {
-    await importToTeams(environments)
-  }
-}
-
-const importToTeams = async (content: Environment[]) => {
-  const envImportPromises: Promise<
-    E.Either<GQLError<"">, CreateTeamEnvironmentMutation>
-  >[] = []
-
-  for (const [, env] of content.entries()) {
-    const res = createTeamEnvironment(
-      JSON.stringify(stripClientLocalValuesForWire(env.variables)),
-      props.teamId as string,
-      env.name
-    )()
-
-    envImportPromises.push(res)
-  }
-
-  const res = await Promise.all(envImportPromises)
-
-  // Populate local stores keyed by the new backend env ID — this device
-  // retains the raw values; the team DB row stays clean.
-  res.forEach((entry, index) => {
-    if (E.isRight(entry)) {
-      populateLocalStoresFromVariables(
-        entry.right.createTeamEnvironment.id,
-        promoteInitialValueForImport(content[index].variables)
-      )
-    }
+  envsWithIds.forEach((env) => {
+    populateLocalStoresFromVariables(
+      env.id,
+      promoteInitialValueForImport(env.variables)
+    )
   })
 
-  const failedImports = res.some((r) => E.isLeft(r))
-
-  if (failedImports) {
-    toast.error(t("import.failed"))
-  } else {
-    toast.success(t("import.success"))
-  }
+  const strippedEnvironments = envsWithIds.map((env) => ({
+    ...env,
+    variables: stripClientLocalValuesForWire(env.variables),
+  }))
+  appendEnvironments(strippedEnvironments)
+  toast.success(t("state.file_imported"))
 }
 
 const emit = defineEmits<{

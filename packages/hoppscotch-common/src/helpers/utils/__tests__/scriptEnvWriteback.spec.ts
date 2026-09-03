@@ -61,7 +61,7 @@ describe("frozenInitialValueForWire", () => {
 
   it("gives duplicate keys their OWN initialValue (membership, not a value lookup)", () => {
     // The bug this guards against: a Map keyed by name collapsed duplicates
-    // last-wins, pushing the wrong default to a shared team env.
+    // last-wins, pushing the wrong default to a shared environment.
     const existing = new Set(["x"])
     expect(
       frozenInitialValueForWire({ key: "x", initialValue: "A" }, existing)

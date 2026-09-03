@@ -28,10 +28,6 @@ export type EncodeMode = (typeof EncodeModes)[number]
 export type HoppAccentColor = (typeof HoppAccentColors)[number]
 
 export type SettingsDef = {
-  syncCollections: boolean
-  syncHistory: boolean
-  syncEnvironments: boolean
-
   PROXY_URL: string
 
   WRAP_LINES: {
@@ -90,10 +86,6 @@ export type SettingsDef = {
 
 export const getDefaultSettings = (): SettingsDef => {
   return {
-    syncCollections: true,
-    syncHistory: true,
-    syncEnvironments: true,
-
     WRAP_LINES: {
       httpRequestBody: true,
       httpResponseBody: true,

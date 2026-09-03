@@ -3,40 +3,20 @@ import { GQLResponseEvent } from "./connection"
 import { GQLOptionTabs } from "~/components/graphql/RequestOptions.vue"
 import { HoppInheritedProperty } from "../types/HoppInheritedProperties"
 
-export type HoppGQLSaveContext =
-  | {
-      /**
-       * The origin source of the request
-       */
-      originLocation: "user-collection"
-      /**
-       * Path to the request folder
-       */
-      folderPath: string
-      /**
-       * Index to the request
-       */
-      requestIndex: number
-    }
-  | {
-      /**
-       * The origin source of the request
-       */
-      originLocation: "team-collection"
-      /**
-       * ID of the request in the team
-       */
-      requestID: string
-      /**
-       * ID of the team
-       */
-      teamID?: string
-      /**
-       * ID of the collection loaded
-       */
-      collectionID?: string
-    }
-  | null
+export type HoppGQLSaveContext = {
+  /**
+   * The origin source of the request
+   */
+  originLocation: "user-collection"
+  /**
+   * Path to the request folder
+   */
+  folderPath: string
+  /**
+   * Index to the request
+   */
+  requestIndex: number
+} | null
 
 /**
  * Defines a live 'document' (something that is open and being edited) in the app

@@ -184,9 +184,6 @@ import {
 } from "~/composables/lens-actions"
 import { editRESTRequest } from "~/newstore/collections"
 import { HoppGQLRequestDocument } from "~/helpers/tab/document"
-import { runMutation } from "~/helpers/backend/GQLClient"
-import { UpdateRequestDocument } from "~/helpers/backend/graphql"
-import * as E from "fp-ts/Either"
 
 const t = useI18n()
 const toast = useToast()
@@ -469,27 +466,6 @@ const onSaveAsExample = () => {
       console.error(e)
     }
     responseName.value = ""
-    return
-  }
-
-  if (saveCtx.originLocation === "team-collection") {
-    runMutation(UpdateRequestDocument, {
-      requestID: saveCtx.requestID,
-      data: {
-        title: doc.value.request.name,
-        request: JSON.stringify(doc.value.request),
-      },
-    })().then((result) => {
-      if (E.isLeft(result)) {
-        toast.error(`${t("profile.no_permission")}`)
-      } else {
-        // The example is persisted — clear the dirty flag like the REST
-        // sibling (http/Response.vue) does
-        if (doc.value) doc.value.isDirty = false
-        toast.success(`${t("response.saved")}`)
-      }
-      responseName.value = ""
-    })
     return
   }
 

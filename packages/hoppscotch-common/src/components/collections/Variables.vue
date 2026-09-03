@@ -18,14 +18,12 @@
         <template #actions>
           <div class="flex flex-1 items-center justify-between">
             <HoppButtonSecondary
-              v-if="hasTeamWriteAccess"
               v-tippy="{ theme: 'tooltip' }"
               :title="t('action.clear_all')"
               :icon="clearIcon"
               @click="clearContent()"
             />
             <HoppButtonSecondary
-              v-if="hasTeamWriteAccess"
               v-tippy="{ theme: 'tooltip' }"
               :icon="IconPlus"
               :title="t('add.new')"
@@ -52,7 +50,6 @@
                   @keyup.escape="hide()"
                 >
                   <HoppSmartItem
-                    v-if="hasTeamWriteAccess"
                     v-tippy="{ theme: 'tooltip' }"
                     :icon="IconCopyLeft"
                     :label="t('environment.replace_all_initial_with_current')"
@@ -99,7 +96,6 @@
             >
               <template #body>
                 <HoppButtonSecondary
-                  v-if="hasTeamWriteAccess"
                   :label="`${t('add.new')}`"
                   filled
                   :icon="IconPlus"
@@ -122,10 +118,6 @@
                     count: index + 1,
                   })}`"
                   :name="'variable' + index"
-                  :class="{
-                    'opacity-25': !hasTeamWriteAccess,
-                  }"
-                  :disabled="!hasTeamWriteAccess"
                 />
                 <div class="flex items-center flex-1">
                   <SmartEnvInput
@@ -135,13 +127,11 @@
                     :auto-complete-env="true"
                     :name="'initialValue' + index"
                     :secret="tab.isSecret"
-                    :readonly="!hasTeamWriteAccess"
                   />
                   <HoppButtonSecondary
                     v-tippy="{ theme: 'tooltip' }"
                     :title="t('environment.replace_initial_with_current')"
                     :icon="IconCopyLeft"
-                    :disabled="!hasTeamWriteAccess"
                     @click="
                       () => {
                         env.initialValue = env.currentValue
@@ -171,7 +161,7 @@
                   />
                 </div>
 
-                <div v-if="hasTeamWriteAccess" class="flex">
+                <div class="flex">
                   <HoppButtonSecondary
                     id="variable"
                     v-tippy="{ theme: 'tooltip' }"
@@ -222,7 +212,6 @@ const colorMode = useColorMode()
 const props = defineProps<{
   modelValue: HoppCollectionVariable[]
   inheritedProperties?: HoppInheritedProperty
-  hasTeamWriteAccess: boolean
   // Store key this collection's secret/current values are saved under; lets the
   // env tooltip resolve own-collection secrets (set by Properties.vue).
   collectionStoreKey?: string

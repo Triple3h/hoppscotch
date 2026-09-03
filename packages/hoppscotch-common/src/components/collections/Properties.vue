@@ -13,11 +13,7 @@
         styles="sticky overflow-x-auto flex-shrink-0 bg-primary top-0 z-10 !-py-4"
         render-inactive-tabs
       >
-        <HoppSmartTab
-          v-if="hasTeamWriteAccess"
-          id="headers"
-          :label="`${t('tab.headers')}`"
-        >
+        <HoppSmartTab id="headers" :label="`${t('tab.headers')}`">
           <HttpHeaders
             v-model="editableCollection"
             :is-collection-property="true"
@@ -32,11 +28,7 @@
           </div>
         </HoppSmartTab>
 
-        <HoppSmartTab
-          v-if="hasTeamWriteAccess"
-          id="authorization"
-          :label="`${t('tab.authorization')}`"
-        >
+        <HoppSmartTab id="authorization" :label="`${t('tab.authorization')}`">
           <HttpAuthorization
             v-model="editableCollection.auth"
             :is-collection-property="true"
@@ -62,7 +54,6 @@
           <CollectionsVariables
             v-model="editableCollection.variables"
             :inherited-properties="editingProperties.inheritedProperties"
-            :has-team-write-access="hasTeamWriteAccess"
             :collection-store-key="collectionStoreKey"
           />
         </HoppSmartTab>
@@ -95,7 +86,6 @@
                       "
                       v-model="editableCollection.preRequestScript"
                       type="pre-request"
-                      :read-only="!hasTeamWriteAccess"
                     />
                     <div
                       v-else
@@ -123,7 +113,6 @@
                       "
                       v-model="editableCollection.testScript"
                       type="post-request"
-                      :read-only="!hasTeamWriteAccess"
                     />
                     <div
                       v-else
@@ -265,7 +254,7 @@ export type EditingProperties = {
   path: string
   inheritedProperties?: HoppInheritedProperty
   // Key the collection's secret/current values are stored under, computed
-  // authoritatively by `editProperties` (team → `id`, personal → `_ref_id`).
+  // authoritatively by `editProperties`.
   collectionStoreKey?: string
 }
 type HoppCollectionAuth = HoppRESTAuth | HoppGQLAuth
@@ -279,13 +268,11 @@ const props = withDefaults(
     source: "REST" | "GraphQL"
     modelValue: string
     showDetails?: boolean
-    hasTeamWriteAccess?: boolean
   }>(),
   {
     show: false,
     loadingState: false,
     showDetails: false,
-    hasTeamWriteAccess: true,
   }
 )
 
@@ -382,7 +369,7 @@ useCodemirror(
       mode: "application/javascript",
       lineWrapping: true,
       placeholder: `${t("preRequest.javascript_code")}`,
-      readOnly: !props.hasTeamWriteAccess,
+      readOnly: false,
     },
     linter: preRequestLinter,
     completer: preRequestCompleter,
@@ -399,7 +386,7 @@ useCodemirror(
       mode: "application/javascript",
       lineWrapping: true,
       placeholder: `${t("test.javascript_code")}`,
-      readOnly: !props.hasTeamWriteAccess,
+      readOnly: false,
     },
     linter: testScriptLinter,
     completer: testScriptCompleter,
@@ -437,16 +424,8 @@ const handleModalVisibility = async (show: boolean) => {
 
 const enforceTabAccessRules = () => {
   // `Details` tab doesn't exist for personal workspace, hence switching to the `Headers` tab
-  // The modal can appear empty while switching from a team workspace with `Details` as the active tab
   if (activeTab.value === "details" && !props.showDetails)
     activeTab.value = "headers"
-  // If the user doesn't have write access to the team, switch to `Variables` tab
-  // when the `Headers` or `Authorization` tab is active
-  if (
-    !props.hasTeamWriteAccess &&
-    ["headers", "authorization"].includes(activeTab.value)
-  )
-    activeTab.value = "variables"
   // `Scripts` tab only exists for REST collections
   // Switch to `Variables` tab if scripts tab becomes unavailable
   if (activeTab.value === "scripts" && props.source !== "REST")

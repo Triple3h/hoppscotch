@@ -17,14 +17,7 @@ import { SecretEnvironmentService } from "~/services/secret-environment.service"
 import { coerceGlobalEnvironment } from "~/helpers/globalEnvShape"
 
 export type SelectedEnvironmentIndex =
-  | { type: "NO_ENV_SELECTED" }
-  | { type: "MY_ENV"; index: number }
-  | {
-      type: "TEAM_ENV"
-      teamID: string
-      teamEnvID: string
-      environment: Environment
-    }
+  { type: "NO_ENV_SELECTED" } | { type: "MY_ENV"; index: number }
 
 const defaultGlobalEnvironmentState: GlobalEnvironment = {
   v: 2,
@@ -999,18 +992,11 @@ export function removeDuplicateEntry(id: string) {
 }
 
 type SelectedEnv =
-  | { type: "NO_ENV_SELECTED" }
-  | { type: "MY_ENV"; index: number }
-  | { type: "TEAM_ENV" }
+  { type: "NO_ENV_SELECTED" } | { type: "MY_ENV"; index: number }
 
 export function getEnvironment(selectedEnv: SelectedEnv) {
   if (selectedEnv.type === "MY_ENV") {
     return environmentsStore.value.environments[selectedEnv.index]
-  } else if (
-    selectedEnv.type === "TEAM_ENV" &&
-    environmentsStore.value.selectedEnvironmentIndex.type === "TEAM_ENV"
-  ) {
-    return environmentsStore.value.selectedEnvironmentIndex.environment
   }
   return {
     name: "N0_ENV",

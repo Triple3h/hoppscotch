@@ -1,5 +1,4 @@
 import { Environment } from "@hoppscotch/data"
-import { TeamEnvironment } from "../teams/TeamEnvironment"
 
 type SortOrder = "asc" | "desc"
 
@@ -50,22 +49,5 @@ export const sortPersonalEnvironmentsAlphabetically = (
     environments,
     order,
     (env) => env.name
-  )
-}
-
-/**
- * Returns an object with sorted team environments and index.
- * @param environments Array of team environments.
- * @param order Sorting order.
- * @returns {EnvironmentWithIndex<TeamEnvironment>[]} Object with sorted environments and their index.
- */
-export const sortTeamEnvironmentsAlphabetically = (
-  environments: TeamEnvironment[],
-  order: SortOrder
-): EnvironmentWithIndex<TeamEnvironment>[] => {
-  return sortEnvironmentsAlphabetically<TeamEnvironment>(
-    environments,
-    order,
-    (env) => env.environment.name
   )
 }

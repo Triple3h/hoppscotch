@@ -52,18 +52,6 @@ vi.mock("~/newstore/history", () => ({
   },
 }))
 
-vi.mock("~/lib/sync/history", () => ({
-  __esModule: true,
-  def: {
-    initHistorySync: vi.fn(),
-    requestHistoryStore: {
-      isHistoryStoreEnabled: { value: true },
-      isFetchingHistoryStoreStatus: { value: false },
-      hasErrorFetchingHistoryStoreStatus: { value: false },
-    },
-  },
-}))
-
 describe("HistorySpotlightSearcherService", () => {
   beforeEach(() => {
     let x = actionsMock.value.pop()

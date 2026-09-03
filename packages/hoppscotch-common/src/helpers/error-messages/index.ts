@@ -6,10 +6,6 @@ export const getEnvActionErrorMessage = (err: GQLError<string>) => {
   }
 
   switch (err.error) {
-    case "team_environment/not_found":
-      return "team_environment.not_found"
-    case "team_environment/short_name":
-      return "environment.short_name"
     case "Forbidden resource":
       return "profile.no_permission"
     default:

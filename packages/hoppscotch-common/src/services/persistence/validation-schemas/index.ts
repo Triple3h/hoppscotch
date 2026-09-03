@@ -33,9 +33,6 @@ const BgColorSchema = z.enum(["system", "light", "dark", "black"])
 const EncodeMode = z.enum(["enable", "disable", "auto"])
 
 const SettingsDefSchema = z.object({
-  syncCollections: z.boolean(),
-  syncHistory: z.boolean(),
-  syncEnvironments: z.boolean(),
   PROXY_URL: z.string(),
   CURRENT_KERNEL_INTERCEPTOR_ID: z.string(),
   URL_EXCLUDES: z.object({
@@ -133,14 +130,7 @@ export const THEME_COLOR_SCHEMA = z.enum(HoppAccentColors)
 
 export const NUXT_COLOR_MODE_SCHEMA = z.enum(HoppBgColors)
 
-export const LOCAL_STATE_SCHEMA = z.union([
-  z.object({}).strict(),
-  z
-    .object({
-      REMEMBERED_TEAM_ID: z.optional(z.string()),
-    })
-    .strict(),
-])
+export const LOCAL_STATE_SCHEMA = z.object({}).strict()
 
 export const SETTINGS_SCHEMA = SettingsDefSchema.extend({
   EXTENSIONS_ENABLED: z.optional(z.boolean()),
@@ -218,12 +208,6 @@ export const SELECTED_ENV_INDEX_SCHEMA = z.nullable(
         index: z.number(),
       })
       .strict(),
-    z.object({
-      type: z.literal("TEAM_ENV"),
-      teamID: z.string(),
-      teamEnvID: z.string(),
-      environment: entityReference(Environment),
-    }),
   ])
 )
 
@@ -311,14 +295,6 @@ const HoppGQLSaveContextSchema = z.nullable(
         originLocation: z.literal("user-collection"),
         folderPath: z.string(),
         requestIndex: z.number(),
-      })
-      .strict(),
-    z
-      .object({
-        originLocation: z.literal("team-collection"),
-        requestID: z.string(),
-        teamID: z.optional(z.string()),
-        collectionID: z.optional(z.string()),
       })
       .strict(),
   ])
@@ -603,16 +579,6 @@ const HoppTabSaveContextSchema = z.nullable(
         requestRefID: z.optional(z.string()),
       })
       .strict(),
-    z
-      .object({
-        originLocation: z.literal("team-collection"),
-        requestID: z.string(),
-        teamID: z.optional(z.string()),
-        collectionID: z.optional(z.string()),
-        exampleID: z.optional(z.string()),
-        requestRefID: z.optional(z.string()),
-      })
-      .strict(),
   ])
 )
 
@@ -711,7 +677,9 @@ export const WORKSPACE_TABS_STATE_SCHEMA = z
             }),
             status: z.enum(["idle", "running", "stopped", "error"]),
             collection: HoppRESTCollectionSchema,
-            collectionType: z.enum(["my-collections", "team-collections"]),
+            // Team-collections runner tabs (removed feature) gracefully degrade
+            // to personal instead of failing the whole tabs-state parse
+            collectionType: z.literal("my-collections").catch("my-collections"),
             collectionID: z.optional(z.string()),
             resultCollection: z.optional(TestRunnerResultCollectionSchema),
             iterationResults: z.optional(

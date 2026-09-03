@@ -14,91 +14,43 @@ import { HoppTestResult } from "../types/HoppTestResult"
 import { TestRunnerRequest } from "~/services/test-runner/test-runner.service"
 import { TestRunnerDataset } from "../runner/dataset"
 
-export type HoppTabSaveContext =
-  | {
-      /**
-       * The origin source of the request
-       */
-      originLocation: "user-collection"
-      /**
-       * Path to the request folder
-       */
-      folderPath: string
-      /**
-       * Index to the request
-       */
-      requestIndex?: number
-      /**
-       * ID of the example response
-       */
-      exampleID?: string
-      /**
-       * Reference ID of the request, if available
-       */
-      requestRefID?: string
-    }
-  | {
-      /**
-       * The origin source of the request
-       */
-      originLocation: "team-collection"
-      /**
-       * ID of the request in the team
-       */
-      requestID: string
-      /**
-       * ID of the team
-       */
-      teamID?: string
-      /**
-       * ID of the collection loaded
-       */
-      collectionID?: string
-      /**
-       * ID of the example response
-       */
-      exampleID?: string
-      /**
-       * Reference ID of the request, if available
-       */
-      requestRefID?: string
-    }
-  | null
+export type HoppTabSaveContext = {
+  /**
+   * The origin source of the request
+   */
+  originLocation: "user-collection"
+  /**
+   * Path to the request folder
+   */
+  folderPath: string
+  /**
+   * Index to the request
+   */
+  requestIndex?: number
+  /**
+   * ID of the example response
+   */
+  exampleID?: string
+  /**
+   * Reference ID of the request, if available
+   */
+  requestRefID?: string
+} | null
 
 /**
  * Defines a live 'document' (something that is open and being edited) in the app
  */
 
-export type HoppCollectionSaveContext =
-  | {
-      /**
-       * The origin source of the request
-       */
-      originLocation: "user-collection"
-      /**
-       * Path to the request folder
-       */
-      folderPath: string
-    }
-  | {
-      /**
-       * The origin source of the request
-       */
-      originLocation: "team-collection"
-      /**
-       * ID of the team
-       */
-      teamID?: string
-      /**
-       * ID of the collection loaded
-       */
-      collectionID?: string
-      /**
-       * ID of the request in the team
-       */
-      requestID: string
-    }
-  | null
+export type HoppCollectionSaveContext = {
+  /**
+   * The origin source of the request
+   */
+  originLocation: "user-collection"
+  /**
+   * Path to the request folder
+   */
+  folderPath: string
+} | null
 
 export type TestRunnerConfig = {
   iterations: number
@@ -148,11 +100,11 @@ export type HoppTestRunnerDocument = {
   /**
    * The type of the collection
    */
-  collectionType: "my-collections" | "team-collections"
+  collectionType: "my-collections"
 
   /**
-   * collection ID to be used for team collections
-   * (if it's my-collections, the _ref_id will be used as collectionID)
+   * collection ID of the personal collection
+   * (the _ref_id is used as collectionID)
    */
   collectionID: string
 

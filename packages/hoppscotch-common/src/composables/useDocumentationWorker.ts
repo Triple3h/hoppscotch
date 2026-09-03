@@ -19,7 +19,6 @@ export interface DocumentationItem {
 interface QueueItem {
   collection: HoppCollection
   pathOrID: string | null
-  isTeamCollection: boolean
   resolve: (items: DocumentationItem[]) => void
   reject: (error: Error) => void
 }
@@ -112,7 +111,6 @@ function processQueue() {
       type: "GATHER_DOCUMENTATION",
       collection: collectionString,
       pathOrID: nextItem.pathOrID,
-      isTeamCollection: nextItem.isTeamCollection,
     })
   } catch (error) {
     nextItem.reject(
@@ -131,8 +129,7 @@ export function useDocumentationWorker() {
    */
   function processDocumentation(
     collection: HoppCollection,
-    pathOrID: string | null,
-    isTeamCollection: boolean = false
+    pathOrID: string | null
   ): Promise<DocumentationItem[]> {
     return new Promise((resolve, reject) => {
       if (!collection) {
@@ -144,7 +141,6 @@ export function useDocumentationWorker() {
       queue.push({
         collection,
         pathOrID,
-        isTeamCollection,
         resolve,
         reject,
       })

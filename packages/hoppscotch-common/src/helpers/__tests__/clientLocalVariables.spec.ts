@@ -1,11 +1,11 @@
-import { HoppCollection } from "@hoppscotch/data"
+import { HoppCollection, makeCollection } from "@hoppscotch/data"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { getService } from "~/modules/dioc"
 import { CurrentValueService } from "~/services/current-environment-value.service"
 import { SecretEnvironmentService } from "~/services/secret-environment.service"
 import {
-  flushLocalStoresForTeamCollectionTree,
+  flushLocalStoresForCollectionTree,
   flushUnmatchedRefIdsFromTree,
   indexCollectionsByRefId,
   populateLocalStoresFromCollectionTree,
@@ -718,7 +718,7 @@ describe("flushUnmatchedRefIdsFromTree", () => {
   })
 })
 
-describe("flushLocalStoresForTeamCollectionTree", () => {
+describe("flushLocalStoresForCollectionTree", () => {
   let secretService: SecretEnvironmentService
   let currentValueService: CurrentValueService
 
@@ -729,24 +729,26 @@ describe("flushLocalStoresForTeamCollectionTree", () => {
     currentValueService.environments.clear()
   })
 
-  it("deletes the top-level entry by team backend `id`", () => {
-    secretService.addSecretEnvironment("team-coll-1", [
+  it("deletes the top-level entry by collection id", () => {
+    secretService.addSecretEnvironment("coll-1", [
       { key: "k", value: "v", initialValue: "v", varIndex: 0 },
     ])
-    currentValueService.addEnvironment("team-coll-1", [
+    currentValueService.addEnvironment("coll-1", [
       { key: "k", currentValue: "v", varIndex: 0, isSecret: false },
     ])
 
-    flushLocalStoresForTeamCollectionTree({
-      id: "team-coll-1",
-      children: null,
-    })
+    flushLocalStoresForCollectionTree(
+      makeCollection({
+        id: "coll-1",
+        name: "Test",
+      })
+    )
 
-    expect(secretService.getSecretEnvironment("team-coll-1")).toBeUndefined()
-    expect(currentValueService.getEnvironment("team-coll-1")).toBeUndefined()
+    expect(secretService.getSecretEnvironment("coll-1")).toBeUndefined()
+    expect(currentValueService.getEnvironment("coll-1")).toBeUndefined()
   })
 
-  it("recurses into `children` and flushes every descendant", () => {
+  it("recurses into `folders` and flushes every descendant", () => {
     secretService.addSecretEnvironment("root", [
       { key: "k", value: "v", initialValue: "v", varIndex: 0 },
     ])
@@ -757,15 +759,24 @@ describe("flushLocalStoresForTeamCollectionTree", () => {
       { key: "k", value: "v", initialValue: "v", varIndex: 0 },
     ])
 
-    flushLocalStoresForTeamCollectionTree({
-      id: "root",
-      children: [
-        {
-          id: "child-1",
-          children: [{ id: "grandchild", children: null }],
-        },
-      ],
-    })
+    flushLocalStoresForCollectionTree(
+      makeCollection({
+        id: "root",
+        name: "Root",
+        folders: [
+          makeCollection({
+            id: "child-1",
+            name: "Child",
+            folders: [
+              makeCollection({
+                id: "grandchild",
+                name: "Grandchild",
+              }),
+            ],
+          }),
+        ],
+      })
+    )
 
     expect(secretService.getSecretEnvironment("root")).toBeUndefined()
     expect(secretService.getSecretEnvironment("child-1")).toBeUndefined()

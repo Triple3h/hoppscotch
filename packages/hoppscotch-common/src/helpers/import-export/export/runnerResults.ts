@@ -306,8 +306,7 @@ export const buildRunnerResultReport = (
   return {
     collectionID: document.collectionID,
     collectionName: document.collection.name,
-    collectionType:
-      document.collectionType === "my-collections" ? "PERSONAL" : "SHARED",
+    collectionType: "PERSONAL",
     environment: document.environmentName ?? "Global",
     outcome: deriveOutcome(document),
     exportedAt: new Date().toISOString(),

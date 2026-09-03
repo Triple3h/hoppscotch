@@ -269,30 +269,6 @@ describe("WorkspaceTabsService", () => {
       expect(foundRequest?.value.id).toEqual(requestTab.id)
       expect(foundExample?.value.id).toEqual(exampleTab.id)
     })
-
-    it("matches team tabs by requestID and exampleID", () => {
-      const service = makeService()
-
-      const tab = openRequestTab(service, {
-        originLocation: "team-collection",
-        requestID: "team_req_1",
-      })
-
-      const found = service.getTabRefWithSaveContext({
-        originLocation: "team-collection",
-        requestID: "team_req_1",
-      })
-
-      expect(found?.value.id).toEqual(tab.id)
-
-      expect(
-        service.getTabRefWithSaveContext({
-          originLocation: "team-collection",
-          requestID: "team_req_1",
-          exampleID: "0",
-        })
-      ).toBeNull()
-    })
   })
 
   describe("getTabsRefWithSaveContext", () => {

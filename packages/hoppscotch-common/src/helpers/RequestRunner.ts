@@ -40,7 +40,6 @@ import {
   getGlobalVariables,
   SelectedEnvironmentIndex,
   setGlobalEnvVariables,
-  setSelectedEnvironmentIndex,
   updateEnvironment,
 } from "~/newstore/environments"
 import { platform } from "~/platform"
@@ -54,7 +53,6 @@ import {
   SecretVariable,
 } from "~/services/secret-environment.service"
 import { HoppTab } from "~/services/tab"
-import { updateTeamEnvironment } from "./backend/mutations/TeamEnvironment"
 import { createRESTNetworkRequestStream } from "./network"
 import { HoppRequestDocument } from "./tab/document"
 import { stripIterationVarsFromEnvs } from "./runner/iteration-vars"
@@ -298,8 +296,7 @@ const updateEnvironments = (
       // `currentValue` is per-user/per-session by Hoppscotch convention and
       // is never persisted server-side. The actual value lives in the local
       // `currentEnvironmentValueService` (populated above); the wire payload
-      // gets it cleared so test-script env updates can't leak per-user state
-      // into the team backend.
+      // gets it cleared so test-script env updates can't leak per-user state.
       //
       // The shared `initialValue` is the editor's to change, never a script's:
       // a pre-existing non-secret var keeps its own default; a script-created
@@ -756,7 +753,7 @@ export function updateEnvsAfterTestScript(
   // `hasEnvironmentChanges` guard is an OR across both scopes, so without
   // these per-scope checks a script that touched only the selected env would
   // still trigger an `updateUserEnvironment` round-trip for the unchanged
-  // globals (and the same happens the other way for TEAM_ENV).
+  // globals.
   const globalChanged = hasScopeChanges(
     initialEnvsForComparison.global,
     finalEnvs.global
@@ -799,38 +796,6 @@ export function updateEnvsAfterTestScript(
         id: "id" in env ? env.id : "",
         variables: selectedEnvVariables,
       })
-    } else if (initialEnvironmentIndex.type === "TEAM_ENV") {
-      // Use the initial environment name to avoid issues when environment changes during request execution
-      // adding a fallback to current environment name just in case so it's not null
-      const envName = initialEnvName ?? getCurrentEnvironment().name
-      // `updateEnvironments` above already returns wire-shaped variables
-      pipe(
-        updateTeamEnvironment(
-          JSON.stringify(selectedEnvVariables),
-          initialEnvironmentIndex.teamEnvID,
-          envName
-        )
-      )()
-
-      // Team envs have no local store dispatch (unlike `updateEnvironment` for
-      // MY_ENV), so `currentEnvironment$` — and the aggregate stream feeding the
-      // request field highlights/tooltips — would stay stale until the team-env
-      // subscription round-trips. Optimistically refresh the selected index so
-      // the new values show immediately. Guarded so a mid-request env switch
-      // isn't clobbered.
-      const selected = environmentsStore.value.selectedEnvironmentIndex
-      if (
-        selected.type === "TEAM_ENV" &&
-        selected.teamEnvID === initialEnvironmentIndex.teamEnvID
-      ) {
-        setSelectedEnvironmentIndex({
-          ...selected,
-          environment: {
-            ...selected.environment,
-            variables: selectedEnvVariables,
-          },
-        })
-      }
     }
   }
 }

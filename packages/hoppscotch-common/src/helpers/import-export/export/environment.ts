@@ -2,18 +2,14 @@ import { Environment } from "@hoppscotch/data"
 import * as E from "fp-ts/Either"
 import { cloneDeep } from "lodash-es"
 
-import { TeamEnvironment } from "~/helpers/teams/TeamEnvironment"
 import { stripClientLocalValuesForWire } from "~/helpers/clientLocalVariables"
 import { initializeDownloadFile } from "."
 
 const getEnvironmentJSON = (
-  environmentObj: TeamEnvironment | Environment,
+  environmentObj: Environment,
   environmentIndex?: number | "Global" | null
 ) => {
-  const newEnvironment =
-    "environment" in environmentObj
-      ? cloneDeep(environmentObj.environment)
-      : cloneDeep(environmentObj)
+  const newEnvironment = cloneDeep(environmentObj)
 
   const environmentId =
     environmentIndex || environmentIndex === 0
@@ -46,7 +42,7 @@ export const transformEnvironmentVariables = ({
 }
 
 export const exportAsJSON = async (
-  environmentObj: Environment | TeamEnvironment,
+  environmentObj: Environment,
   environmentIndex?: number | "Global" | null
 ): Promise<E.Right<string> | E.Left<string>> => {
   const environmentJSON = getEnvironmentJSON(environmentObj, environmentIndex)

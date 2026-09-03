@@ -13,7 +13,7 @@ export type ImporterOrExporter = {
     icon: any
     title: string
     disabled: boolean
-    applicableTo: Array<"personal-workspace" | "team-workspace" | "url-import">
+    applicableTo: Array<"personal-workspace" | "url-import">
     isLoading?: Ref<boolean>
     format?: SupportedImportFormat
   }

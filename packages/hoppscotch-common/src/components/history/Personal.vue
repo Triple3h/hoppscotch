@@ -50,11 +50,7 @@
           <HoppButtonSecondary
             v-tippy="{ theme: 'tooltip' }"
             data-testid="clear_history"
-            :disabled="
-              history.length === 0 ||
-              !isHistoryStoreEnabled ||
-              isFetchingHistoryStoreStatus
-            "
+            :disabled="history.length === 0"
             :icon="IconTrash2"
             :title="t('action.clear_all')"
             @click="confirmRemove = true"
@@ -62,10 +58,7 @@
         </div>
       </div>
     </div>
-    <div
-      v-if="isHistoryStoreEnabled && !isFetchingHistoryStoreStatus"
-      class="flex flex-col"
-    >
+    <div class="flex flex-col">
       <details
         v-for="(
           filteredHistoryGroup, filteredHistoryGroupIndex
@@ -116,13 +109,7 @@
       </details>
     </div>
     <HoppSmartPlaceholder
-      v-if="!isHistoryStoreEnabled && !isFetchingHistoryStoreStatus"
-      :src="`/images/states/${colorMode.value}/time.svg`"
-      :alt="`${t('empty.history')}`"
-      :text="t('settings.history_disabled')"
-    />
-    <HoppSmartPlaceholder
-      v-else-if="history.length === 0"
+      v-if="history.length === 0"
       :src="`/images/states/${colorMode.value}/time.svg`"
       :alt="`${t('empty.history')}`"
       :text="t('empty.history')"
@@ -194,7 +181,6 @@ import IconTrash2 from "~icons/lucide/trash-2"
 
 import { useService } from "dioc/vue"
 import { defineActionHandler, invokeAction } from "~/helpers/actions"
-import { sync } from "~/lib/sync/defs"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
 import { GQLTabService } from "~/services/tab/graphql"
 import { isRESTRequest } from "~/helpers/request-type"
@@ -245,9 +231,6 @@ const historySource$ =
       : mergedHistory$
 
 const history = useReadonlyStream<HistoryEntry[]>(historySource$, [])
-
-const { isHistoryStoreEnabled, isFetchingHistoryStoreStatus } =
-  sync.history.requestHistoryStore
 
 const deepCheckForRegex = (value: unknown, regExp: RegExp): boolean => {
   if (value === null || value === undefined) return false

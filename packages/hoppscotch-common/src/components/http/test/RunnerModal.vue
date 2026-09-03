@@ -285,43 +285,13 @@
           </div>
         </HoppSmartTab>
         <HoppSmartTab id="cli" :label="t('collection_runner.cli')">
-          <div v-if="!CLICommand" class="p-4">
+          <div class="p-4">
             <p class="p-4 border rounded-md text-amber-500 border-amber-600">
               {{
                 t("collection_runner.cli_comming_soon_for_personal_collection")
               }}
             </p>
           </div>
-          <template v-else>
-            <HttpTestEnv :show="false" @select-env="setCurrentEnv" />
-
-            <div class="space-y-4 p-4">
-              <p
-                class="p-4 mb-4 border rounded-md text-amber-500 border-amber-600"
-              >
-                {{ cliCommandGenerationDescription }}
-              </p>
-
-              <div v-if="environmentID" class="flex gap-x-2 items-center">
-                <HoppSmartCheckbox
-                  :on="includeEnvironmentID"
-                  @change="toggleIncludeEnvironment"
-                />
-                <span class="truncate"
-                  >{{ t("collection_runner.include_active_environment") }}
-                  <span class="text-secondaryDark">
-                    {{ currentEnv?.name }}
-                  </span>
-                </span>
-              </div>
-
-              <div
-                class="p-4 rounded-md bg-primaryLight text-secondaryDark select-text"
-              >
-                {{ CLICommand }}
-              </div>
-            </div>
-          </template>
         </HoppSmartTab>
         <template #actions>
           <HoppButtonSecondary
@@ -351,13 +321,6 @@
           :icon="IconPlay"
           outline
           @click="runTests"
-        />
-        <HoppButtonPrimary
-          v-else-if="CLICommand"
-          :label="`${t('action.copy')}`"
-          :icon="copyIcon"
-          outline
-          @click="copyCLICommandToClipboard"
         />
         <HoppButtonSecondary
           :label="`${t('action.close')}`"
@@ -459,7 +422,6 @@
 </template>
 
 <script setup lang="ts">
-import { refAutoReset } from "@vueuse/core"
 import { computed, onMounted, ref } from "vue"
 import { useI18n } from "~/composables/i18n"
 
@@ -469,27 +431,14 @@ import { useToast } from "~/composables/toast"
 import { TestRunnerConfig } from "~/helpers/tab/document"
 import { parseDatasetFile } from "~/helpers/runner/dataset"
 import { collectRequestIDs } from "~/helpers/runner/selection"
-import { copyToClipboard } from "~/helpers/utils/clipboard"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
-import IconCheck from "~icons/lucide/check"
-import IconCopy from "~icons/lucide/copy"
 import IconEye from "~icons/lucide/eye"
 import IconHelpCircle from "~icons/lucide/help-circle"
 import IconPlay from "~icons/lucide/play"
 import IconTrash from "~icons/lucide/trash"
-import { CurrentEnv } from "./Env.vue"
-import { pipe } from "fp-ts/lib/function"
-import {
-  getCompleteCollectionTree,
-  teamCollToHoppRESTColl,
-} from "~/helpers/backend/helpers"
-import * as TE from "fp-ts/TaskEither"
 import * as E from "fp-ts/Either"
-import { GQLError } from "~/helpers/backend/GQLClient"
 import { cloneDeep } from "lodash-es"
-import { getErrorMessage } from "~/helpers/runner/collection-tree"
 import { getRESTCollectionByRefId } from "~/newstore/collections"
-import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
 
 const t = useI18n()
 const toast = useToast()
@@ -497,18 +446,12 @@ const tabs = useService(WorkspaceTabsService)
 
 const loadingCollection = ref(false)
 
-export type CollectionRunnerData =
-  | {
-      type: "my-collections"
-      // for my-collections it's actually _ref_id
-      collectionID: string
-      collectionIndex?: string
-    }
-  | {
-      type: "team-collections"
-      collectionID: string
-      inheritedProperties?: HoppInheritedProperty
-    }
+export type CollectionRunnerData = {
+  type: "my-collections"
+  // for my-collections it's actually _ref_id
+  collectionID: string
+  collectionIndex?: string
+}
 
 const props = defineProps<{
   sameTab?: boolean
@@ -525,11 +468,8 @@ const emit = defineEmits<{
   (e: "hide-modal"): void
 }>()
 
-const includeEnvironmentID = ref(false)
 const activeTab = ref<"gui" | "cli">("gui")
 
-const environmentID = ref("")
-const currentEnv = ref<CurrentEnv>(null)
 const showDataPreview = ref(false)
 const dataFileInput = ref<HTMLInputElement | null>(null)
 
@@ -586,13 +526,6 @@ const runnerLink = computed(() => {
     : "https://docs.hoppscotch.io/documentation/clients/cli/overview#running-collections-present-on-the-api-client"
 })
 
-function setCurrentEnv(payload: CurrentEnv) {
-  currentEnv.value = payload
-  if (payload?.type === "TEAM_ENV") {
-    environmentID.value = payload.teamEnvID
-  }
-}
-
 const config = ref<TestRunnerConfig>({
   iterations: 1,
   delay: 500,
@@ -622,17 +555,14 @@ const datasetPreviewTruncated = computed(
   () => (config.value.dataset?.rows.length ?? 0) > DATASET_PREVIEW_ROW_CAP
 )
 
-// The tree fetch can fail (a network call for team collections) and the run
-// controls key off `collectionTree` — a failure must stay recoverable.
+// The tree fetch can fail and the run controls key off `collectionTree` — a
+// failure must stay recoverable.
 const collectionLoadFailed = ref(false)
 
 const loadCollectionTree = async () => {
   collectionLoadFailed.value = false
 
-  const tree = await getCollectionTree(
-    props.collectionRunnerData.type,
-    props.collectionRunnerData.collectionID
-  )
+  const tree = await getCollectionTree(props.collectionRunnerData.collectionID)
 
   if (!tree) {
     collectionLoadFailed.value = true
@@ -763,7 +693,6 @@ const runTests = async () => {
   const tree =
     collectionTree.value ??
     ((await getCollectionTree(
-      props.collectionRunnerData.type,
       props.collectionRunnerData.collectionID
     )) as HoppCollection | null)
 
@@ -813,10 +742,6 @@ const runTests = async () => {
       passedTests: 0,
       totalTests: 0,
     },
-    inheritedProperties:
-      "inheritedProperties" in props.collectionRunnerData
-        ? props.collectionRunnerData.inheritedProperties
-        : undefined,
   })
 
   if (tabIdToClose) tabs.closeTab(tabIdToClose)
@@ -826,32 +751,12 @@ const runTests = async () => {
 
 /**
  * Fetches the collection tree from the backend
- * @param collection
+ * @param collectionID
  * @returns collection tree
  */
-const getCollectionTree = async (
-  type: CollectionRunnerData["type"],
-  collectionID: string
-) => {
+const getCollectionTree = async (collectionID: string) => {
   if (!collectionID) return
-  if (type === "my-collections") {
-    return await getRESTCollectionByRefId(collectionID)
-  }
-  loadingCollection.value = true
-  return pipe(
-    getCompleteCollectionTree(collectionID),
-    TE.match(
-      (err: GQLError<string>) => {
-        toast.error(`${getErrorMessage(err, t)}`)
-        loadingCollection.value = false
-        return
-      },
-      async (coll) => {
-        loadingCollection.value = false
-        return teamCollToHoppRESTColl(coll)
-      }
-    )
-  )()
+  return await getRESTCollectionByRefId(collectionID)
 }
 
 function checkIfCollectionIsEmpty(collection: HoppCollection): boolean {
@@ -860,59 +765,6 @@ function checkIfCollectionIsEmpty(collection: HoppCollection): boolean {
     collection.requests.length === 0 &&
     collection.folders.every((folder) => checkIfCollectionIsEmpty(folder))
   )
-}
-
-const copyIcon = refAutoReset<typeof IconCopy | typeof IconCheck>(
-  IconCopy,
-  1000
-)
-
-const isCloudInstance = window.location.hostname === "hoppscotch.io"
-
-const cliCommandGenerationDescription = computed(() => {
-  if (isCloudInstance) {
-    return t("collection_runner.cli_command_generation_description_cloud")
-  }
-
-  if (import.meta.env.VITE_BACKEND_API_URL) {
-    return t("collection_runner.cli_command_generation_description_sh")
-  }
-
-  return t(
-    "collection_runner.cli_command_generation_description_sh_with_server_url_placeholder"
-  )
-})
-
-const CLICommand = computed(() => {
-  if (props.collectionRunnerData.type === "team-collections") {
-    const collectionID = props.collectionRunnerData.collectionID
-    const environmentFlag =
-      includeEnvironmentID.value && environmentID.value
-        ? `-e ${environmentID.value}`
-        : ""
-
-    const serverUrl = import.meta.env.VITE_BACKEND_API_URL?.endsWith("/v1")
-      ? // Removing `/v1` prefix
-        import.meta.env.VITE_BACKEND_API_URL.slice(0, -3)
-      : "<server_url>"
-
-    const serverFlag = isCloudInstance ? "" : `--server ${serverUrl}`
-
-    return `hopp test ${collectionID} ${environmentFlag} --token <access_token> ${serverFlag}`
-  }
-
-  return null
-})
-
-const toggleIncludeEnvironment = () => {
-  includeEnvironmentID.value = !includeEnvironmentID.value
-}
-
-const copyCLICommandToClipboard = () => {
-  copyToClipboard(CLICommand.value ?? "")
-  copyIcon.value = IconCheck
-
-  toast.success(`${t("state.copied_to_clipboard")}`)
 }
 
 const closeModal = () => {

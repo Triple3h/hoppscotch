@@ -51,8 +51,6 @@
           :picked="picked"
           :save-request="true"
           @select="onSelect"
-          @update-team="updateTeam"
-          @update-collection-type="updateCollectionType"
         />
       </div>
     </template>
@@ -127,19 +125,12 @@ import {
 } from "@hoppscotch/data"
 import { computedWithControl } from "@vueuse/core"
 import { useService } from "dioc/vue"
-import * as TE from "fp-ts/TaskEither"
-import { pipe } from "fp-ts/function"
 import { cloneDeep } from "lodash-es"
 import { computed, nextTick, reactive, ref, watch } from "vue"
 import {
   useRequestNameGeneration,
   useSubmitFeedback,
 } from "~/composables/ai-experiments"
-import { GQLError } from "~/helpers/backend/GQLClient"
-import {
-  createRequestInCollection,
-  updateTeamRequest,
-} from "~/helpers/backend/mutations/TeamRequest"
 import { Picked } from "~/helpers/types/HoppPicked"
 import {
   cascadeParentCollectionForProperties,
@@ -152,9 +143,7 @@ import {
 } from "~/newstore/collections"
 import { platform } from "~/platform"
 import { GQLTabService } from "~/services/tab/graphql"
-import { TeamCollectionsService } from "~/services/team-collection.service"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
-import { TeamWorkspace } from "~/services/workspace.service"
 import IconSparkle from "~icons/lucide/sparkles"
 import IconThumbsDown from "~icons/lucide/thumbs-down"
 import IconThumbsUp from "~icons/lucide/thumbs-up"
@@ -165,14 +154,6 @@ const toast = useToast()
 
 const workspaceTabs = useService(WorkspaceTabsService)
 const GQLTabs = useService(GQLTabService)
-const teamCollectionService = useService(TeamCollectionsService)
-
-type CollectionType =
-  | {
-      type: "team-collections"
-      selectedTeam: TeamWorkspace
-    }
-  | { type: "my-collections"; selectedTeam: undefined }
 
 const props = withDefaults(
   defineProps<{
@@ -282,11 +263,6 @@ const requestData = reactive({
   requestIndex: undefined as number | undefined,
 })
 
-const collectionsType = ref<CollectionType>({
-  type: "my-collections",
-  selectedTeam: undefined,
-})
-
 const picked = ref<Picked | null>(null)
 
 const modalLoadingState = ref(false)
@@ -305,14 +281,6 @@ watch(
     requestData.requestIndex = undefined
   }
 )
-
-const updateTeam = (newTeam: TeamWorkspace) => {
-  collectionsType.value.selectedTeam = newTeam
-}
-
-const updateCollectionType = (type: CollectionType["type"]) => {
-  collectionsType.value.type = type
-}
 
 const onSelect = (pickedVal: Picked | null) => {
   picked.value = pickedVal
@@ -350,8 +318,6 @@ const saveRequestAs = async () => {
   const isNewCollectionEntry =
     picked.value.pickedType === "my-collection" ||
     picked.value.pickedType === "my-folder" ||
-    picked.value.pickedType === "teams-collection" ||
-    picked.value.pickedType === "teams-folder" ||
     picked.value.pickedType === "gql-my-collection" ||
     picked.value.pickedType === "gql-my-folder"
 
@@ -536,58 +502,6 @@ const saveRequestAs = async () => {
     })
 
     requestSaved()
-  } else if (picked.value.pickedType === "teams-collection") {
-    updateTeamCollectionOrFolder(picked.value.collectionID, requestUpdated)
-
-    platform.analytics?.logEvent({
-      type: "HOPP_SAVE_REQUEST",
-      createdNow: true,
-      platform: isGQLRequest(requestUpdated) ? "gql" : "rest",
-      workspaceType: "team",
-    })
-  } else if (picked.value.pickedType === "teams-folder") {
-    updateTeamCollectionOrFolder(picked.value.folderID, requestUpdated)
-
-    platform.analytics?.logEvent({
-      type: "HOPP_SAVE_REQUEST",
-      createdNow: true,
-      platform: isGQLRequest(requestUpdated) ? "gql" : "rest",
-      workspaceType: "team",
-    })
-  } else if (picked.value.pickedType === "teams-request") {
-    if (
-      collectionsType.value.type !== "team-collections" ||
-      !collectionsType.value.selectedTeam
-    )
-      throw new Error("Collections Type mismatch")
-
-    modalLoadingState.value = true
-
-    const data = {
-      request: JSON.stringify(requestUpdated),
-      title: requestUpdated.name,
-    }
-
-    platform.analytics?.logEvent({
-      type: "HOPP_SAVE_REQUEST",
-      createdNow: false,
-      platform: isGQLRequest(requestUpdated) ? "gql" : "rest",
-      workspaceType: "team",
-    })
-
-    pipe(
-      updateTeamRequest(picked.value.requestID, data),
-      TE.match(
-        (err: GQLError<string>) => {
-          toast.error(`${getErrorMessage(err)}`)
-          modalLoadingState.value = false
-        },
-        () => {
-          modalLoadingState.value = false
-          requestSaved()
-        }
-      )
-    )()
   } else if (picked.value.pickedType === "gql-my-request") {
     // TODO: Check for GQL request ?
     editGraphqlRequest(
@@ -610,7 +524,7 @@ const saveRequestAs = async () => {
       type: "HOPP_SAVE_REQUEST",
       createdNow: false,
       platform: "gql",
-      workspaceType: "team",
+      workspaceType: "personal",
     })
 
     GQLTabs.currentActiveTab.value.document.inheritedProperties =
@@ -638,7 +552,7 @@ const saveRequestAs = async () => {
       type: "HOPP_SAVE_REQUEST",
       createdNow: true,
       platform: "gql",
-      workspaceType: "team",
+      workspaceType: "personal",
     })
 
     GQLTabs.currentActiveTab.value.document.inheritedProperties =
@@ -666,7 +580,7 @@ const saveRequestAs = async () => {
       type: "HOPP_SAVE_REQUEST",
       createdNow: true,
       platform: "gql",
-      workspaceType: "team",
+      workspaceType: "personal",
     })
 
     GQLTabs.currentActiveTab.value.document.inheritedProperties =
@@ -677,78 +591,6 @@ const saveRequestAs = async () => {
 
     requestSaved("GQL")
   }
-}
-
-/**
- * Updates a team collection or folder and sets the save context to the updated request
- * @param collectionID - ID of the collection or folder
- * @param requestUpdated - Updated request
- */
-const updateTeamCollectionOrFolder = (
-  collectionID: string,
-  requestUpdated: HoppRESTRequest | HoppGQLRequest
-) => {
-  if (
-    collectionsType.value.type !== "team-collections" ||
-    !collectionsType.value.selectedTeam
-  )
-    throw new Error("Collections Type mismatch")
-
-  modalLoadingState.value = true
-
-  const data = {
-    title: requestUpdated.name,
-    request: JSON.stringify(requestUpdated),
-    teamID: collectionsType.value.selectedTeam.teamID,
-  }
-  pipe(
-    createRequestInCollection(collectionID, data),
-    TE.match(
-      (err: GQLError<string>) => {
-        toast.error(`${getErrorMessage(err)}`)
-        modalLoadingState.value = false
-      },
-      (result) => {
-        const { createRequestInCollection } = result
-
-        const saveContext = {
-          originLocation: "team-collection" as const,
-          requestID: createRequestInCollection.id,
-          collectionID: createRequestInCollection.collection.id,
-          teamID: createRequestInCollection.collection.team.id,
-        }
-
-        // Cascade team folder auth/headers/variables onto the saved tab —
-        // without this, inherited auth doesn't apply until reload
-        const inheritedProperties =
-          teamCollectionService.cascadeParentCollectionForProperties(
-            collectionID
-          )
-
-        if (isGQLRequest(requestUpdated)) {
-          workspaceTabs.currentActiveTab.value.document = {
-            type: "gql-request",
-            request: requestUpdated as HoppGQLRequest,
-            isDirty: false,
-            cursorPosition: 0,
-            saveContext,
-            inheritedProperties,
-          }
-        } else {
-          workspaceTabs.currentActiveTab.value.document = {
-            type: "request",
-            request: requestUpdated as HoppRESTRequest,
-            isDirty: false,
-            saveContext,
-            inheritedProperties,
-          }
-        }
-
-        modalLoadingState.value = false
-        requestSaved()
-      }
-    )
-  )()
 }
 
 const requestSaved = (tab: "REST" | "GQL" = "REST") => {
@@ -766,26 +608,5 @@ const requestSaved = (tab: "REST" | "GQL" = "REST") => {
 const hideModal = () => {
   picked.value = null
   emit("hide-modal")
-}
-
-const getErrorMessage = (err: GQLError<string>) => {
-  console.error(err)
-  if (err.type === "network_error") {
-    return t("error.network_error")
-  }
-  switch (err.error) {
-    case "team_coll/short_title":
-      return t("collection.name_length_insufficient")
-    case "team/invalid_coll_id":
-      return t("team.invalid_id")
-    case "team/not_required_role":
-      return t("profile.no_permission")
-    case "team_req/not_required_role":
-      return t("profile.no_permission")
-    case "Forbidden resource":
-      return t("profile.no_permission")
-    default:
-      return t("error.something_went_wrong")
-  }
 }
 </script>

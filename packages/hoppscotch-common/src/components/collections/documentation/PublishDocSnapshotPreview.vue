@@ -54,8 +54,6 @@
           </p>
           <CollectionsDocumentationEnvironmentPicker
             v-model="environmentModel"
-            :workspace-type="workspaceType"
-            :workspace-i-d="workspaceID"
           />
         </div>
       </div>
@@ -225,7 +223,6 @@ import IconCopy from "~icons/lucide/copy"
 import IconCheck from "~icons/lucide/check"
 import IconExternalLink from "~icons/lucide/external-link"
 import IconRefreshCw from "~icons/lucide/refresh-cw"
-import { WorkspaceType } from "~/helpers/backend/graphql"
 
 const t = useI18n()
 
@@ -247,8 +244,6 @@ const props = defineProps<{
   autoSync: boolean
   selectedEnvironmentID: string | null
   isValidVersion: boolean
-  workspaceType: WorkspaceType
-  workspaceID: string
 }>()
 
 const emit = defineEmits<{

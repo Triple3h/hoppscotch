@@ -1,18 +1,16 @@
-import { useService } from "dioc/vue"
 import { watch } from "vue"
 import { loadMockServers, setMockServers } from "~/newstore/mockServers"
 import { platform } from "~/platform"
-import { WorkspaceService } from "~/services/workspace.service"
 import { useMockServerVisibility } from "./mockServerVisibility"
 import { useReadonlyStream } from "./stream"
 
 /**
- * Composable to handle mock server state when workspace changes
- * This ensures mock servers are cleared immediately when switching workspaces
- * to prevent showing stale data from the previous workspace
+ * Composable to handle mock server state when auth or visibility changes.
+ * This ensures mock servers are loaded/cleared when the user logs in or out
+ * to prevent showing stale data. The app is personal-workspace-only, so there
+ * is no workspace switching to react to.
  */
 export function useMockServerWorkspaceSync() {
-  const workspaceService = useService(WorkspaceService)
   const { isMockServerVisible } = useMockServerVisibility()
 
   const currentUser = useReadonlyStream(
@@ -29,24 +27,4 @@ export function useMockServerWorkspaceSync() {
   watch([currentUser, isMockServerVisible], loadServers, {
     immediate: true,
   })
-
-  // Watch for workspace changes and clear mock servers immediately
-  watch(
-    () => workspaceService.currentWorkspace.value,
-    (newWorkspace, oldWorkspace) => {
-      if (!currentUser.value || !isMockServerVisible.value) return
-
-      // Clear mock servers when workspace changes to prevent stale data
-      if (
-        newWorkspace?.type !== oldWorkspace?.type ||
-        (newWorkspace?.type === "team" &&
-          oldWorkspace?.type === "team" &&
-          newWorkspace.teamID !== oldWorkspace.teamID)
-      ) {
-        setMockServers([])
-        loadServers()
-      }
-    },
-    { deep: true }
-  )
 }

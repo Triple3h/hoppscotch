@@ -8,7 +8,6 @@ import authCode, { AuthCodeOauthFlowParams } from "./flows/authCode"
 import implicit, { ImplicitOauthFlowParams } from "./flows/implicit"
 import { getService } from "~/modules/dioc"
 import { HoppCollection } from "@hoppscotch/data"
-import { TeamCollection } from "~/helpers/backend/graphql"
 import { parseBytesToJSON } from "~/helpers/functional/json"
 import { MediaType } from "@hoppscotch/kernel"
 
@@ -19,7 +18,7 @@ export type PersistedOAuthConfig = {
   context?: {
     type: "collection-properties" | "request-tab"
     metadata: {
-      collection?: HoppCollection | TeamCollection
+      collection?: HoppCollection
       collectionID?: string
     }
   }

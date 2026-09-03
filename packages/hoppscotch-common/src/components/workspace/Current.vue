@@ -14,32 +14,14 @@
 </template>
 
 <script setup lang="ts">
-import { useService } from "dioc/vue"
-import { computed } from "vue"
 import { useI18n } from "~/composables/i18n"
-import { WorkspaceService } from "~/services/workspace.service"
 
 const t = useI18n()
 
-const props = defineProps<{
+defineProps<{
   section?: string
   isOnlyPersonal?: boolean
 }>()
 
-const workspaceService = useService(WorkspaceService)
-const workspace = workspaceService.currentWorkspace
-
-const currentWorkspace = computed(() => {
-  if (props.isOnlyPersonal || workspace.value.type === "personal") {
-    return t("workspace.personal")
-  }
-  return teamWorkspaceName.value
-})
-
-const teamWorkspaceName = computed(() => {
-  if (workspace.value.type === "team" && workspace.value.teamName) {
-    return workspace.value.teamName
-  }
-  return `${t("workspace.team")}`
-})
+const currentWorkspace = t("workspace.personal")
 </script>

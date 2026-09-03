@@ -101,7 +101,6 @@ import { useReadonlyStream } from "@composables/stream"
 import { useToast } from "@composables/toast"
 import { computed, ref } from "vue"
 import { useVModel } from "@vueuse/core"
-import * as E from "fp-ts/Either"
 import { GQLTabConnectionService } from "~/services/gql-tab-connection.service"
 import { KernelInterceptorService } from "~/services/kernel-interceptor.service"
 import { InspectionService } from "~/services/inspection"
@@ -112,7 +111,6 @@ import { HoppTab } from "~/services/tab"
 import { HoppGQLRequestDocument } from "~/helpers/tab/document"
 import { getPlatformSpecialKey as getSpecialKey } from "~/helpers/platformutils"
 import { editRESTRequest } from "~/newstore/collections"
-import { updateTeamRequest } from "~/helpers/backend/mutations/TeamRequest"
 import IconSave from "~icons/lucide/save"
 import IconChevronDown from "~icons/lucide/chevron-down"
 import IconFolderPlus from "~icons/lucide/folder-plus"
@@ -214,27 +212,6 @@ const saveRequest = () => {
     })
 
     toast.success(`${t("request.saved")}`)
-  } else if (saveCtx.originLocation === "team-collection") {
-    const req = tab.value.document.request
-
-    platform.analytics?.logEvent({
-      type: "HOPP_SAVE_REQUEST",
-      platform: "gql",
-      createdNow: false,
-      workspaceType: "team",
-    })
-
-    updateTeamRequest(saveCtx.requestID, {
-      request: JSON.stringify(req),
-      title: req.name,
-    })().then((result) => {
-      if (E.isLeft(result)) {
-        toast.error(`${t("profile.no_permission")}`)
-      } else {
-        tab.value.document.isDirty = false
-        toast.success(`${t("request.saved")}`)
-      }
-    })
   } else {
     showSaveRequestModal.value = true
   }

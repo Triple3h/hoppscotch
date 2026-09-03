@@ -14,7 +14,7 @@
     ></div>
     <div
       class="group flex items-center"
-      :draggable="!hasNoTeamAccess"
+      :draggable="true"
       @drop="handelDrop"
       @dragstart="dragStart"
       @dragover="handleDragOver($event)"
@@ -82,7 +82,7 @@
       </div>
       <div class="flex">
         <HoppButtonSecondary
-          v-if="!saveRequest && !hasNoTeamAccess"
+          v-if="!saveRequest"
           v-tippy="{ theme: 'tooltip' }"
           :icon="IconRotateCCW"
           :title="t('action.restore')"
@@ -116,7 +116,6 @@
                 @keyup.escape="hide()"
               >
                 <HoppSmartItem
-                  v-if="!hasNoTeamAccess"
                   ref="edit"
                   :icon="IconEdit"
                   :label="t('action.edit')"
@@ -129,7 +128,6 @@
                   "
                 />
                 <HoppSmartItem
-                  v-if="!hasNoTeamAccess"
                   ref="duplicate"
                   :icon="IconCopy"
                   :label="t('action.duplicate')"
@@ -142,7 +140,6 @@
                   "
                 />
                 <HoppSmartItem
-                  v-if="!hasNoTeamAccess"
                   ref="addExampleAction"
                   :icon="IconPlusCircle"
                   :label="t('action.add_example')"
@@ -168,7 +165,6 @@
                   "
                 />
                 <HoppSmartItem
-                  v-if="!hasNoTeamAccess"
                   ref="shareAction"
                   :icon="IconShare2"
                   :label="t('action.share')"
@@ -181,7 +177,6 @@
                   "
                 />
                 <HoppSmartItem
-                  v-if="!hasNoTeamAccess"
                   ref="deleteAction"
                   :icon="IconTrash2"
                   :label="t('action.delete')"
@@ -272,7 +267,7 @@ import { getMethodLabelColorClassOf } from "~/helpers/rest/labelColoring"
 import { platform } from "~/platform"
 import { invokeAction } from "~/helpers/actions"
 
-type CollectionType = "my-collections" | "team-collections"
+type CollectionType = "my-collections"
 
 const t = useI18n()
 
@@ -308,11 +303,6 @@ const props = defineProps({
     required: false,
   },
   isActive: {
-    type: Boolean,
-    default: false,
-    required: false,
-  },
-  hasNoTeamAccess: {
     type: Boolean,
     default: false,
     required: false,

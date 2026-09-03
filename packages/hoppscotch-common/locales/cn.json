@@ -766,7 +766,11 @@
       "generate_data_schema": "生成数据结构",
       "data_schema": "数据结构",
       "saved": "响应已保存",
-      "invalid_name": "请为响应提供名称"
+      "invalid_name": "请为响应提供名称",
+      "actual_request": "实际请求",
+      "request_url": "请求 URL",
+      "request_body": "Body",
+      "request_code": "请求代码"
    },
    "script": {
       "inheriting": "正在从以下位置继承脚本",

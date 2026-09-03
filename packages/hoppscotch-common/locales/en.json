@@ -789,7 +789,11 @@
       "data_schema": "Data Schema",
       "saved": "Response saved",
       "save_as_example": "Save as example",
-      "invalid_name": "Please provide a name for the response"
+      "invalid_name": "Please provide a name for the response",
+      "actual_request": "Actual Request",
+      "request_url": "Request URL",
+      "request_body": "Body",
+      "request_code": "Request Code"
    },
    "script": {
       "inheriting": "Inheriting scripts from",

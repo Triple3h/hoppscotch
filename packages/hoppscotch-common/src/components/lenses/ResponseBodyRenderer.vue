@@ -31,6 +31,14 @@
       <LensesHeadersRenderer v-model="maybeHeaders" :is-editable="false" />
     </HoppSmartTab>
     <HoppSmartTab
+      v-if="actualRequest"
+      id="actual-request"
+      :label="t('response.actual_request')"
+      class="flex flex-1 flex-col"
+    >
+      <LensesActualRequestRenderer :request="actualRequest" />
+    </HoppSmartTab>
+    <HoppSmartTab
       v-if="doc.response?.type !== 'network_fail' && !isEditable"
       id="results"
       :label="t('test.results')"
@@ -150,6 +158,15 @@ const requestHeaders = computed(() => {
   return doc.value.response?.req.headers || doc.value.request.headers
 })
 
+// The request that was actually sent: environment-resolved URL, merged
+// (auth + inherited + user) headers and the resolved body. Stored on the
+// response by the network layer for every response kind except script_fail.
+const actualRequest = computed(() => {
+  const response = doc.value.response
+  if (!response || !("req" in response)) return null
+  return response.req
+})
+
 const validLenses = computed(() => {
   if (!doc.value.response) return []
   return getSuitableLenses(doc.value.response)
@@ -187,6 +204,7 @@ watch(
     const validRenderers = [
       ...newLenses.map((x) => x.renderer),
       "headers",
+      "actual-request",
       "results",
     ]
 

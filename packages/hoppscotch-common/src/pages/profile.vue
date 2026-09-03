@@ -13,14 +13,7 @@
           :src="`/images/states/${colorMode.value}/login.svg`"
           :alt="`${t('empty.profile')}`"
           :text="`${t('empty.profile')}`"
-        >
-          <template #body>
-            <HoppButtonPrimary
-              :label="t('auth.login')"
-              @click="invokeAction('modals.login.toggle')"
-            />
-          </template>
-        </HoppSmartPlaceholder>
+        />
         <div v-else class="space-y-8">
           <div
             class="-mb-12 h-24 rounded bg-primaryLight md:h-32"
@@ -95,7 +88,6 @@ import { useI18n } from "@composables/i18n"
 import { useReadonlyStream } from "@composables/stream"
 import { useColorMode } from "@composables/theming"
 import { useToast } from "@composables/toast"
-import { invokeAction } from "~/helpers/actions"
 
 import IconSettings from "~icons/lucide/settings"
 import IconVerified from "~icons/lucide/verified"
@@ -156,11 +148,6 @@ const PROFILE_NAVIGATION = computed(() => [
     label: t("settings.account"),
     icon: null,
     exactMatch: true,
-  },
-  {
-    route: "/profile/teams",
-    label: t("team.title"),
-    icon: null,
   },
   {
     route: "/profile/tokens",

@@ -6,7 +6,6 @@ import {
 import { getI18n } from "~/modules/i18n"
 import { Component, computed, markRaw, reactive } from "vue"
 import { useStreamStatic } from "~/composables/stream"
-import IconLogin from "~icons/lucide/log-in"
 import IconLogOut from "~icons/lucide/log-out"
 import { activeActions$, invokeAction } from "~/helpers/actions"
 import { Container } from "dioc"
@@ -37,21 +36,11 @@ export class UserSpotlightSearcherService extends StaticSpotlightSearcherService
     /* noop */
   })[0]
 
-  private hasLoginAction = computed(() =>
-    this.activeActions.value.includes("user.login")
-  )
-
   private hasLogoutAction = computed(() =>
     this.activeActions.value.includes("user.logout")
   )
 
   private documents: Record<string, Doc> = reactive({
-    login: {
-      text: this.t("auth.login"),
-      excludeFromSearch: computed(() => !this.hasLoginAction.value),
-      alternates: ["sign in", "log in"],
-      icon: markRaw(IconLogin),
-    },
     logout: {
       text: this.t("auth.logout"),
       excludeFromSearch: computed(() => !this.hasLogoutAction.value),
@@ -89,9 +78,6 @@ export class UserSpotlightSearcherService extends StaticSpotlightSearcherService
 
   public onDocSelected(id: string): void {
     switch (id) {
-      case "login":
-        invokeAction("user.login")
-        break
       case "logout":
         invokeAction("user.logout")
         break

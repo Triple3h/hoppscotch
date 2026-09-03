@@ -18,14 +18,7 @@
         :src="`/images/states/${colorMode.value}/login.svg`"
         :alt="t('empty.shared_requests_logout')"
         :text="t('empty.shared_requests_logout')"
-      >
-        <template #body>
-          <HoppButtonPrimary
-            :label="t('auth.login')"
-            @click="invokeAction('modals.login.toggle')"
-          />
-        </template>
-      </HoppSmartPlaceholder>
+      />
 
       <template v-else>
         <div
@@ -218,7 +211,6 @@ import { getDefaultRESTRequest } from "~/helpers/rest/default"
 import { platform } from "~/platform"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
 import { useService } from "dioc/vue"
-import { invokeAction } from "~/helpers/actions"
 import { useColorMode } from "~/composables/theming"
 import { useReadonlyStream } from "~/composables/stream"
 import { until } from "@vueuse/core"

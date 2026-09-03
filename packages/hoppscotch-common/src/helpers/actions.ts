@@ -85,11 +85,6 @@ export type HoppAction =
   | "modals.environment.delete-selected" // Delete Selected Environment
   | "modals.my.environment.edit" // Edit current personal environment
   | "modals.global.environment.update" // Update global environment
-  | "modals.team.environment.edit" // Edit current team environment
-  | "modals.team.new" // Add new team
-  | "modals.team.edit" // Edit selected team
-  | "modals.team.invite" // Invite selected team
-  | "workspace.switch.personal" // Switch to personal workspace
   | "navigation.jump.rest" // Jump to REST page
   | "navigation.jump.graphql" // Jump to GraphQL page
   | "navigation.jump.realtime" // Jump to realtime page
@@ -110,14 +105,11 @@ export type HoppAction =
   | "modals.login.toggle" // Login to Hoppscotch
   | "modals.instance-switcher.toggle" // Switch Hoppscotch instances (self-hosted)
   | "history.clear" // Clear REST History
-  | "user.login" // Login to Hoppscotch
   | "user.logout" // Log out of Hoppscotch
   | "editor.format" // Format editor content
   | "editor.undo" // Undo editor content
   | "editor.redo" // Redo editor content
   | "editor.comment-toggle" // Toggle comment in editor
-  | "modals.team.delete" // Delete team
-  | "workspace.switch" // Switch workspace
   | "rest.request.open" // Open REST request
   | "request.open-tab" // Open REST request
   | "share.request" // Share REST or GraphQL request
@@ -153,17 +145,6 @@ type HoppActionArgsMap = {
     envName: string
     variableName?: string
     isSecret?: boolean
-  }
-  "modals.team.environment.edit": {
-    envName: string
-    variableName?: string
-    isSecret?: boolean
-  }
-  "modals.team.delete": {
-    teamId: string
-  }
-  "workspace.switch": {
-    teamId: string
   }
   "rest.request.open": {
     doc: HoppRequestDocument

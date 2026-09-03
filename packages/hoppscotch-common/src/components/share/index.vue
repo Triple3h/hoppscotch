@@ -37,14 +37,7 @@
         :src="`/images/states/${colorMode.value}/add_files.svg`"
         :alt="`${t('empty.shared_requests_logout')}`"
         :text="`${t('empty.shared_requests_logout')}`"
-      >
-        <template #body>
-          <HoppButtonPrimary
-            :label="t('auth.login')"
-            @click="invokeAction('modals.login.toggle')"
-          />
-        </template>
-      </HoppSmartPlaceholder>
+      />
 
       <template v-else-if="sharedRequests.length">
         <ShareRequest

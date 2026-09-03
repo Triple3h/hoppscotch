@@ -14,7 +14,7 @@ vi.mock("~/modules/i18n", () => ({
 }))
 
 const actionsMock = vi.hoisted(() => ({
-  value: ["user.login"],
+  value: [] as string[],
   invokeAction: vi.fn(),
 }))
 
@@ -54,41 +54,6 @@ describe("UserSearcher", () => {
     expect(registerSearcherFn).toHaveBeenCalledWith(user)
   })
 
-  it("if login action is available, the search result should have the login result", async () => {
-    const container = new TestContainer()
-
-    actionsMock.value.push("user.login")
-    const user = container.bind(UserSpotlightSearcherService)
-    await flushPromises()
-
-    const query = ref("log")
-    const result = user.createSearchSession(query)[0]
-    await nextTick()
-
-    expect(result.value.results).toContainEqual(
-      expect.objectContaining({
-        id: "login",
-      })
-    )
-  })
-
-  it("if login action is not available, the search result should not have the login result", async () => {
-    const container = new TestContainer()
-
-    const user = container.bind(UserSpotlightSearcherService)
-    await flushPromises()
-
-    const query = ref("log")
-    const result = user.createSearchSession(query)[0]
-    await nextTick()
-
-    expect(result.value.results).not.toContainEqual(
-      expect.objectContaining({
-        id: "login",
-      })
-    )
-  })
-
   it("if logout action is available, the search result should have the logout result", async () => {
     const container = new TestContainer()
 
@@ -122,45 +87,6 @@ describe("UserSearcher", () => {
         id: "logout",
       })
     )
-  })
-
-  it("if login action and logout action are available, the search result should have both results", async () => {
-    const container = new TestContainer()
-
-    actionsMock.value.push("user.login", "user.logout")
-    const user = container.bind(UserSpotlightSearcherService)
-    await flushPromises()
-
-    const query = ref("log")
-    const result = user.createSearchSession(query)[0]
-    await nextTick()
-
-    expect(result.value.results).toContainEqual(
-      expect.objectContaining({
-        id: "logout",
-      })
-    )
-
-    expect(result.value.results).toContainEqual(
-      expect.objectContaining({
-        id: "login",
-      })
-    )
-  })
-
-  it("selecting the login event should invoke the login action", () => {
-    const container = new TestContainer()
-
-    actionsMock.value.push("user.login")
-    const user = container.bind(UserSpotlightSearcherService)
-    const query = ref("log")
-
-    user.createSearchSession(query)[0]
-
-    user.onDocSelected("login")
-
-    expect(actionsMock.invokeAction).toHaveBeenCalledOnce()
-    expect(actionsMock.invokeAction).toHaveBeenCalledWith("user.login")
   })
 
   it("selecting the logout event should invoke the logout action", () => {

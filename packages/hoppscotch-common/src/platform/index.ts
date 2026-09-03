@@ -1,5 +1,4 @@
 import { ServiceClassInstance } from "dioc"
-import { Ref } from "vue"
 import { HoppModule } from "~/modules"
 import { AnalyticsPlatformDef } from "./analytics"
 import { AuthPlatformDef } from "./auth"
@@ -15,7 +14,6 @@ import { OrganizationPlatformDef } from "./organization"
 import { KernelIO } from "./kernel-io"
 import { AdditionalLinksPlatformDef } from "./additionalLinks"
 import { InstancePlatformDef } from "./instance"
-import { SyncPlatformDef } from "./sync"
 
 export type PlatformDef = {
   ui?: UIPlatformDef
@@ -47,11 +45,6 @@ export type PlatformDef = {
     promptAsUsingCookies?: boolean
 
     /**
-     * Whether to show the A/B testing workspace switcher click login flow or not
-     */
-    workspaceSwitcherLogin?: Ref<boolean>
-
-    /**
      * Whether the platform uses cookie-based authentication.
      * This affects CSRF security warnings for same-origin fetch calls in scripts.
      * Self-hosted web instances use cookies, while cloud/desktop use bearer tokens.
@@ -66,7 +59,6 @@ export type PlatformDef = {
   backend: BackendPlatformDef
   organization?: OrganizationPlatformDef
   additionalLinks?: AdditionalLinksPlatformDef
-  sync?: SyncPlatformDef
 }
 
 export let platform: PlatformDef

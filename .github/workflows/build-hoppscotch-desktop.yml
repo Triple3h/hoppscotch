@@ -214,7 +214,6 @@ jobs:
             Write-Host "No .env found, copied from .env.example template"
           }
           pnpm install -f --shamefully-hoist --ignore-scripts
-          pnpm --filter hoppscotch-backend exec prisma generate
           pnpm install -f --shamefully-hoist --dir ${{ env.DESKTOP_PATH }}
       - name: Build web app
         shell: pwsh

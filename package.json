@@ -8,9 +8,7 @@
   "packageManager": "pnpm@10.34.5",
   "scripts": {
     "preinstall": "npx only-allow pnpm",
-    "prepare": "husky",
     "dev": "pnpm -r do-dev",
-    "gen-gql": "cross-env GQL_SCHEMA_EMIT_LOCATION='../../../gql-gen/backend-schema.gql' pnpm -r generate-gql-sdl",
     "generate": "pnpm -r do-build-prod",
     "start": "http-server packages/hoppscotch-selfhost-web/dist -p 3000",
     "lint": "pnpm -r do-lint",
@@ -29,9 +27,7 @@
     "@hoppscotch/ui": "0.2.6",
     "@types/node": "24.10.1",
     "cross-env": "10.1.0",
-    "http-server": "14.1.1",
-    "husky": "9.1.7",
-    "lint-staged": "16.4.0"
+    "http-server": "14.1.1"
   },
   "pnpm": {
     "overrides": {

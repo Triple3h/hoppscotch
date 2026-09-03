@@ -6,7 +6,6 @@ import { Ref, ref, watch } from "vue"
 import { content } from "@hoppscotch/kernel"
 
 import { Io } from "@hoppscotch/common/kernel/io"
-import { listen } from "@tauri-apps/api/event"
 import { getService } from "@hoppscotch/common/modules/dioc"
 import { parseBodyAsJSON } from "@hoppscotch/common/helpers/functional/json"
 import { AuthEvent, AuthPlatformDef } from "@hoppscotch/common/platform/auth"
@@ -14,8 +13,7 @@ import { PersistenceService } from "@hoppscotch/common/services/persistence"
 import { KernelInterceptorService } from "@hoppscotch/common/services/kernel-interceptor.service"
 import { CookieJarService } from "@hoppscotch/common/services/cookie-jar.service"
 
-import Login from "@app/components/Login.vue"
-import { getAllowedAuthProviders, updateUserDisplayName } from "./api"
+import { updateUserDisplayName } from "./api"
 
 export type HoppUserWithAuthDetail = {
   uid: string
@@ -64,20 +62,6 @@ const getCookieJarService = () => getService(CookieJarService)
 // top-level spread overwriting the whole `meta`.
 const noCookieJarMeta = () => ({ options: { cookies: false } })
 
-async function logout() {
-  const { response } = interceptorService.execute({
-    id: Date.now(),
-    url: `${import.meta.env.VITE_BACKEND_API_URL}/auth/logout`,
-    version: "HTTP/1.1",
-    method: "GET",
-    meta: noCookieJarMeta(),
-  })
-
-  await response
-  await persistenceService.removeLocalConfig("refresh_token")
-  await persistenceService.removeLocalConfig("access_token")
-}
-
 async function signInUserWithGithubFB() {
   await Io.openExternalLink({
     url: `${
@@ -105,62 +89,10 @@ async function signInUserWithMicrosoftFB() {
 async function getInitialUserDetails(): Promise<
   GQLResponse | { error: string }
 > {
-  try {
-    const accessToken = await persistenceService.getLocalConfig("access_token")
-    const refreshToken =
-      await persistenceService.getLocalConfig("refresh_token")
-
-    if (!accessToken || !refreshToken) {
-      return { error: "auth/cookies_not_found" }
-    }
-
-    const { response } = interceptorService.execute({
-      id: Date.now(),
-      url: `${import.meta.env.VITE_BACKEND_GQL_URL}`,
-      method: "POST",
-      version: "HTTP/1.1",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      content: content.json({
-        query: `query Me {
-         me {
-           uid
-           displayName
-           email
-           photoURL
-           isAdmin
-           createdOn
-         }
-       }`,
-      }),
-      meta: noCookieJarMeta(),
-    })
-
-    const responseBytes = await response
-
-    if (E.isLeft(responseBytes)) {
-      return { error: "auth/cookies_not_found" }
-    }
-
-    const res = parseBodyAsJSON<GQLResponse>(responseBytes.right.body)
-    if (res._tag == "Some" && res.value.data?.me) {
-      return {
-        data: {
-          me: {
-            ...res.value.data.me,
-            refreshToken,
-            accessToken,
-            emailVerified: true,
-          },
-        },
-      }
-    }
-    return { error: "auth/cookies_not_found" }
-  } catch (_error) {
-    return { error: "auth/cookies_not_found" }
-  }
+  // Local-only build: never contact the backend to probe for a session. Even
+  // if an (unreachable) login flow ever runs, this reports "not logged in"
+  // without sending any request to VITE_BACKEND_* endpoints.
+  return { error: "auth/cookies_not_found" }
 }
 
 async function setUser(user: HoppUserWithAuthDetail | null) {
@@ -367,16 +299,13 @@ async function setAuthCookies(headers: Headers) {
 }
 
 export const def: AuthPlatformDef = {
-  customLoginSelectorUI: Login,
   getCurrentUserStream: () => currentUser$,
   getAuthEventsStream: () => authEvents$,
   getProbableUserStream: () => probableUser$,
   getCurrentUser: () => currentUser$.value,
   getProbableUser: () => probableUser$.value,
 
-  async getAllowedAuthProviders() {
-    return await getAllowedAuthProviders()
-  },
+  getAllowedAuthProviders: async () => E.right([] as string[]),
 
   getBackendHeaders() {
     const accessToken = currentUser$.value?.accessToken
@@ -443,35 +372,18 @@ export const def: AuthPlatformDef = {
   },
 
   async performAuthInit() {
-    const loginState = await persistenceService.getLocalConfig("login_state")
-    const probableUser = JSON.parse(loginState ?? "null")
-    probableUser$.next(probableUser)
+    // Local-only build: never probe the backend for an existing session and
+    // never process OAuth deep links. Any stale session artifacts (tokens /
+    // probable user) are cleared locally so no code path ever believes a
+    // backend user exists.
+    await Promise.all([
+      persistenceService.removeLocalConfig("access_token"),
+      persistenceService.removeLocalConfig("refresh_token"),
+      persistenceService.removeLocalConfig("login_state"),
+    ])
+    currentUser$.next(null)
+    probableUser$.next(null)
     await clearPersistedAuthCookiesFromJar()
-    await setInitialUser()
-
-    await listen<string>(
-      "scheme-request-received",
-      async (event: { payload: string }) => {
-        const deepLink = event.payload
-        const params = new URLSearchParams(deepLink.split("?")[1])
-
-        const accessToken = params.get("access_token")
-        const refreshToken = params.get("refresh_token")
-        const token = params.get("token")
-
-        if (accessToken && refreshToken) {
-          await persistenceService.setLocalConfig("access_token", accessToken)
-          await persistenceService.setLocalConfig("refresh_token", refreshToken)
-          return
-        }
-
-        if (token) {
-          await persistenceService.setLocalConfig("verifyToken", token)
-          await this.signInWithEmailLink("", "")
-          await setInitialUser()
-        }
-      }
-    )
   },
 
   waitProbableLoginToConfirm() {
@@ -577,11 +489,15 @@ export const def: AuthPlatformDef = {
   },
 
   async signOutUser() {
-    await logout()
-
+    // Local-only: there is no backend session to invalidate, so we only
+    // clear local state without sending any request.
     probableUser$.next(null)
     currentUser$.next(null)
-    await persistenceService.removeLocalConfig("login_state")
+    await Promise.all([
+      persistenceService.removeLocalConfig("access_token"),
+      persistenceService.removeLocalConfig("refresh_token"),
+      persistenceService.removeLocalConfig("login_state"),
+    ])
 
     authEvents$.next({
       event: "logout",

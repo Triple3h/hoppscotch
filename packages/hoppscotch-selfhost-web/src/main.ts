@@ -5,49 +5,27 @@ import { useSettingStatic } from "@hoppscotch/common/composables/settings"
 import { useDesktopSettings } from "@hoppscotch/common/composables/desktop-settings"
 import { resolvePressedKey } from "@hoppscotch/common/helpers/keybindings"
 import { getKeyboardLayoutStrategy } from "@hoppscotch/common/helpers/keyboard-strategy"
-import { getKernelMode } from "@hoppscotch/kernel"
 
 import { def as stdBackendDef } from "@hoppscotch/common/platform/std/backend"
-// Platform imports
-import { def as webAuth } from "@app/platform/auth/web"
-
+// Platform imports (desktop-only build)
 import { def as desktopAuth } from "@app/platform/auth/desktop"
-
-// Std platform
-import { def as webInstance } from "@app/platform/instance/web"
 import { def as desktopInstance } from "@app/platform/instance/desktop"
 import { stdFooterItems } from "@hoppscotch/common/platform/std/ui/footerItem"
 import { stdSupportOptionItems } from "@hoppscotch/common/platform/std/ui/supportOptionsItem"
 import { InfraPlatform } from "@app/platform/infra/infra.platform"
 import { kernelIO } from "@hoppscotch/common/platform/std/kernel-io"
-import { HeaderDownloadableLinksService } from "@app/services/headerDownloadableLinks.service"
 
 import DesktopSettingsSection from "@hoppscotch/common/components/settings/Desktop.vue"
 import { useDesktopZoomEffect } from "@hoppscotch/common/composables/desktop-zoom"
 
-// Std interceptors
+// Std interceptors (desktop: native kernel networking with a proxy fallback)
 import { NativeKernelInterceptorService } from "@hoppscotch/common/platform/std/kernel-interceptors/native"
-import { AgentKernelInterceptorService } from "@hoppscotch/common/platform/std/kernel-interceptors/agent"
 import { ProxyKernelInterceptorService } from "@hoppscotch/common/platform/std/kernel-interceptors/proxy"
-import { ExtensionKernelInterceptorService } from "@hoppscotch/common/platform/std/kernel-interceptors/extension"
-import { BrowserKernelInterceptorService } from "@hoppscotch/common/platform/std/kernel-interceptors/browser"
 
+// Desktop-only build: this fork ships only the bundled Tauri app, and this
+// bundle is that app's embedded frontend. Only the desktop platform
+// configuration is kept; there is no browser/web deployment path.
 const PLATFORM_CONFIG = {
-  web: {
-    auth: webAuth,
-    instance: webInstance,
-    interceptors: [
-      BrowserKernelInterceptorService,
-      ProxyKernelInterceptorService,
-      AgentKernelInterceptorService,
-      ExtensionKernelInterceptorService,
-    ],
-    defaultInterceptor: "browser",
-    menuItems: stdFooterItems,
-    supportItems: stdSupportOptionItems,
-    cookiesEnabled: false,
-  },
-
   desktop: {
     auth: desktopAuth,
     instance: desktopInstance,
@@ -130,7 +108,9 @@ function isTextInput(target: EventTarget | null): boolean {
 }
 
 async function initApp() {
-  const platform = getKernelMode()
+  // The appload plugin injects __KERNEL_MODE__="desktop" into the webview,
+  // but pin the platform here as well so the bundle has no web code path.
+  const platform = "desktop" as const
   const config = PLATFORM_CONFIG[platform]
 
   if (platform === "desktop") {
@@ -183,7 +163,6 @@ async function initApp() {
 
     infra: InfraPlatform,
     backend: stdBackendDef,
-    additionalLinks: [HeaderDownloadableLinksService],
     addedServices: [],
   })
 

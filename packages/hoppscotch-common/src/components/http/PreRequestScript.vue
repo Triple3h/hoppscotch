@@ -120,14 +120,11 @@ import { computed, reactive, ref } from "vue"
 
 import { useAIExperiments } from "~/composables/ai-experiments"
 import { useNestedSetting, useSetting } from "~/composables/settings"
-import { useReadonlyStream } from "~/composables/stream"
-import { invokeAction } from "~/helpers/actions"
 import completer from "~/helpers/editor/completion/preRequest"
 import linter from "~/helpers/editor/linting/preRequest"
 import { hasActualScript } from "@hoppscotch/js-sandbox/scripting"
 import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
 import { toggleNestedSetting } from "~/newstore/settings"
-import { platform } from "~/platform"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
 import IconFileSymlink from "~icons/lucide/file-symlink"
 import IconHelpCircle from "~icons/lucide/help-circle"
@@ -199,16 +196,7 @@ const currentRequest = computed(() =>
 const { shouldEnableAIFeatures } = useAIExperiments()
 const isModifyPreRequestModalOpen = ref(false)
 
-const currentUser = useReadonlyStream(
-  platform.auth.getCurrentUserStream(),
-  platform.auth.getCurrentUser()
-)
-
 const showModifyPreRequestModal = () => {
-  if (!currentUser.value) {
-    invokeAction("modals.login.toggle")
-    return
-  }
   isModifyPreRequestModalOpen.value = true
 }
 </script>

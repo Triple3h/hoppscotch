@@ -136,86 +136,6 @@
             :icon="IconUser"
             class="!focus-visible:text-blue-600 !hover:text-blue-600 h-8 rounded border border-blue-600/25 bg-blue-500/10 pr-8 !text-blue-500 hover:border-blue-600/20 hover:bg-blue-600/20 focus-visible:border-blue-600/20 focus-visible:bg-blue-600/20"
           />
-          <span v-if="currentUser" class="px-2">
-            <tippy
-              interactive
-              trigger="click"
-              theme="popover"
-              :on-shown="() => tippyActions.focus()"
-            >
-              <HoppSmartPicture
-                v-tippy="{
-                  theme: 'tooltip',
-                }"
-                :name="currentUser.uid"
-                :title="
-                  currentUser.displayName ||
-                  currentUser.email ||
-                  t('profile.default_hopp_displayname')
-                "
-                indicator
-                :indicator-styles="
-                  network.isOnline ? 'bg-green-500' : 'bg-red-500'
-                "
-              />
-              <template #content="{ hide }">
-                <div
-                  ref="tippyActions"
-                  class="flex flex-col focus:outline-none"
-                  tabindex="0"
-                  @keyup.p="profile.$el.click()"
-                  @keyup.s="settings.$el.click()"
-                  @keyup.d="dashboard.$el.click()"
-                  @keyup.l="logout.$el.click()"
-                  @keyup.escape="hide()"
-                >
-                  <div class="flex flex-col px-2">
-                    <span class="inline-flex truncate font-semibold">
-                      {{
-                        currentUser.displayName ||
-                        t("profile.default_hopp_displayname")
-                      }}
-                    </span>
-                    <span
-                      class="inline-flex truncate text-secondaryLight text-tiny"
-                      >{{ currentUser.email }}</span
-                    >
-                  </div>
-                  <hr />
-                  <HoppSmartItem
-                    ref="profile"
-                    to="/profile"
-                    :icon="IconUser"
-                    :label="t('navigation.profile')"
-                    :shortcut="['P']"
-                    @click="hide()"
-                  />
-                  <HoppSmartItem
-                    ref="settings"
-                    to="/settings"
-                    :icon="IconSettings"
-                    :label="t('navigation.settings')"
-                    :shortcut="['S']"
-                    @click="hide()"
-                  />
-                  <HoppSmartItem
-                    v-if="isUserAdmin"
-                    ref="dashboard"
-                    to="/admin/dashboard"
-                    :icon="IconLayoutDashboard"
-                    :label="t('navigation.admin_dashboard')"
-                    :shortcut="['D']"
-                    @click="hide()"
-                  />
-                  <FirebaseLogout
-                    ref="logout"
-                    :shortcut="['L']"
-                    @confirm-logout="hide()"
-                  />
-                </div>
-              </template>
-            </tippy>
-          </span>
         </div>
       </div>
     </header>
@@ -231,12 +151,11 @@
 import { getKernelMode } from "@hoppscotch/kernel"
 
 import { useI18n } from "@composables/i18n"
-import { useReadonlyStream } from "@composables/stream"
 import { invokeAction } from "@helpers/actions"
 import { breakpointsTailwind, useBreakpoints, useNetwork } from "@vueuse/core"
 import { useService } from "dioc/vue"
 import type { Instance } from "tippy.js"
-import { computed, onMounted, reactive, ref, watch } from "vue"
+import { computed, reactive, ref, watch } from "vue"
 
 import { platform } from "~/platform"
 import { AdditionalLinksService } from "~/services/additionalLinks.service"
@@ -247,9 +166,7 @@ import {
 } from "~/services/banner.service"
 import IconChevronDown from "~icons/lucide/chevron-down"
 import IconDownload from "~icons/lucide/download"
-import IconLayoutDashboard from "~icons/lucide/layout-dashboard"
 import IconLifeBuoy from "~icons/lucide/life-buoy"
-import IconSettings from "~icons/lucide/settings"
 import IconUser from "~icons/lucide/user"
 
 const t = useI18n()
@@ -268,23 +185,6 @@ const onSwitcherCreate = (instance: Instance) => {
     content.style.scrollbarGutter = "stable"
   }
 }
-
-const isUserAdmin = ref(false)
-
-/**
- * Show the dashboard link if the user is not on the default cloud instance and is an Admin
- */
-onMounted(async () => {
-  const { organization } = platform
-
-  if (!organization || organization.isDefaultCloudInstance) return
-
-  const orgInfo = await organization.getOrgInfo()
-
-  if (orgInfo) {
-    isUserAdmin.value = !!orgInfo.isAdmin
-  }
-})
 
 const breakpoints = useBreakpoints(breakpointsTailwind)
 const mdAndLarger = breakpoints.greater("md")
@@ -342,17 +242,5 @@ const dismissBanner = () => {
   }
 }
 
-const currentUser = useReadonlyStream(
-  platform.auth.getProbableUserStream(),
-  platform.auth.getProbableUser()
-)
-
 const workspaceName = computed(() => t("workspace.personal"))
-
-// Template refs
-const tippyActions = ref<any | null>(null)
-const profile = ref<any | null>(null)
-const settings = ref<any | null>(null)
-const dashboard = ref<any | null>(null)
-const logout = ref<any | null>(null)
 </script>

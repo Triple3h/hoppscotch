@@ -47,7 +47,6 @@ export type HoppAction =
   | "contextmenu.open" // Send/Cancel a Hoppscotch Request
   | "request.send-cancel" // Send/Cancel a Hoppscotch Request
   | "request.reset" // Clear request data
-  | "request.share-request" // Share Request
   | "request-response.save" // Save Request or Response
   | "request.save-as" // Save As
   | "request.rename" // Rename request on REST or GraphQL
@@ -90,7 +89,6 @@ export type HoppAction =
   | "navigation.jump.realtime" // Jump to realtime page
   | "navigation.jump.documentation" // Jump to documentation page
   | "navigation.jump.settings" // Jump to settings page
-  | "navigation.jump.profile" // Jump to profile page
   | "settings.theme.system" // Use system theme
   | "settings.theme.light" // Use light theme
   | "settings.theme.dark" // Use dark theme
@@ -102,17 +100,14 @@ export type HoppAction =
   | "response.erase" // Erase/clear response
   | "response.save" // Save response
   | "response.save-as-example" // Save response as example
-  | "modals.login.toggle" // Login to Hoppscotch
   | "modals.instance-switcher.toggle" // Switch Hoppscotch instances (self-hosted)
   | "history.clear" // Clear REST History
-  | "user.logout" // Log out of Hoppscotch
   | "editor.format" // Format editor content
   | "editor.undo" // Undo editor content
   | "editor.redo" // Redo editor content
   | "editor.comment-toggle" // Toggle comment in editor
   | "rest.request.open" // Open REST request
   | "request.open-tab" // Open REST request
-  | "share.request" // Share REST or GraphQL request
   | "tab.duplicate-tab" // Duplicate REST request
   | "gql.request.open" // Open GraphQL request
   | "rest.gql-request.open" // Open GQL request in REST tab
@@ -161,9 +156,6 @@ type HoppActionArgsMap = {
     | undefined
   "request.open-tab": {
     tab: RESTOptionTabs | GQLOptionTabs
-  }
-  "share.request": {
-    request: HoppRESTRequest | HoppGQLRequest
   }
   "tab.duplicate-tab": {
     tabID?: string

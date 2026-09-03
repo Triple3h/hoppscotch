@@ -56,35 +56,6 @@
             <span class="truncate" :class="{ 'text-accent': isSelected }">
               {{ collectionName }}
             </span>
-            <!-- Mock Server Status Indicator -->
-            <span
-              v-if="mockServerStatus.exists"
-              v-tippy="{ theme: 'tooltip' }"
-              :title="
-                mockServerStatus.isActive
-                  ? t('mock_server.active')
-                  : t('mock_server.inactive')
-              "
-              class="ml-2 flex items-center"
-            >
-              <component
-                :is="IconServer"
-                class="svg-icons"
-                :class="{
-                  'text-green-500': mockServerStatus.isActive,
-                  'text-secondaryLight': !mockServerStatus.isActive,
-                }"
-              />
-            </span>
-            <!-- Published Doc Status Indicator -->
-            <span
-              v-if="publishedDocStatus"
-              v-tippy="{ theme: 'tooltip' }"
-              :title="t('documentation.publish.published')"
-              class="ml-2 flex items-center"
-            >
-              <component :is="IconGlobe" class="svg-icons text-green-500" />
-            </span>
           </span>
         </div>
 
@@ -138,10 +109,6 @@
                   @keyup.p="propertiesAction?.$el.click()"
                   @keyup.t="runCollectionAction?.$el.click()"
                   @keyup.s="sortAction?.$el.click()"
-                  @keyup.m="
-                    isMockServerVisible && mockServerAction?.$el.click()
-                  "
-                  @keyup.i="documentationAction?.$el.click()"
                   @keyup.escape="hide()"
                 >
                   <HoppSmartItem
@@ -189,32 +156,6 @@
                     @click="
                       () => {
                         emit('run-collection', props.id)
-                        hide()
-                      }
-                    "
-                  />
-                  <HoppSmartItem
-                    v-if="isDocumentationVisible"
-                    ref="documentationAction"
-                    :icon="IconBook"
-                    :label="t('documentation.title')"
-                    :shortcut="['I']"
-                    @click="
-                      () => {
-                        handleDocumentationAction()
-                        hide()
-                      }
-                    "
-                  />
-                  <HoppSmartItem
-                    v-if="isRootCollection && isMockServerVisible"
-                    ref="mockServerAction"
-                    :icon="IconServer"
-                    :label="t('mock_server.create_mock_server')"
-                    :shortcut="['M']"
-                    @click="
-                      () => {
-                        handleMockServerAction()
                         hide()
                       }
                     "
@@ -321,7 +262,6 @@
 
 <script setup lang="ts">
 import { useI18n } from "@composables/i18n"
-import { useDocumentationVisibility } from "~/composables/documentationVisibility"
 import { useGqlWorkspaceVisibility } from "~/composables/gqlWorkspaceVisibility"
 import { HoppCollection } from "@hoppscotch/data"
 import { computed, ref, watch } from "vue"
@@ -341,20 +281,12 @@ import IconFolderOpen from "~icons/lucide/folder-open"
 import IconFolderPlus from "~icons/lucide/folder-plus"
 import IconMoreVertical from "~icons/lucide/more-vertical"
 import IconPlaySquare from "~icons/lucide/play-square"
-import IconServer from "~icons/lucide/server"
 import IconSettings2 from "~icons/lucide/settings-2"
 import IconTrash2 from "~icons/lucide/trash-2"
 import IconArrowUpDown from "~icons/lucide/arrow-up-down"
-import IconBook from "~icons/lucide/book"
 import IconGraphql from "~icons/hopp/graphql"
 import { CurrentSortValuesService } from "~/services/current-sort.service"
 import { useService } from "dioc/vue"
-import { useMockServerStatus } from "~/composables/mockServer"
-import { useMockServerVisibility } from "~/composables/mockServerVisibility"
-import { platform } from "~/platform"
-import { invokeAction } from "~/helpers/actions"
-import { DocumentationService } from "~/services/documentation.service"
-import IconGlobe from "~icons/lucide/globe"
 
 type CollectionType = "my-collections"
 type FolderType = "collection" | "folder"
@@ -402,10 +334,8 @@ const emit = defineEmits<{
   (event: "edit-collection"): void
   (event: "edit-properties"): void
   (event: "duplicate-collection"): void
-  (event: "open-documentation"): void
   (event: "export-data"): void
   (event: "remove-collection"): void
-  (event: "create-mock-server"): void
   (event: "drop-event", payload: DataTransfer): void
   (event: "drag-event", payload: DataTransfer): void
   (event: "dragging", payload: boolean): void
@@ -430,14 +360,11 @@ const edit = ref<HTMLButtonElement | null>(null)
 const duplicateAction = ref<HTMLButtonElement | null>(null)
 const deleteAction = ref<HTMLButtonElement | null>(null)
 const exportAction = ref<HTMLButtonElement | null>(null)
-const mockServerAction = ref<HTMLButtonElement | null>(null)
 const options = ref<TippyComponent | null>(null)
 const propertiesAction = ref<HTMLButtonElement | null>(null)
 const runCollectionAction = ref<HTMLButtonElement | null>(null)
 const sortAction = ref<HTMLButtonElement | null>(null)
-const documentationAction = ref<HTMLButtonElement | null>(null)
 
-const { isDocumentationVisible } = useDocumentationVisibility()
 const { isGqlWorkspaceEnabled } = useGqlWorkspaceVisibility()
 
 const dragging = ref(false)
@@ -476,36 +403,6 @@ const currentSortOrder = ref<"asc" | "desc">(
   currentSortValuesService.getSortOption(collectionRefID.value ?? "personal")
     ?.sortOrder ?? "asc"
 )
-// Mock Server Status
-const { isMockServerVisible } = useMockServerVisibility()
-const { getMockServerStatus } = useMockServerStatus()
-
-const mockServerStatus = computed(() => {
-  if (!isMockServerVisible.value) {
-    return { exists: false, isActive: false }
-  }
-
-  const collectionId =
-    (props.data as HoppCollection).id ?? (props.data as HoppCollection)._ref_id
-
-  return getMockServerStatus(collectionId || "")
-})
-
-// Published Doc Status
-const documentationService = useService(DocumentationService)
-
-const publishedDocStatus = computed(() => {
-  const collectionId =
-    (props.data as HoppCollection).id ?? (props.data as HoppCollection)._ref_id
-
-  return documentationService.getPublishedDocStatus(collectionId || "")
-})
-
-// Determine if this is a root collection (not a child folder)
-const isRootCollection = computed(() => {
-  return props.folderType === "collection"
-})
-
 // Used to determine if the collection is being dragged to a different destination
 // This is used to make the highlight effect work
 watch(
@@ -667,32 +564,6 @@ const sortCollection = () => {
     sortOrder: currentSortOrder.value,
     collectionRefID: collectionRefID.value ?? "personal",
   })
-}
-
-const handleMockServerAction = () => {
-  const currentUser = platform.auth.getCurrentUser()
-
-  if (!currentUser) {
-    // Show login modal if user is not authenticated
-    invokeAction("modals.login.toggle")
-    return
-  }
-
-  // User is authenticated, proceed with mock server creation
-  emit("create-mock-server")
-}
-
-const handleDocumentationAction = () => {
-  const currentUser = platform.auth.getCurrentUser()
-
-  if (!currentUser) {
-    // Show login modal if user is not authenticated
-    invokeAction("modals.login.toggle")
-    return
-  }
-
-  // User is authenticated, proceed with opening documentation
-  emit("open-documentation")
 }
 
 const resetDragState = () => {

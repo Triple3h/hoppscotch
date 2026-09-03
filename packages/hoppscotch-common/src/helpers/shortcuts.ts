@@ -61,11 +61,6 @@ export function getShortcuts(t: (x: string) => string): ShortcutDef[] {
       section: t("shortcut.request.title"),
     },
     {
-      keys: [getPlatformSpecialKey(), "U"],
-      label: t("shortcut.request.share_request"),
-      section: t("shortcut.request.title"),
-    },
-    {
       keys: [getPlatformSpecialKey(), "I"],
       label: t("shortcut.request.reset_request"),
       section: t("shortcut.request.title"),
@@ -147,11 +142,6 @@ export function getShortcuts(t: (x: string) => string): ShortcutDef[] {
     {
       keys: [getPlatformAlternateKey(), "S"],
       label: t("shortcut.navigation.settings"),
-      section: t("shortcut.navigation.title"),
-    },
-    {
-      keys: [getPlatformAlternateKey(), "M"],
-      label: t("shortcut.navigation.profile"),
       section: t("shortcut.navigation.title"),
     },
 

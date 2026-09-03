@@ -111,7 +111,6 @@ import { RequestSpotlightSearcherService } from "~/services/spotlight/searchers/
 import { ResponseSpotlightSearcherService } from "~/services/spotlight/searchers/response.searcher"
 import { SettingsSpotlightSearcherService } from "~/services/spotlight/searchers/settings.searcher"
 import { TabSpotlightSearcherService } from "~/services/spotlight/searchers/tab.searcher"
-import { UserSpotlightSearcherService } from "~/services/spotlight/searchers/user.searcher"
 
 const t = useI18n()
 
@@ -126,7 +125,6 @@ const emit = defineEmits<{
 const spotlightService = useService(SpotlightService)
 
 useService(HistorySpotlightSearcherService)
-useService(UserSpotlightSearcherService)
 useService(NavigationSpotlightSearcherService)
 useService(SettingsSpotlightSearcherService)
 useService(CollectionsSpotlightSearcherService)

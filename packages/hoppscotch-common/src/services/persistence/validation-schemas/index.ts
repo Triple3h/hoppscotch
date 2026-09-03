@@ -82,8 +82,6 @@ const SettingsDefSchema = z.object({
   CUSTOM_NAMING_STYLE: z.string().optional().catch(""),
 
   EXPERIMENTAL_SCRIPTING_SANDBOX: z.optional(z.boolean()),
-  ENABLE_EXPERIMENTAL_MOCK_SERVERS: z.optional(z.boolean()),
-  ENABLE_EXPERIMENTAL_DOCUMENTATION: z.optional(z.boolean()),
   ENABLE_GQL_IN_REST_WORKSPACE: z.optional(z.boolean()),
 })
 

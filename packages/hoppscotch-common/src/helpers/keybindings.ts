@@ -63,7 +63,6 @@ const baseBindings: {
 } = {
   "ctrl-enter": "request.send-cancel",
   "ctrl-i": "request.reset",
-  "ctrl-u": "request.share-request",
   "ctrl-s": "request-response.save",
   "ctrl-shift-s": "request.save-as",
   "alt-up": "request.method.next",
@@ -83,7 +82,6 @@ const baseBindings: {
   "alt-w": "navigation.jump.realtime",
   "alt-d": "navigation.jump.documentation",
   "alt-s": "navigation.jump.settings",
-  "alt-m": "navigation.jump.profile",
   "ctrl-shift-p": "response.preview.toggle",
   "ctrl-j": "response.file.download",
   "ctrl-.": "response.copy",

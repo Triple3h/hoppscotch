@@ -1,12 +1,10 @@
 import { computed, Ref, ref } from "vue"
-import { useReadonlyStream } from "./stream"
 import { platform } from "~/platform"
 import { useSetting } from "./settings"
 import { HoppGQLRequest, HoppRESTRequest, isGQLRequest } from "@hoppscotch/data"
 import { useToast } from "@composables/toast"
 import { useI18n } from "@composables/i18n"
 import * as E from "fp-ts/Either"
-import { invokeAction } from "~/helpers/actions"
 
 export const useRequestNameGeneration = (targetNameRef: Ref<string>) => {
   const toast = useToast()
@@ -16,11 +14,6 @@ export const useRequestNameGeneration = (targetNameRef: Ref<string>) => {
 
   const generateRequestNameForPlatform =
     platform.experiments?.aiExperiments?.generateRequestName
-
-  const currentUser = useReadonlyStream(
-    platform.auth.getCurrentUserStream(),
-    platform.auth.getCurrentUser()
-  )
 
   const ENABLE_AI_EXPERIMENTS = useSetting("ENABLE_AI_EXPERIMENTS")
 
@@ -33,11 +26,6 @@ export const useRequestNameGeneration = (targetNameRef: Ref<string>) => {
   const generateRequestName = async (
     requestContext: HoppRESTRequest | HoppGQLRequest | null
   ) => {
-    if (!currentUser.value) {
-      invokeAction("modals.login.toggle")
-      return
-    }
-
     if (!requestContext || !generateRequestNameForPlatform) {
       toast.error(t("request.generate_name_error"))
       return

@@ -197,10 +197,6 @@ defineActionHandler("navigation.jump.settings", () => {
   router.push({ path: "/settings" })
 })
 
-defineActionHandler("navigation.jump.profile", () => {
-  router.push({ path: "/profile" })
-})
-
 defineActionHandler("settings.theme.system", () => {
   applySetting("BG_COLOR", "system")
 })

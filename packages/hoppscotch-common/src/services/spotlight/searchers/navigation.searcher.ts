@@ -53,11 +53,6 @@ export class NavigationSpotlightSearcherService extends StaticSpotlightSearcherS
       alternates: ["navigation", "realtime", "socket", "ws"],
       icon: markRaw(IconArrowRight),
     },
-    profile: {
-      text: this.t("shortcut.navigation.profile"),
-      alternates: ["navigation", "profile", "account"],
-      icon: markRaw(IconArrowRight),
-    },
   })
 
   private docKeys = Object.keys(this.documents)

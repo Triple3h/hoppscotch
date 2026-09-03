@@ -63,7 +63,6 @@ import { hoppCollectionsToOpenAPI } from "~/helpers/import-export/export/openapi
 
 import { ImporterOrExporter } from "~/components/importExport/types"
 import { GistSource } from "~/helpers/import-export/import/import-sources/GistSource"
-import { invokeAction } from "~/helpers/actions"
 import { sanitizeCollection } from "~/helpers/import-export/import"
 
 const isInsomniaImporterInProgress = ref(false)
@@ -267,14 +266,6 @@ const HoppAllCollectionImporter: ImporterOrExporter = {
     disabled: false,
     applicableTo: ["personal-workspace"],
     format: "hoppscotch",
-  },
-  onSelect() {
-    if (!currentUser.value) {
-      invokeAction("modals.login.toggle")
-      return true
-    }
-
-    return false
   },
   importSummary: currentImportSummary,
   component: defineStep("all_collection_import", AllCollectionImport, () => ({

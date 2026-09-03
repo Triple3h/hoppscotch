@@ -30,7 +30,6 @@
                 @close-tab="removeTab(tab.id)"
                 @close-other-tabs="closeOtherTabsAction(tab.id)"
                 @duplicate-tab="duplicateTab(tab.id)"
-                @share-tab-request="shareTabRequest(tab.id)"
               />
               <GqlTabHead
                 v-else-if="
@@ -43,7 +42,6 @@
                 @close-tab="removeTab(tab.id)"
                 @close-other-tabs="closeOtherTabsAction(tab.id)"
                 @duplicate-tab="duplicateTab(tab.id)"
-                @share-tab-request="shareTabRequest(tab.id)"
               />
               <!-- Fallback for document types without a dedicated head
                    (test-runner) — providing the #tabhead slot suppresses the
@@ -189,7 +187,6 @@ import { useI18n } from "@composables/i18n"
 import { getDefaultRESTRequest } from "~/helpers/rest/default"
 import { defineActionHandler, invokeAction } from "~/helpers/actions"
 import { platform } from "~/platform"
-import { useReadonlyStream } from "~/composables/stream"
 import { useService } from "dioc/vue"
 import { InspectionService } from "~/services/inspection"
 import { RequestInspectorService } from "~/services/inspection/inspectors/request.inspector"
@@ -233,11 +230,6 @@ const t = useI18n()
 const tabs = useService(WorkspaceTabsService)
 
 const currentTabID = tabs.currentTabID
-
-const currentUser = useReadonlyStream(
-  platform.auth.getCurrentUserStream(),
-  platform.auth.getCurrentUser()
-)
 
 type PopupDetails = {
   show: boolean
@@ -530,23 +522,6 @@ const onSaveModalClose = () => {
       inspectionService.deleteTabInspectorResult(confirmingCloseForTabID.value)
     }
     confirmingCloseForTabID.value = null
-  }
-}
-
-const shareTabRequest = (tabID: string) => {
-  const tab = tabs.getTabRef(tabID)
-  if (
-    tab.value &&
-    (tab.value.document.type === "request" ||
-      tab.value.document.type === "gql-request")
-  ) {
-    if (currentUser.value) {
-      invokeAction("share.request", {
-        request: tab.value.document.request,
-      })
-    } else {
-      invokeAction("modals.login.toggle")
-    }
   }
 }
 

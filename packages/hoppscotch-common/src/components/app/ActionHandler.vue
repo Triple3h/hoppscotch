@@ -1,7 +1,6 @@
 <template>
   <AppShortcuts :show="showShortcuts" @close="showShortcuts = false" />
   <AppShare :show="showShare" @hide-modal="showShare = false" />
-  <FirebaseLogin v-if="showLogin" @hide-modal="showLogin = false" />
   <InstanceSwitcher
     v-if="showInstanceSwitcher"
     @hide-modal="showInstanceSwitcher = false"
@@ -19,7 +18,6 @@ import { defineActionHandler } from "~/helpers/actions"
 
 const showShortcuts = ref(false)
 const showShare = ref(false)
-const showLogin = ref(false)
 const showInstanceSwitcher = ref(false)
 const isDrawerOpen = ref(false)
 
@@ -29,10 +27,6 @@ defineActionHandler("flyouts.keybinds.toggle", () => {
 
 defineActionHandler("modals.share.toggle", () => {
   showShare.value = !showShare.value
-})
-
-defineActionHandler("modals.login.toggle", () => {
-  showLogin.value = !showLogin.value
 })
 
 defineActionHandler("modals.instance-switcher.toggle", () => {

@@ -118,15 +118,12 @@ import { useService } from "dioc/vue"
 import { computed, reactive, ref } from "vue"
 import { useAIExperiments } from "~/composables/ai-experiments"
 import { useNestedSetting, useSetting } from "~/composables/settings"
-import { useReadonlyStream } from "~/composables/stream"
-import { invokeAction } from "~/helpers/actions"
 import completer from "~/helpers/editor/completion/testScript"
 import linter from "~/helpers/editor/linting/testScript"
 import { hasActualScript } from "@hoppscotch/js-sandbox/scripting"
 import testSnippets from "~/helpers/testSnippets"
 import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
 import { toggleNestedSetting } from "~/newstore/settings"
-import { platform } from "~/platform"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
 import IconFileSymlink from "~icons/lucide/file-symlink"
 import IconHelpCircle from "~icons/lucide/help-circle"
@@ -196,16 +193,7 @@ const currentRequest = computed(() =>
 const { shouldEnableAIFeatures } = useAIExperiments()
 const isModifyTestScriptModalOpen = ref(false)
 
-const currentUser = useReadonlyStream(
-  platform.auth.getCurrentUserStream(),
-  platform.auth.getCurrentUser()
-)
-
 const showModifyTestScriptModal = () => {
-  if (!currentUser.value) {
-    invokeAction("modals.login.toggle")
-    return
-  }
   isModifyTestScriptModalOpen.value = true
 }
 </script>

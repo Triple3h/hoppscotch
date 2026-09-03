@@ -1,8 +1,5 @@
 import { Service } from "dioc"
 import { ref, readonly } from "vue"
-import { useStreamStatic } from "~/composables/stream"
-import { platform } from "~/platform"
-import { DocumentationService } from "./documentation.service"
 import { WorkspaceTabsService } from "./tab/workspace-tabs"
 
 /**
@@ -35,31 +32,17 @@ export class WorkspaceService extends Service<WorkspaceServiceEvent> {
    */
   public currentWorkspace = readonly(this._currentWorkspace)
 
-  private documentationService = this.bind(DocumentationService)
   private workspaceTabsService = this.bind(WorkspaceTabsService)
-
-  private currentUser = useStreamStatic(
-    platform.auth.getCurrentUserStream(),
-    platform.auth.getCurrentUser(),
-    () => {
-      /* noop */
-    }
-  )[0]
 
   override onServiceInit() {
     this.setupWorkspaceSync()
   }
 
   /**
-   * Keeps the unified tab service attached to the (personal) workspace and
-   * fetches the user's published docs when logged in.
+   * Keeps the unified tab service attached to the (personal) workspace.
    */
   private setupWorkspaceSync() {
     this.workspaceTabsService.attachToWorkspace({ type: "personal" })
-
-    if (this.currentUser.value) {
-      this.documentationService.fetchUserPublishedDocs()
-    }
   }
 
   /**

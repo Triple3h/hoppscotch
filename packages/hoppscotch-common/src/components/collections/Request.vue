@@ -110,8 +110,6 @@
                 @keyup.e="edit?.$el.click()"
                 @keyup.d="duplicate?.$el.click()"
                 @keyup.delete="deleteAction?.$el.click()"
-                @keyup.s="shareAction?.$el.click()"
-                @keyup.i="documentationAction?.$el.click()"
                 @keyup.a="addExampleAction?.$el.click()"
                 @keyup.escape="hide()"
               >
@@ -147,31 +145,6 @@
                   @click="
                     () => {
                       emit('add-example')
-                      hide()
-                    }
-                  "
-                />
-                <HoppSmartItem
-                  v-if="isDocumentationVisible"
-                  ref="documentationAction"
-                  :icon="IconBook"
-                  :label="t('documentation.title')"
-                  :shortcut="['I']"
-                  @click="
-                    () => {
-                      handleDocumentationAction()
-                      hide()
-                    }
-                  "
-                />
-                <HoppSmartItem
-                  ref="shareAction"
-                  :icon="IconShare2"
-                  :label="t('action.share')"
-                  :shortcut="['S']"
-                  @click="
-                    () => {
-                      emit('share-request')
                       hide()
                     }
                   "
@@ -246,17 +219,14 @@ import IconEdit from "~icons/lucide/edit"
 import IconCopy from "~icons/lucide/copy"
 import IconTrash2 from "~icons/lucide/trash-2"
 import IconRotateCCW from "~icons/lucide/rotate-ccw"
-import IconShare2 from "~icons/lucide/share-2"
 import IconArrowRight from "~icons/lucide/chevron-right"
 import IconArrowDown from "~icons/lucide/chevron-down"
-import IconBook from "~icons/lucide/book"
 import IconPlusCircle from "~icons/lucide/plus-circle"
 import { ref, PropType, watch, computed } from "vue"
 import { HoppRESTRequest, HoppGQLRequest } from "@hoppscotch/data"
 import { isGQLRequest } from "@hoppscotch/data"
 import IconGraphql from "~icons/hopp/graphql"
 import { useI18n } from "@composables/i18n"
-import { useDocumentationVisibility } from "~/composables/documentationVisibility"
 import { TippyComponent } from "vue-tippy"
 import {
   changeCurrentReorderStatus,
@@ -264,8 +234,6 @@ import {
 } from "~/newstore/reordering"
 import { useReadonlyStream } from "~/composables/stream"
 import { getMethodLabelColorClassOf } from "~/helpers/rest/labelColoring"
-import { platform } from "~/platform"
-import { invokeAction } from "~/helpers/actions"
 
 type CollectionType = "my-collections"
 
@@ -333,10 +301,8 @@ const emit = defineEmits<{
   (event: "edit-request"): void
   (event: "edit-response", payload: ResponsePayload): void
   (event: "duplicate-request"): void
-  (event: "open-request-documentation"): void
   (event: "remove-request"): void
   (event: "select-request"): void
-  (event: "share-request"): void
   (event: "add-example"): void
   (event: "drag-request", payload: DataTransfer): void
   (event: "update-request-order", payload: DataTransfer): void
@@ -352,11 +318,7 @@ const edit = ref<HTMLButtonElement | null>(null)
 const deleteAction = ref<HTMLButtonElement | null>(null)
 const options = ref<TippyComponent | null>(null)
 const duplicate = ref<HTMLButtonElement | null>(null)
-const shareAction = ref<HTMLButtonElement | null>(null)
-const documentationAction = ref<HTMLButtonElement | null>(null)
 const addExampleAction = ref<HTMLButtonElement | null>(null)
-
-const { isDocumentationVisible } = useDocumentationVisibility()
 
 const isGQL = computed(() => isGQLRequest(props.request))
 
@@ -478,19 +440,6 @@ const isRequestLoading = computed(() => {
   }
   return false
 })
-
-const handleDocumentationAction = () => {
-  const currentUser = platform.auth.getCurrentUser()
-
-  if (!currentUser) {
-    // Show login modal if user is not authenticated
-    invokeAction("modals.login.toggle")
-    return
-  }
-
-  // User is authenticated, proceed with opening documentation
-  emit("open-request-documentation")
-}
 
 const resetDragState = () => {
   dragging.value = false

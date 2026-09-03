@@ -68,17 +68,6 @@
                     }
                   "
                 />
-                <hr />
-                <HoppSmartItem
-                  :label="t('request.share_request')"
-                  :icon="IconShare2"
-                  @click="
-                    () => {
-                      shareRequest()
-                      hide()
-                    }
-                  "
-                />
               </div>
             </template>
           </tippy>
@@ -97,7 +86,6 @@
 <script setup lang="ts">
 import { platform } from "~/platform"
 import { useI18n } from "@composables/i18n"
-import { useReadonlyStream } from "@composables/stream"
 import { useToast } from "@composables/toast"
 import { computed, ref } from "vue"
 import { useVModel } from "@vueuse/core"
@@ -114,7 +102,6 @@ import { editRESTRequest } from "~/newstore/collections"
 import IconSave from "~icons/lucide/save"
 import IconChevronDown from "~icons/lucide/chevron-down"
 import IconFolderPlus from "~icons/lucide/folder-plus"
-import IconShare2 from "~icons/lucide/share-2"
 import { useSetting } from "~/composables/settings"
 
 const t = useI18n()
@@ -214,21 +201,6 @@ const saveRequest = () => {
     toast.success(`${t("request.saved")}`)
   } else {
     showSaveRequestModal.value = true
-  }
-}
-
-const currentUser = useReadonlyStream(
-  platform.auth.getCurrentUserStream(),
-  platform.auth.getCurrentUser()
-)
-
-const shareRequest = () => {
-  if (currentUser.value) {
-    invokeAction("share.request", {
-      request: tab.value.document.request,
-    })
-  } else {
-    invokeAction("modals.login.toggle")
   }
 }
 

@@ -53,18 +53,14 @@
         displayModalImportExport(true, 'my-collections')
       "
       @duplicate-collection="duplicateCollection"
-      @open-documentation="openDocumentation"
-      @open-request-documentation="openRequestDocumentation"
       @duplicate-request="duplicateRequest"
       @duplicate-response="duplicateResponse"
       @edit-properties="editProperties"
-      @create-mock-server="createMockServer"
       @export-data="exportData"
       @remove-collection="removeCollection"
       @remove-folder="removeFolder"
       @remove-request="removeRequest"
       @remove-response="removeResponse"
-      @share-request="shareRequest"
       @add-example="addExample"
       @select="selectPicked"
       @select-response="selectResponse"
@@ -195,27 +191,12 @@
       @hide-modal="displayModalEditProperties(false)"
       @set-collection-properties="setCollectionProperties"
     />
-    <CollectionsDocumentation
-      v-if="showModalDocumentation"
-      :show="showModalDocumentation"
-      :path-or-i-d="editingCollectionPath"
-      :collection="editingCollection"
-      :collection-i-d="editingCollectionID ?? undefined"
-      :folder-path="editingFolderPath"
-      :request-index="editingRequestIndex"
-      :request-i-d="editingRequestID"
-      :request="editingRequest"
-      @hide-modal="displayModalDocumentation(false)"
-    />
-
     <!-- `selectedCollectionID` is guaranteed to be a string when `showCollectionsRunnerModal` is `true` -->
     <HttpTestRunnerModal
       v-if="showCollectionsRunnerModal && collectionRunnerData"
       :collection-runner-data="collectionRunnerData"
       @hide-modal="showCollectionsRunnerModal = false"
     />
-
-    <MockServerConfigureMockServerModal />
   </div>
 </template>
 
@@ -250,7 +231,7 @@ import yaml from "js-yaml"
 import { cloneDeep, isEqual } from "lodash-es"
 import { PropType, computed, nextTick, onMounted, ref } from "vue"
 import { useReadonlyStream } from "~/composables/stream"
-import { defineActionHandler, invokeAction } from "~/helpers/actions"
+import { defineActionHandler } from "~/helpers/actions"
 import { handleTokenValidation } from "~/helpers/handleTokenValidation"
 import {
   getFoldersByPath,
@@ -339,7 +320,6 @@ const editingCollection = ref<HoppCollection | null>(null)
 const editingCollectionName = ref<string | null>(null)
 const editingCollectionIndex = ref<number | null>(null)
 const editingCollectionID = ref<string | null>(null)
-const editingCollectionPath = ref<string | null>(null)
 
 const editingFolder = ref<HoppCollection | null>(null)
 const editingFolderName = ref<string | null>(null)
@@ -370,11 +350,6 @@ const editingProperties = ref<EditingProperties>({
 const confirmModalTitle = ref<string | null>(null)
 
 const filterTexts = ref("")
-
-const currentUser = useReadonlyStream(
-  platform.auth.getCurrentUserStream(),
-  platform.auth.getCurrentUser()
-)
 
 const myCollections = useReadonlyStream(restCollections$, [], "deep")
 
@@ -547,7 +522,6 @@ const showModalEditRequest = ref(false)
 const showModalEditResponse = ref(false)
 const showModalImportExport = ref(false)
 const showModalEditProperties = ref(false)
-const showModalDocumentation = ref(false)
 const showConfirmModal = ref(false)
 
 const showCollectionsRunnerModal = ref(false)
@@ -616,12 +590,6 @@ const displayModalEditProperties = (show: boolean) => {
 
 const displayConfirmModal = (show: boolean) => {
   showConfirmModal.value = show
-
-  if (!show) resetSelectedData()
-}
-
-const displayModalDocumentation = (show: boolean) => {
-  showModalDocumentation.value = show
 
   if (!show) resetSelectedData()
 }
@@ -829,32 +797,6 @@ const updateEditingCollection = async (newName: string) => {
     collectionUpdated as NodeCollection["data"]["data"]
   )
   displayModalEditCollection(false)
-}
-
-const createMockServer = (payload: {
-  collectionIndex: string
-  collection: HoppCollection
-}) => {
-  // Import the mock server store dynamically to avoid circular dependencies
-  import("~/newstore/mockServers").then(({ showCreateMockServerModal$ }) => {
-    let collectionID = payload.collection.id ?? payload.collection._ref_id
-
-    // If this is a child collection (folder), we need to get the root collection ID
-    if (payload.collectionIndex.includes("/")) {
-      // Extract the root collection index from the path (e.g., "0/1/2" -> "0")
-      const rootIndex = payload.collectionIndex.split("/")[0]
-      const rootCollection = myCollections.value[parseInt(rootIndex)]
-      if (rootCollection) {
-        collectionID = rootCollection.id ?? rootCollection._ref_id
-      }
-    }
-
-    showCreateMockServerModal$.next({
-      show: true,
-      collectionID: collectionID,
-      collectionName: payload.collection.name,
-    })
-  })
 }
 
 const editFolder = (payload: {
@@ -2259,21 +2201,6 @@ const doExportOpenAPI = async (format: "json" | "yaml") => {
   }
 }
 
-const shareRequest = ({
-  request,
-}: {
-  request: HoppRESTRequest | HoppGQLRequest
-}) => {
-  if (currentUser.value) {
-    // opens the share request modal
-    invokeAction("share.request", {
-      request,
-    })
-  } else {
-    invokeAction("modals.login.toggle")
-  }
-}
-
 /**
  * Used to get the current value of a variable
  * It checks if the variable is a secret or not and returns the value accordingly.
@@ -2500,38 +2427,6 @@ const sortCollections = (payload: {
     sortBy: "name",
     sortOrder,
   })
-}
-
-const openDocumentation = ({
-  pathOrID,
-  collection,
-}: {
-  pathOrID: string
-  collection: HoppCollection
-}) => {
-  editingCollectionPath.value = pathOrID
-  editingCollection.value = collection
-  editingCollectionID.value = collection.id ?? collection._ref_id ?? null
-
-  displayModalDocumentation(true)
-}
-
-const openRequestDocumentation = ({
-  folderPath,
-  requestIndex,
-  request,
-}: {
-  folderPath: string
-  requestIndex: string
-  request: HoppRESTRequest
-}) => {
-  editingRequest.value = request
-  editingFolderPath.value = folderPath
-  editingRequestIndex.value = parseInt(requestIndex)
-  editingRequestID.value = requestIndex
-  editingCollectionID.value = folderPath.split("/").at(-1) ?? null
-
-  displayModalDocumentation(true)
 }
 
 const resolveConfirmModal = (title: string | null) => {

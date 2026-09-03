@@ -196,19 +196,6 @@
                     }
                   "
                 />
-                <hr />
-                <HoppSmartItem
-                  ref="copyRequestAction"
-                  :label="t('request.share_request')"
-                  :icon="IconShare2"
-                  :loading="fetchingShareLink"
-                  @click="
-                    () => {
-                      shareRequest()
-                      hide()
-                    }
-                  "
-                />
               </div>
             </template>
           </tippy>
@@ -243,7 +230,7 @@ import { useToast } from "@composables/toast"
 import { useVModel } from "@vueuse/core"
 import * as E from "fp-ts/Either"
 import { computed, ref, onUnmounted, watch } from "vue"
-import { defineActionHandler, invokeAction } from "~/helpers/actions"
+import { defineActionHandler } from "~/helpers/actions"
 import { getPlatformSpecialKey as getSpecialKey } from "~/helpers/platformutils"
 import { runRESTRequest$ } from "~/helpers/RequestRunner"
 import { HoppRESTResponse } from "~/helpers/types/HoppRESTResponse"
@@ -254,7 +241,6 @@ import IconFileCode from "~icons/lucide/file-code"
 import IconFolderPlus from "~icons/lucide/folder-plus"
 import IconRotateCCW from "~icons/lucide/rotate-ccw"
 import IconSave from "~icons/lucide/save"
-import IconShare2 from "~icons/lucide/share-2"
 import { getDefaultRESTRequest } from "~/helpers/rest/default"
 import { RESTHistoryEntry, restHistory$ } from "~/newstore/history"
 import { platform } from "~/platform"
@@ -319,7 +305,6 @@ const saveTippyActions = ref<any | null>(null)
 const curl = ref<any | null>(null)
 const show = ref<any | null>(null)
 const clearAll = ref<any | null>(null)
-const copyRequestAction = ref<any | null>(null)
 const saveRequestAction = ref<any | null>(null)
 const urlInput = ref<{ focus: () => void } | null>(null)
 
@@ -524,23 +509,6 @@ const updateRESTResponse = (response: HoppRESTResponse | null) => {
   tab.value.document.response = response
 }
 
-const currentUser = useReadonlyStream(
-  platform.auth.getCurrentUserStream(),
-  platform.auth.getCurrentUser()
-)
-
-const fetchingShareLink = ref(false)
-
-const shareRequest = () => {
-  if (currentUser.value) {
-    invokeAction("share.request", {
-      request: tab.value.document.request,
-    })
-  } else {
-    invokeAction("modals.login.toggle")
-  }
-}
-
 const cycleUpMethod = () => {
   const currentIndex = methods.indexOf(newMethod.value)
   if (currentIndex === -1) {
@@ -616,7 +584,6 @@ defineActionHandler("request.send-cancel", () => {
   else cancelRequest()
 })
 defineActionHandler("request.reset", clearContent)
-defineActionHandler("request.share-request", shareRequest)
 defineActionHandler("request.method.next", cycleDownMethod)
 defineActionHandler("request.method.prev", cycleUpMethod)
 defineActionHandler("request-response.save", saveRequest)

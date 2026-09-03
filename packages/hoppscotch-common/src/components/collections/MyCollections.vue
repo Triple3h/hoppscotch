@@ -99,24 +99,9 @@
                 collectionSyncID: node.data.data.data.id,
               })
             "
-            @open-documentation="
-              node.data.type === 'collections' &&
-              emit('open-documentation', {
-                pathOrID: node.id,
-                collectionRefID: node.data.data.data._ref_id,
-                collection: node.data.data.data,
-              })
-            "
             @edit-properties="
               node.data.type === 'collections' &&
               emit('edit-properties', {
-                collectionIndex: node.id,
-                collection: node.data.data.data,
-              })
-            "
-            @create-mock-server="
-              node.data.type === 'collections' &&
-              emit('create-mock-server', {
                 collectionIndex: node.id,
                 collection: node.data.data.data,
               })
@@ -211,14 +196,6 @@
                 collectionSyncID: node.data.data.data.id,
               })
             "
-            @open-documentation="
-              node.data.type === 'folders' &&
-              emit('open-documentation', {
-                pathOrID: node.id,
-                collectionRefID: node.data.data.data._ref_id,
-                collection: node.data.data.data,
-              })
-            "
             @edit-properties="
               node.data.type === 'folders' &&
               emit('edit-properties', {
@@ -309,15 +286,6 @@
                 request: node.data.data.data,
               })
             "
-            @open-request-documentation="
-              node.data.type === 'requests' &&
-              emit('open-request-documentation', {
-                folderPath: node.data.data.parentIndex,
-                requestIndex: pathToIndex(node.id),
-                requestRefID: node.data.data.data._ref_id,
-                request: node.data.data.data,
-              })
-            "
             @duplicate-response="
               emit('duplicate-response', {
                 folderPath: node.data.data.parentIndex,
@@ -358,12 +326,6 @@
                 request: node.data.data.data,
                 folderPath: node.data.data.parentIndex,
                 requestIndex: pathToIndex(node.id),
-              })
-            "
-            @share-request="
-              node.data.type === 'requests' &&
-              emit('share-request', {
-                request: node.data.data.data,
               })
             "
             @add-example="
@@ -610,23 +572,6 @@ const emit = defineEmits<{
     }
   ): void
   (
-    event: "open-documentation",
-    payload: {
-      pathOrID: string
-      collectionRefID: string
-      collection: HoppCollection
-    }
-  ): void
-  (
-    event: "open-request-documentation",
-    payload: {
-      folderPath: string
-      requestIndex: string
-      requestRefID: string
-      request: HoppRESTRequest | HoppGQLRequest
-    }
-  ): void
-  (
     event: "edit-properties",
     payload: {
       collectionIndex: string
@@ -679,12 +624,6 @@ const emit = defineEmits<{
     }
   ): void
   (
-    event: "share-request",
-    payload: {
-      request: HoppRESTRequest | HoppGQLRequest
-    }
-  ): void
-  (
     event: "add-example",
     payload: {
       folderPath: string
@@ -729,13 +668,6 @@ const emit = defineEmits<{
   (event: "select", payload: Picked | null): void
   (event: "display-modal-import-export"): void
   (event: "select-response", payload: ResponsePayload): void
-  (
-    event: "create-mock-server",
-    payload: {
-      collectionIndex: string
-      collection: HoppCollection
-    }
-  ): void
 }>()
 
 const refFilterCollection = toRef(props, "filteredCollections")

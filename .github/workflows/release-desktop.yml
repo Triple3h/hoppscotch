@@ -1,7 +1,8 @@
 name: Build & Release Desktop
 
-# 本仓库为本地化 fork：无签名证书、无自动更新服务器，
-# 因此仅产出未签名安装包（AppImage / deb / NSIS / MSI / dmg / app.zip）。
+# 本仓库为本地化 fork：无 Apple/Windows 代码签名证书，安装包本身未签名，
+# 但启用 Tauri updater 签名产物（minisign 内容签名），更新源指向本仓库 GitHub Release。
+# 构建前需在仓库设置 TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD secrets。
 
 on:
   # 手动触发：Actions -> Build & Release Desktop -> Run workflow
@@ -202,7 +203,9 @@ jobs:
       - name: Build Tauri bundles
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm --filter hoppscotch-desktop tauri build --bundles appimage,deb
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm --filter hoppscotch-desktop tauri build --bundles appimage,deb --config '{"bundle":{"createUpdaterArtifacts":true}}'
 
       - name: Prepare artifacts
         run: |
@@ -210,6 +213,9 @@ jobs:
           mkdir -p ../../dist
           for f in src-tauri/target/release/bundle/appimage/*.AppImage; do
             [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_linux_x86_64.AppImage"
+          done
+          for f in src-tauri/target/release/bundle/appimage/*.AppImage.sig; do
+            [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_linux_x86_64.AppImage.sig"
           done
           for f in src-tauri/target/release/bundle/deb/*.deb; do
             [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_linux_x86_64.deb"
@@ -299,7 +305,9 @@ jobs:
       - name: Build Tauri bundles
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm --filter hoppscotch-desktop tauri build --bundles nsis,msi
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm --filter hoppscotch-desktop tauri build --bundles nsis,msi --config '{"bundle":{"createUpdaterArtifacts":true}}'
 
       - name: Prepare artifacts
         run: |
@@ -307,6 +315,9 @@ jobs:
           mkdir -p ../../dist
           for f in src-tauri/target/release/bundle/nsis/*-setup.exe; do
             [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_windows_x86_64-setup.exe"
+          done
+          for f in src-tauri/target/release/bundle/nsis/*.sig; do
+            [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_windows_x86_64-setup.exe.sig"
           done
           for f in src-tauri/target/release/bundle/msi/*.msi; do
             [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_windows_x86_64.msi"
@@ -391,7 +402,9 @@ jobs:
       - name: Build Tauri bundles
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm --filter hoppscotch-desktop tauri build --target "$TARGET" --bundles app,dmg
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm --filter hoppscotch-desktop tauri build --target "$TARGET" --bundles app,dmg --config '{"bundle":{"createUpdaterArtifacts":true}}'
 
       - name: Prepare artifacts
         run: |
@@ -405,6 +418,12 @@ jobs:
               "src-tauri/target/$TARGET/release/bundle/macos/Hoppscotch.app" \
               "../../dist/hoppscotch-desktop_${APP_VERSION}_macos_${{ matrix.arch }}.app.zip"
           fi
+          for f in src-tauri/target/$TARGET/release/bundle/macos/*.app.tar.gz; do
+            [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_macos_${{ matrix.arch }}.app.tar.gz"
+          done
+          for f in src-tauri/target/$TARGET/release/bundle/macos/*.app.tar.gz.sig; do
+            [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_macos_${{ matrix.arch }}.app.tar.gz.sig"
+          done
           cd ../..
           ls -lh dist
 
@@ -441,7 +460,8 @@ jobs:
           mkdir -p release-assets
           find artifacts -type f \
             \( -name '*.AppImage' -o -name '*.deb' -o -name '*-setup.exe' \
-               -o -name '*.msi' -o -name '*.dmg' -o -name '*.app.zip' \) \
+               -o -name '*.msi' -o -name '*.dmg' -o -name '*.app.zip' \
+               -o -name '*.sig' -o -name '*.app.tar.gz' \) \
             -exec cp -v {} release-assets/ \;
 
       - name: Write release notes
@@ -466,6 +486,16 @@ jobs:
           else
             printf '%s\n' "$NOTES_INPUT" > release-notes.md
           fi
+
+      - name: Build update manifest
+        run: |
+          node .github/scripts/build-update-manifest.mjs \
+            --assets release-assets \
+            --version "$APP_VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --tag "$APP_TAG" \
+            --notes release-notes.md \
+            --output release-assets/hoppscotch-desktop-latest.json
 
       - name: Create or update GitHub Release
         env:

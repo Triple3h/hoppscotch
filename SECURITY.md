@@ -47,7 +47,7 @@ Hoppscotch is a client-side API development and testing tool. The threat model d
 
 **Debug-level logging is intentional.** The Desktop app logs at debug level by default and writes to rotating local log files. The log files sit alongside the same data in the application's own data store.
 
-**Auto-updates are signature-verified.** The Desktop app checks `releases.hoppscotch.com` for available updates. Update manifests are verified against a public key before any binary is applied. This is a read-only check; no user data, credentials, or usage information is transmitted.
+**Auto-updates are signature-verified.** The Desktop app checks this project's GitHub Releases for available updates. Update manifests are verified against a public key (minisign) before any binary is applied. This is a read-only check; no user data, credentials, or usage information is transmitted.
 
 **Local backups are created on version changes.** The Desktop app creates backups of the local data store when the application version changes, retaining up to three backups. These backups follow the same security posture as the primary data store: local files protected by OS access controls.
 
@@ -116,7 +116,7 @@ Review the threat model above before reporting. The architecture and threat mode
 - Users disabling TLS host or peer verification for specific domains. This is an operator-controlled per-domain setting for working with self-signed or internal certificates.
 - WebSocket, SSE, Socket.IO, or MQTT connections reaching user-specified endpoints, including internal addresses. These are separate realtime features under the same trust model as HTTP relay requests.
 - Pre-request or post-request scripts from imported collections executing in the sandbox. The sandbox applies equally to imported and locally authored scripts.
-- The Desktop app checking `releases.hoppscotch.com` for updates. No user data is transmitted; update manifests are signature-verified.
+- The Desktop app checking this project's GitHub Releases for updates. No user data is transmitted; update manifests are signature-verified.
 - The Agent accepting connections from any origin on localhost:9119. CORS is permissive by design; access control is enforced through the registration handshake and encrypted channel.
 - The Agent's registration OTP having no expiry and registration attempts not being rate-limited. The security assumption, documented in the Agent section above, is that the user initiates registration intentionally while the Agent UI is visible on their own machine. This is not CWE-307 (improper restriction of excessive authentication attempts) because the Agent is a local service, not a remote authentication endpoint.
 - Theoretical attacks against the Desktop app or Agent that require prior local access to the user's machine, since the attacker already has access to the same data through the operating system.

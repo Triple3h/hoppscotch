@@ -4,7 +4,7 @@
    <img align="center" width="128px" src="public/logo.svg" />
    <h1 align="center"><b>Hoppscotch Desktop</b></h1>
    <h2 align="center">
-      <a href="https://hoppscotch.com/download">Download</a> |
+      <a href="https://github.com/Triple3h/hoppscotch/releases/latest">Download</a> |
       <a href="https://docs.hoppscotch.io/documentation/clients/desktop">Official Docs</a>
    </h2>
 </div>
@@ -21,7 +21,7 @@
 
 ## Installation
 
-1. [Download the latest version of Hoppscotch Desktop App](https://hoppscotch.com/download)
+1. [Download the latest version of Hoppscotch Desktop App](https://github.com/Triple3h/hoppscotch/releases/latest)
 2. Open the downloaded file.
 3. Follow the on-screen instructions to install Hoppscotch Desktop App.
 4. Open Hoppscotch Desktop App.

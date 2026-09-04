@@ -288,7 +288,7 @@ async fn handle_portable_update_dialog(
     _app: &AppHandle,
     latest_version: &str,
 ) -> Result<(), String> {
-    let download_url = "https://hoppscotch.com/download";
+    let download_url = "https://github.com/Triple3h/hoppscotch/releases/latest";
     let message = format!(
         "An update (version {}) is available for Hoppscotch Desktop (Portable).\n\nWould you like to download it now?\n\n• Yes = Download now\n• No = Remind me later",
         latest_version

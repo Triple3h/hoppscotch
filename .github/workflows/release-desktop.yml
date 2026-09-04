@@ -1,0 +1,471 @@
+name: Build & Release Desktop
+
+# 本仓库为本地化 fork：无签名证书、无自动更新服务器，
+# 因此仅产出未签名安装包（AppImage / deb / NSIS / MSI / dmg / app.zip）。
+
+on:
+  # 手动触发：Actions -> Build & Release Desktop -> Run workflow
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 发布版本号（不含 v 前缀），如 1.0.0
+        required: false
+        default: '1.0.0'
+        type: string
+      create_release:
+        description: 构建完成后创建 GitHub Release（tag 为 v<version>）
+        required: false
+        default: true
+        type: boolean
+      prerelease:
+        description: 将 Release 标记为预发布
+        required: false
+        default: false
+        type: boolean
+      notes:
+        description: Release 说明（Markdown，留空使用默认文案）
+        required: false
+        type: string
+  # 推送 v* 标签（如 v1.0.0）时自动构建并发布
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: desktop-release-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  resolve-version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - name: Resolve version from event
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          if ! echo "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "::error::Invalid version: ${VERSION}"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+  # 前端 Web 构建 + webapp-bundler，产出各平台通用的 bundle.zip / manifest.json
+  bundle-web:
+    name: Bundle web frontend
+    runs-on: ubuntu-24.04
+    needs: resolve-version
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare env file
+        run: cp .env.example .env
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/hoppscotch-desktop/crates/webapp-bundler/target
+          key: cargo-${{ runner.os }}-bundler-${{ hashFiles('packages/hoppscotch-desktop/src-tauri/Cargo.lock') }}
+
+      - name: Build web app
+        run: pnpm --filter @hoppscotch/selfhost-web generate
+
+      - name: Build and run webapp-bundler
+        run: |
+          cargo build --release --manifest-path packages/hoppscotch-desktop/crates/webapp-bundler/Cargo.toml
+          packages/hoppscotch-desktop/crates/webapp-bundler/target/release/webapp-bundler \
+            --input packages/hoppscotch-selfhost-web/dist \
+            --output packages/hoppscotch-desktop/bundle.zip \
+            --manifest packages/hoppscotch-desktop/manifest.json
+
+      - name: Upload web bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-bundle
+          path: |
+            packages/hoppscotch-desktop/bundle.zip
+            packages/hoppscotch-desktop/manifest.json
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Linux: AppImage + deb
+  # ---------------------------------------------------------------------------
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-24.04
+    needs: [resolve-version, bundle-web]
+    env:
+      APP_VERSION: ${{ needs.resolve-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare env file
+        run: cp .env.example .env
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/hoppscotch-desktop/src-tauri/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('packages/hoppscotch-desktop/src-tauri/Cargo.lock') }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+          # 与上游构建环境保持一致：固定 WebKitGTK 2.44 系列
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-0=2.44.0-2 \
+            libwebkit2gtk-4.1-dev=2.44.0-2 \
+            libjavascriptcoregtk-4.1-0=2.44.0-2 \
+            libjavascriptcoregtk-4.1-dev=2.44.0-2 \
+            gir1.2-javascriptcoregtk-4.1=2.44.0-2 \
+            gir1.2-webkit2-4.1=2.44.0-2 || \
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev \
+            gir1.2-javascriptcoregtk-4.1 \
+            gir1.2-webkit2-4.1
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Download web bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: web-bundle
+          path: web-bundle
+
+      - name: Place web bundle
+        run: |
+          cp web-bundle/bundle.zip packages/hoppscotch-desktop/bundle.zip
+          cp web-bundle/manifest.json packages/hoppscotch-desktop/manifest.json
+
+      - name: Set app version
+        run: node .github/scripts/set-desktop-version.mjs "$APP_VERSION"
+
+      - name: Build Tauri bundles
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter hoppscotch-desktop tauri build --bundles appimage,deb
+
+      - name: Prepare artifacts
+        run: |
+          cd packages/hoppscotch-desktop
+          mkdir -p ../../dist
+          for f in src-tauri/target/release/bundle/appimage/*.AppImage; do
+            [ -e "$f" ] && mv "$f" "../../../dist/hoppscotch-desktop_${APP_VERSION}_linux_x86_64.AppImage"
+          done
+          for f in src-tauri/target/release/bundle/deb/*.deb; do
+            [ -e "$f" ] && mv "$f" "../../../dist/hoppscotch-desktop_${APP_VERSION}_linux_x86_64.deb"
+          done
+          cd ../../..
+          ls -lh dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux
+          path: dist/*
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Windows: NSIS (.exe) + MSI
+  # ---------------------------------------------------------------------------
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    needs: [resolve-version, bundle-web]
+    defaults:
+      run:
+        shell: bash
+    env:
+      APP_VERSION: ${{ needs.resolve-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare env file
+        run: cp .env.example .env
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/hoppscotch-desktop/src-tauri/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('packages/hoppscotch-desktop/src-tauri/Cargo.lock') }}
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Download web bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: web-bundle
+          path: web-bundle
+
+      - name: Place web bundle
+        run: |
+          cp web-bundle/bundle.zip packages/hoppscotch-desktop/bundle.zip
+          cp web-bundle/manifest.json packages/hoppscotch-desktop/manifest.json
+
+      - name: Set app version
+        run: node .github/scripts/set-desktop-version.mjs "$APP_VERSION"
+
+      - name: Build Tauri bundles
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter hoppscotch-desktop tauri build --bundles nsis,msi
+
+      - name: Prepare artifacts
+        run: |
+          cd packages/hoppscotch-desktop
+          mkdir -p ../../dist
+          for f in src-tauri/target/release/bundle/nsis/*-setup.exe; do
+            [ -e "$f" ] && mv "$f" "../../../dist/hoppscotch-desktop_${APP_VERSION}_windows_x86_64-setup.exe"
+          done
+          for f in src-tauri/target/release/bundle/msi/*.msi; do
+            [ -e "$f" ] && mv "$f" "../../../dist/hoppscotch-desktop_${APP_VERSION}_windows_x86_64.msi"
+          done
+          cd ../../..
+          ls -lh dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows
+          path: dist/*
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # macOS: x86_64 + aarch64 各产出 dmg 与 app.zip（未签名）
+  # ---------------------------------------------------------------------------
+  build-macos:
+    name: Build macOS (${{ matrix.target }})
+    runs-on: macos-latest
+    needs: [resolve-version, bundle-web]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            arch: x86_64
+          - target: aarch64-apple-darwin
+            arch: aarch64
+    defaults:
+      run:
+        shell: bash
+    env:
+      APP_VERSION: ${{ needs.resolve-version.outputs.version }}
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare env file
+        run: cp .env.example .env
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/hoppscotch-desktop/src-tauri/target
+          key: cargo-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('packages/hoppscotch-desktop/src-tauri/Cargo.lock') }}
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Download web bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: web-bundle
+          path: web-bundle
+
+      - name: Place web bundle
+        run: |
+          cp web-bundle/bundle.zip packages/hoppscotch-desktop/bundle.zip
+          cp web-bundle/manifest.json packages/hoppscotch-desktop/manifest.json
+
+      - name: Set app version
+        run: node .github/scripts/set-desktop-version.mjs "$APP_VERSION"
+
+      - name: Build Tauri bundles
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter hoppscotch-desktop tauri build --target "$TARGET" --bundles app,dmg
+
+      - name: Prepare artifacts
+        run: |
+          cd packages/hoppscotch-desktop
+          mkdir -p ../../dist
+          for f in src-tauri/target/$TARGET/release/bundle/dmg/*.dmg; do
+            [ -e "$f" ] && mv "$f" "../../../dist/hoppscotch-desktop_${APP_VERSION}_macos_${{ matrix.arch }}.dmg"
+          done
+          if [ -d "src-tauri/target/$TARGET/release/bundle/macos/Hoppscotch.app" ]; then
+            ditto -c -k --sequesterRsrc --keepParent \
+              "src-tauri/target/$TARGET/release/bundle/macos/Hoppscotch.app" \
+              "../../../dist/hoppscotch-desktop_${APP_VERSION}_macos_${{ matrix.arch }}.app.zip"
+          fi
+          cd ../../..
+          ls -lh dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # GitHub Release（汇总各平台产物上传为 release assets）
+  # ---------------------------------------------------------------------------
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || inputs.create_release }}
+    needs:
+      - resolve-version
+      - build-linux
+      - build-windows
+      - build-macos
+    env:
+      APP_VERSION: ${{ needs.resolve-version.outputs.version }}
+      APP_TAG: ${{ needs.resolve-version.outputs.tag }}
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \
+            \( -name '*.AppImage' -o -name '*.deb' -o -name '*-setup.exe' \
+               -o -name '*.msi' -o -name '*.dmg' -o -name '*.app.zip' \) \
+            -exec cp -v {} release-assets/ \;
+
+      - name: Write release notes
+        run: |
+          NOTES_INPUT="${{ inputs.notes }}"
+          if [ -z "$NOTES_INPUT" ]; then
+            cat > release-notes.md <<EOF
+          ## Hoppscotch Desktop ${APP_VERSION}
+
+          本地化桌面版（无云端/登录，数据保存在本地）。
+
+          ### 下载
+          - **Windows**: *_windows_x86_64-setup.exe（NSIS 安装包）、*.msi
+          - **macOS**: *_macos_aarch64.dmg（Apple Silicon）、*_macos_x86_64.dmg（Intel）
+          - **Linux**: *_linux_x86_64.AppImage、*.deb
+
+          > 安装包未签名，首次打开时如遇系统安全提示，请选择信任/仍要打开。
+
+          ---
+          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
+          else
+            printf '%s\n' "$NOTES_INPUT" > release-notes.md
+          fi
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          PRERELEASE="${{ github.event_name == 'push' && 'false' || inputs.prerelease }}"
+          if ! gh release view "$APP_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$APP_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Hoppscotch Desktop ${APP_TAG}" \
+              --notes-file release-notes.md \
+              --prerelease="$PRERELEASE" \
+              release-assets/*
+          else
+            echo "Release ${APP_TAG} already exists, uploading missing assets..."
+            gh release upload "$APP_TAG" release-assets/* --clobber
+          fi

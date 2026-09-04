@@ -209,12 +209,12 @@ jobs:
           cd packages/hoppscotch-desktop
           mkdir -p ../../dist
           for f in src-tauri/target/release/bundle/appimage/*.AppImage; do
-            [ -e "$f" ] && mv "$f" "../../../dist/hoppscotch-desktop_${APP_VERSION}_linux_x86_64.AppImage"
+            [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_linux_x86_64.AppImage"
           done
           for f in src-tauri/target/release/bundle/deb/*.deb; do
-            [ -e "$f" ] && mv "$f" "../../../dist/hoppscotch-desktop_${APP_VERSION}_linux_x86_64.deb"
+            [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_linux_x86_64.deb"
           done
-          cd ../../..
+          cd ../..
           ls -lh dist
 
       - name: Upload artifacts
@@ -280,6 +280,22 @@ jobs:
       - name: Set app version
         run: node .github/scripts/set-desktop-version.mjs "$APP_VERSION"
 
+      # openssl-src builds OpenSSL from source on Windows and needs a full Perl
+      # (the Git-bundled one lacks Locale::Maketext::Simple).
+      - name: Set Perl environment
+        run: |
+          PERL_PATH="$(where.exe perl 2>/dev/null | tr -d '\r' | grep -i strawberry | head -1)"
+          if [ -z "$PERL_PATH" ]; then
+            PERL_PATH="$(where.exe perl 2>/dev/null | tr -d '\r' | head -1)"
+          fi
+          if [ -n "$PERL_PATH" ]; then
+            echo "PERL=${PERL_PATH}" >> "$GITHUB_ENV"
+            echo "OPENSSL_SRC_PERL=${PERL_PATH}" >> "$GITHUB_ENV"
+            echo "Using perl at: ${PERL_PATH}"
+          else
+            echo "::warning::perl not found in PATH"
+          fi
+
       - name: Build Tauri bundles
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -290,12 +306,12 @@ jobs:
           cd packages/hoppscotch-desktop
           mkdir -p ../../dist
           for f in src-tauri/target/release/bundle/nsis/*-setup.exe; do
-            [ -e "$f" ] && mv "$f" "../../../dist/hoppscotch-desktop_${APP_VERSION}_windows_x86_64-setup.exe"
+            [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_windows_x86_64-setup.exe"
           done
           for f in src-tauri/target/release/bundle/msi/*.msi; do
-            [ -e "$f" ] && mv "$f" "../../../dist/hoppscotch-desktop_${APP_VERSION}_windows_x86_64.msi"
+            [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_windows_x86_64.msi"
           done
-          cd ../../..
+          cd ../..
           ls -lh dist
 
       - name: Upload artifacts
@@ -382,14 +398,14 @@ jobs:
           cd packages/hoppscotch-desktop
           mkdir -p ../../dist
           for f in src-tauri/target/$TARGET/release/bundle/dmg/*.dmg; do
-            [ -e "$f" ] && mv "$f" "../../../dist/hoppscotch-desktop_${APP_VERSION}_macos_${{ matrix.arch }}.dmg"
+            [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_macos_${{ matrix.arch }}.dmg"
           done
           if [ -d "src-tauri/target/$TARGET/release/bundle/macos/Hoppscotch.app" ]; then
             ditto -c -k --sequesterRsrc --keepParent \
               "src-tauri/target/$TARGET/release/bundle/macos/Hoppscotch.app" \
-              "../../../dist/hoppscotch-desktop_${APP_VERSION}_macos_${{ matrix.arch }}.app.zip"
+              "../../dist/hoppscotch-desktop_${APP_VERSION}_macos_${{ matrix.arch }}.app.zip"
           fi
-          cd ../../..
+          cd ../..
           ls -lh dist
 
       - name: Upload artifacts

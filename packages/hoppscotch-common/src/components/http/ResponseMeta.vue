@@ -1,6 +1,7 @@
 <template>
   <div
     class="sticky top-0 z-10 flex flex-shrink-0 items-center justify-center overflow-auto overflow-x-auto whitespace-nowrap bg-primary p-4"
+    :class="{ '!py-2': streaming }"
   >
     <AppShortcutsPrompt v-if="response == null && !isEmbed" class="flex-1" />
 
@@ -16,8 +17,40 @@
     </div>
 
     <div v-else-if="response" class="flex flex-1 flex-col">
+      <!--
+        A streaming response is already renderable — the events timeline below
+        fills up while the body arrives — so a loading block would sit above a
+        list that is visibly the answer. Report what the stream is doing
+        instead: the status line once it lands, plus how much has come through
+        so far.
+      -->
       <div
-        v-if="response.type === 'loading' || isLoading"
+        v-if="streaming"
+        class="flex flex-1 items-center space-x-4 text-tiny font-semibold"
+      >
+        <span v-if="streaming.statusCode" class="text-secondary">
+          {{ t("response.status") }}:
+          <span :class="streamingStatusClassName">
+            {{ `${streaming.statusCode}\xA0 • \xA0`
+            }}{{
+              getStatusCodeReasonPhrase(
+                streaming.statusCode,
+                streaming.statusText
+              )
+            }}
+          </span>
+        </span>
+        <span class="inline-flex items-center space-x-1.5 text-accent">
+          <icon-lucide-loader-2 class="svg-icons animate-spin" />
+          <span>{{ t("response.sse.receiving") }}</span>
+          <span v-if="readableStreamingSize" class="text-secondaryLight">
+            {{ readableStreamingSize }}
+          </span>
+        </span>
+      </div>
+
+      <div
+        v-else-if="response.type === 'loading' || isLoading"
         class="flex flex-col items-center justify-center"
       >
         <HoppSmartSpinner class="my-4" />
@@ -202,6 +235,30 @@ const statusCategory = computed(() => {
       className: "text-red-500",
     }
   return findStatusGroup(props.response.statusCode)
+})
+
+/**
+ * Present while the response body is still streaming in (SSE): the events
+ * timeline is already rendering below, so the meta row reports progress
+ * instead of showing a loading placeholder above visible content.
+ */
+const streaming = computed(() =>
+  props.response?.type === "loading" ? props.response.streaming : undefined
+)
+
+const readableStreamingSize = computed(() => {
+  const bytes = streaming.value?.receivedBytes
+
+  if (!bytes) return undefined
+  if (bytes >= 1000000) return (bytes / 1000000).toFixed(2) + " MB"
+  if (bytes >= 1000) return (bytes / 1000).toFixed(2) + " KB"
+
+  return `${bytes} B`
+})
+
+const streamingStatusClassName = computed(() => {
+  const statusCode = streaming.value?.statusCode
+  return statusCode ? findStatusGroup(statusCode).className : undefined
 })
 
 const inspectionService = useService(InspectionService)

@@ -47,6 +47,12 @@ const GROUPS = [
 // `chore(release): bump desktop app to 1.1.2` and the like only restate the
 // version being shipped; they carry no information for the reader.
 const SKIP = /^(chore\(release\)|release|v?\d+\.\d+\.\d+$)/i
+
+// Debug scaffolding ("临时权限探针", "tmp", "wip") is added and removed within
+// the same release and never reaches users as a feature, so it should not
+// reach the update screen either. Heuristic: reword the commit (or extend this
+// list) if it ever hides a change worth announcing.
+const TRANSIENT = /临时|探针|\bwip\b|\btmp\b|\btemporary\b/i
 const CONVENTIONAL = /^(\w+)(?:\(([^)]+)\))?!?:\s*(.+)$/
 
 const range = from ? `${from}..${to}` : to
@@ -60,7 +66,7 @@ const buckets = new Map(GROUPS.map((group) => [group.label, []]))
 
 let total = 0
 for (const subject of raw.split("\n").map((line) => line.trim()).filter(Boolean)) {
-  if (SKIP.test(subject)) continue
+  if (SKIP.test(subject) || TRANSIENT.test(subject)) continue
 
   const match = CONVENTIONAL.exec(subject)
   const type = match ? match[1].toLowerCase() : ""

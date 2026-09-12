@@ -402,6 +402,10 @@ jobs:
       - name: Build Tauri bundles
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Ad-hoc code signing ("-"): no Apple certificate needed. Apple Silicon only
+          # runs signed code, and a fully signed bundle keeps the update artifacts
+          # consistent. It does NOT bypass Gatekeeper's first-launch prompt.
+          APPLE_SIGNING_IDENTITY: "-"
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm --filter hoppscotch-desktop tauri build --target "$TARGET" --bundles app,dmg --config '{"bundle":{"createUpdaterArtifacts":true}}'
@@ -482,7 +486,10 @@ jobs:
           - **macOS**: *_macos_aarch64.dmg（Apple Silicon）、*_macos_x86_64.dmg（Intel）
           - **Linux**: *_linux_x86_64.AppImage、*.deb
 
-          > 安装包未签名，首次打开时如遇系统安全提示，请选择信任/仍要打开。
+          ### macOS 安装注意
+          - 安装包未签名，首次打开时如遇安全提示，请在「系统设置 → 隐私与安全性」中点「仍要打开」。
+          - **务必先把 Hoppscotch.app 拖入「应用程序」文件夹再运行**。直接在 dmg 挂载卷里打开，会导致应用内自动更新无法写入（更新会失败）。
+          - 放入「应用程序」后，之后的版本可在应用内自动更新，无需再手动下载安装包。
 
           ---
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

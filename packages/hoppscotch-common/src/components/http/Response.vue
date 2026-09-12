@@ -81,8 +81,12 @@ const hasStreamingResponse = computed(() => {
   return response?.type === "loading" && Boolean(response.streaming)
 })
 
+// Render as soon as a response (streaming or final) exists and keep
+// rendering while tests execute — unmounting here would wipe the lens
+// renderers' internal state (e.g. the SSE events/merged view choice)
+// in the gap between the response arriving and `testResults` being set.
 const showLenses = computed(
-  () => hasStreamingResponse.value || (hasResponse.value && !loading.value)
+  () => hasStreamingResponse.value || hasResponse.value
 )
 
 const saveAsExample = () => {

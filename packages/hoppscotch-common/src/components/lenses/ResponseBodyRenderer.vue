@@ -208,6 +208,12 @@ watch(
       "results",
     ]
 
+    // The lens list also changes mid-request (a stream completes and raw
+    // becomes available, headers arrive, …). Never move the user away from
+    // a tab that still exists — only pick a tab when the current selection
+    // is gone (fresh response, no lenses, …).
+    if (validRenderers.includes(selectedLensTab.value)) return
+
     const { responseTabPreference } = doc.value
 
     if (
@@ -234,8 +240,19 @@ watch(
   { immediate: true }
 )
 
-watch(selectedLensTab, (newLensID) => {
-  if (props.isTestRunner) return
-  doc.value.responseTabPreference = newLensID
-})
+// `immediate` matters: the tab auto-selected further up (SSE timeline) is
+// chosen during setup, i.e. before this watcher exists. Without it the
+// initial choice is never remembered and a stale preference from a
+// previous response would be re-applied as soon as the lens list grows.
+watch(
+  selectedLensTab,
+  (newLensID) => {
+    if (props.isTestRunner) return
+    // "req-headers" is the fallback when a response has no lenses at all,
+    // not a tab the user picked — it must not clobber their preference.
+    if (!newLensID || newLensID === "req-headers") return
+    doc.value.responseTabPreference = newLensID
+  },
+  { immediate: true }
+)
 </script>

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-1 flex-col">
+  <div class="flex min-h-0 flex-1 flex-col">
     <!-- View mode switch: raw events timeline / assembled messages -->
     <div class="flex-shrink-0">
       <HoppSmartTabs
@@ -150,7 +150,7 @@
     <div
       v-if="viewMode === 'events'"
       ref="listRef"
-      class="flex min-h-0 flex-1 flex-col divide-y divide-dividerLight overflow-auto"
+      class="flex min-h-0 flex-1 flex-col divide-y divide-dividerLight overflow-auto [scrollbar-gutter:stable]"
       @scroll="onListScroll"
     >
       <div
@@ -304,7 +304,10 @@
         with `{ … } (N fields)` summaries, so a chunk can be collapsed down to
         the field being read instead of being one long unwrapped line.
       -->
-      <div ref="detailEditor" class="min-h-0 flex-1 overflow-auto"></div>
+      <div
+        ref="detailEditor"
+        class="min-h-0 min-w-0 flex-1 overflow-auto"
+      ></div>
     </div>
   </div>
 </template>

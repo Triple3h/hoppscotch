@@ -84,7 +84,7 @@
               :disabled="
                 viewMode === 'merged'
                   ? !assembled.content && !assembled.reasoning
-                  : !selectedEvent
+                  : events.length === 0
               "
               @click="copyCurrent"
             />
@@ -161,39 +161,58 @@
         <span class="text-tiny">{{ t("response.sse.no_events") }}</span>
       </div>
 
-      <button
+      <div
         v-for="event in filteredEvents"
         :key="event.index"
-        class="flex w-full items-center gap-2 px-4 py-1.5 text-left transition hover:bg-primaryLight"
-        :class="{ 'bg-primaryLight': selectedEvent?.index === event.index }"
-        @click="selectEvent(event)"
+        class="flex flex-col"
       >
-        <span
-          class="w-10 flex-shrink-0 font-mono text-tiny text-secondaryLight"
+        <button
+          class="flex w-full items-center gap-2 px-4 py-1.5 text-left transition hover:bg-primaryLight"
+          :class="{ 'bg-primaryLight': isExpanded(event.index) }"
+          @click="toggleEvent(event)"
         >
-          #{{ event.index }}
-        </span>
-        <span
-          v-if="event.event !== 'message'"
-          class="flex-shrink-0 rounded border border-dividerLight px-1.5 py-0.5 font-mono text-tiny text-secondaryLight"
-        >
-          {{ event.event }}
-        </span>
-        <span
-          v-if="event.isTerminal"
-          v-tippy="{ theme: 'tooltip' }"
-          class="flex-shrink-0 rounded border border-dividerLight px-1.5 py-0.5 font-mono text-tiny text-secondaryLight"
-          :title="t('response.sse.terminal')"
-        >
-          [DONE]
-        </span>
-        <span class="flex-1 truncate font-mono text-tiny text-secondaryDark">
-          {{ event.data }}
-        </span>
-        <span class="flex-shrink-0 font-mono text-tiny text-secondaryLight">
-          {{ formatTime(event.time) }}
-        </span>
-      </button>
+          <span
+            class="w-10 flex-shrink-0 font-mono text-tiny text-secondaryLight"
+          >
+            #{{ event.index }}
+          </span>
+          <span
+            v-if="event.event !== 'message'"
+            class="flex-shrink-0 rounded border border-dividerLight px-1.5 py-0.5 font-mono text-tiny text-secondaryLight"
+          >
+            {{ event.event }}
+          </span>
+          <span
+            v-if="event.isTerminal"
+            v-tippy="{ theme: 'tooltip' }"
+            class="flex-shrink-0 rounded border border-dividerLight px-1.5 py-0.5 font-mono text-tiny text-secondaryLight"
+            :title="t('response.sse.terminal')"
+          >
+            [DONE]
+          </span>
+          <span class="flex-1 truncate font-mono text-tiny text-secondaryDark">
+            {{ event.data }}
+          </span>
+          <span class="flex-shrink-0 font-mono text-tiny text-secondaryLight">
+            {{ formatTime(event.time) }}
+          </span>
+          <icon-lucide-chevron-down
+            v-if="isExpanded(event.index)"
+            class="svg-icons flex-shrink-0 text-secondaryLight"
+          />
+          <icon-lucide-chevron-right
+            v-else
+            class="svg-icons flex-shrink-0 text-secondaryLight opacity-40"
+          />
+        </button>
+
+        <!--
+          The payload opens right under its own row and stays there, so
+          several chunks can be kept open side by side while the stream keeps
+          appending below.
+        -->
+        <SseEventPayload v-if="isExpanded(event.index)" :event="event" />
+      </div>
     </div>
 
     <!-- Merged view -->
@@ -255,60 +274,6 @@
       <icon-lucide-loader-2 class="svg-icons animate-spin" />
       {{ t("response.sse.receiving") }}
     </div>
-
-    <!-- Event detail panel (events mode) -->
-    <div
-      v-if="viewMode === 'events' && selectedEvent"
-      class="flex min-h-0 flex-[1.5] flex-col border-t border-dividerLight"
-    >
-      <div
-        class="flex flex-shrink-0 items-center justify-between border-b border-dividerLight bg-primary pl-4"
-      >
-        <label class="truncate text-tiny font-semibold text-secondaryLight">
-          #{{ selectedEvent.index }}
-          <template v-if="selectedEvent.event !== 'message'">
-            · {{ selectedEvent.event }}</template
-          >
-          <template v-if="selectedEvent.id">
-            · id: {{ selectedEvent.id }}</template
-          >
-        </label>
-        <div class="flex items-center">
-          <HoppButtonSecondary
-            v-for="mode in DETAIL_MODES"
-            :key="mode"
-            v-tippy="{ theme: 'tooltip' }"
-            :title="t(`response.sse.${mode}`)"
-            :label="t(`response.sse.${mode}`)"
-            :class="{ '!text-accent': detailMode === mode }"
-            @click="detailMode = mode"
-          />
-          <HoppButtonSecondary
-            v-tippy="{ theme: 'tooltip' }"
-            :title="t('state.linewrap')"
-            :class="{ '!text-accent': detailWrap }"
-            :icon="IconWrapText"
-            @click="detailWrap = !detailWrap"
-          />
-          <HoppButtonSecondary
-            v-tippy="{ theme: 'tooltip' }"
-            :title="t('response.sse.copy_event')"
-            :icon="IconCopy"
-            @click="copyEvent"
-          />
-        </div>
-      </div>
-      <!--
-        The payload gets the same CodeMirror viewer as the response body and
-        the realtime log: line numbers, JSON highlighting and a fold gutter
-        with `{ … } (N fields)` summaries, so a chunk can be collapsed down to
-        the field being read instead of being one long unwrapped line.
-      -->
-      <div
-        ref="detailEditor"
-        class="min-h-0 min-w-0 flex-1 overflow-auto"
-      ></div>
-    </div>
   </div>
 </template>
 
@@ -317,13 +282,12 @@ import IconBrain from "~icons/lucide/brain"
 import IconCheck from "~icons/lucide/check"
 import IconCopy from "~icons/lucide/copy"
 import IconFilter from "~icons/lucide/filter"
-import IconWrapText from "~icons/lucide/wrap-text"
-import { computed, nextTick, reactive, ref, watch } from "vue"
+import { computed, nextTick, ref, watch } from "vue"
 import { useVModel } from "@vueuse/core"
-import { useCodemirror } from "@composables/codemirror"
 import { useI18n } from "@composables/i18n"
 import { useToast } from "@composables/toast"
 import { useStream } from "@composables/stream"
+import SseEventPayload from "./SseEventPayload.vue"
 import {
   HoppRESTRequestResponse,
   HoppRESTResponse,
@@ -340,9 +304,6 @@ import {
   setSSEMessageFormatPreset,
   setSSEReasoningVisible,
 } from "~/newstore/SSEMessageFormat"
-
-const DETAIL_MODES = ["pretty", "raw"] as const
-type DetailMode = (typeof DETAIL_MODES)[number]
 
 const t = useI18n()
 const toast = useToast()
@@ -366,8 +327,9 @@ const presetTippy = ref<HTMLElement | null>(null)
 const filterOpen = ref(false)
 const filterQuery = ref("")
 const viewMode = ref<"events" | "merged">("events")
-const detailMode = ref<DetailMode>("pretty")
-const selectedEventIndex = ref<number | null>(null)
+// Row indexes whose payload is open. Ordered, so the last entry is the one
+// opened most recently — that is what the toolbar's copy button targets.
+const expandedIndexes = ref<number[]>([])
 const reasoningCollapsed = ref(false)
 
 const listRef = ref<HTMLElement | null>(null)
@@ -443,65 +405,21 @@ const filteredEvents = computed<SSEEvent[]>(() => {
   )
 })
 
-const selectedEvent = computed(() => {
-  if (selectedEventIndex.value === null) return null
-  return events.value.find((e) => e.index === selectedEventIndex.value) ?? null
-})
+const isExpanded = (index: number) => expandedIndexes.value.includes(index)
 
-const selectedDetail = computed(() => {
-  const event = selectedEvent.value
-  if (!event) return ""
-
-  if (detailMode.value === "raw") return event.data
-
-  try {
-    return JSON.stringify(JSON.parse(event.data), null, 2)
-  } catch (_e) {
-    return event.data
-  }
-})
-
-function selectEvent(event: SSEEvent) {
-  selectedEventIndex.value = event.index
+// Opening keeps the order so several payloads can stay open at once — and so
+// the list keeps appending below while they stay in place.
+function toggleEvent(event: SSEEvent) {
+  expandedIndexes.value = isExpanded(event.index)
+    ? expandedIndexes.value.filter((index) => index !== event.index)
+    : [...expandedIndexes.value, event.index]
 }
 
-const detailEditor = ref<any | null>(null)
-const detailWrap = ref(true)
-
-// Only payloads that actually parse as JSON are worth highlighting and
-// folding; terminal markers like `[DONE]` fall back to plain text.
-const selectedIsJson = computed(() => {
-  const event = selectedEvent.value
-  if (!event) return false
-
-  try {
-    JSON.parse(event.data)
-    return true
-  } catch (_e) {
-    return false
-  }
+const lastExpandedEvent = computed(() => {
+  const index = expandedIndexes.value[expandedIndexes.value.length - 1]
+  if (index === undefined) return null
+  return events.value.find((event) => event.index === index) ?? null
 })
-
-const detailEditorMode = computed(() =>
-  detailMode.value === "pretty" && selectedIsJson.value
-    ? "application/ld+json"
-    : "text/plain"
-)
-
-useCodemirror(
-  detailEditor,
-  computed(() => (selectedEvent.value ? selectedDetail.value : "")),
-  reactive({
-    extendedEditorConfig: {
-      mode: detailEditorMode,
-      readOnly: true,
-      lineWrapping: detailWrap,
-    },
-    linter: null,
-    completer: null,
-    environmentHighlights: false,
-  })
-)
 
 const assembled = computed(() => {
   return assembleMessages(
@@ -567,20 +485,10 @@ function copyCurrent() {
     copyText(assembled.value.content || assembled.value.reasoning)
     return
   }
-  if (selectedEvent.value) {
-    copyText(
-      detailMode.value === "pretty"
-        ? selectedDetail.value
-        : selectedEvent.value.data
-    )
-    return
-  }
-  copyText(sseText.value)
-}
 
-function copyEvent() {
-  if (selectedEvent.value) {
-    copyText(selectedEvent.value.data)
-  }
+  // Every open payload has its own copy button, which follows that payload's
+  // 格式化/原文 switch. This one takes the payload opened most recently and
+  // falls back to the whole stream when nothing is open.
+  copyText(lastExpandedEvent.value?.data ?? sseText.value)
 }
 </script>

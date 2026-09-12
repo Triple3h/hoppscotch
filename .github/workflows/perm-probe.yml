@@ -21,43 +21,41 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Reproduce with --target
+      - name: Exact real script against v1.1.2
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
           R="$GITHUB_REPOSITORY"
-          mkdir -p release-assets && echo "x" > release-assets/probe-asset.txt
+          APP_TAG="v1.1.2"
+          mkdir -p release-assets && echo "probe" > release-assets/probe-asset.txt
 
-          echo "=== 0. 复刻脚本里的 git ls-remote（看它是否总是失败）==="
-          git ls-remote --exit-code --tags "$R" "refs/tags/probe-perms-4" >/dev/null 2>&1
-          echo "LSREMOTE_WITH_REPOSLUG_EXIT=$?"
-          git ls-remote --exit-code --tags "https://github.com/$R" "refs/tags/probe-perms-4" >/dev/null 2>&1
-          echo "LSREMOTE_WITH_URL_EXIT=$?"
-          echo "GITHUB_SHA=$GITHUB_SHA"
-          echo "github.ref=$GITHUB_REF"
+          echo "=== gh version ==="
+          gh --version | head -1
+          echo "=== who am I ==="
+          gh api user --jq '.login' 2>&1 | head -2
 
-          echo "=== E. 已存在 tag + --target \$GITHUB_SHA（发布态 + 带资产）==="
-          git tag -a probe-e-$RANDOM$RANDOM -m "e" >/dev/null 2>&1
-          ET="probe-e-tag"
-          git tag -a "$ET" -m "e" 2>/dev/null
-          git push origin "$ET" >/dev/null 2>&1
-          gh release create "$ET" \
+          echo "=== step 1: gh release view (NOT silenced here) ==="
+          gh release view "$APP_TAG" --repo "$R"
+          echo "STEP1_EXIT=$?"
+
+          echo "=== step 2: git ls-remote (NOT silenced) ==="
+          git ls-remote --exit-code --tags "$R" "refs/tags/$APP_TAG"
+          echo "STEP2_EXIT=$?"
+
+          echo "=== step 3: exact gh release create ==="
+          gh release create "$APP_TAG" \
             --repo "$R" \
             --target "$GITHUB_SHA" \
-            --title "Hoppscotch Desktop ${ET}" \
-            --notes-file <(echo "notes") \
+            --title "Hoppscotch Desktop ${APP_TAG}" \
+            --notes-file <(echo "probe") \
             --prerelease="false" \
             release-assets/*
-          echo "E_EXIT=$?"
+          echo "STEP3_EXIT=$?"
 
-          echo "=== F. 同样调用，但走 raw REST，打印完整响应 ==="
-          gh api -X POST "repos/$R/releases" \
-            -f tag_name="probe-f-$RANDOM" -f name="F" -F draft=true \
-            -F "target_commitish=$GITHUB_SHA" 2>&1 | head -8
-          echo "F_EXIT=$?"
+          echo "=== releases ==="
+          gh release list --repo "$R" -L 4 2>&1
 
-          echo "=== 清理 ==="
-          gh release delete "$ET" --repo "$R" --yes --cleanup-tag 2>&1 | head -2
-          git push origin ":refs/tags/$ET" 2>&1 | tail -1
-          gh release list --repo "$R" -L 8 2>&1
+          echo "=== cleanup (delete the probe release for v1.1.2 if created) ==="
+          gh release delete "$APP_TAG" --repo "$R" --yes 2>&1 | head -3
+          echo "CLEANUP_EXIT=$?"

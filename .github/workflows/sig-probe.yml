@@ -1,0 +1,85 @@
+name: Signature probe
+
+# 临时诊断：确认发布出来的 manifest.json.sig 是否覆盖同一个 manifest.json。
+# Ed25519 是确定性签名，因此「同一密钥 + 同一字节 => 同一签名」，可直接比对。
+# 用完即删。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  probe:
+    name: Re-sign the published manifest
+    runs-on: ubuntu-latest
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Download the published artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh run download 34685630002 --repo "$GITHUB_REPOSITORY" -n web-bundle -D wb
+          ls -l wb
+          echo "PUBLISHED_MANIFEST_SHA=$(sha256sum wb/manifest.json | cut -d' ' -f1)"
+          echo "PUBLISHED_SIG_SHA=$(sha256sum wb/manifest.json.sig | cut -d' ' -f1)"
+
+      - name: Re-sign the very same bytes with the very same key
+        run: |
+          cd packages/hoppscotch-desktop
+          cp ../../wb/manifest.json probe-manifest.json
+
+          echo "BEFORE_SIGN_SHA=$(sha256sum probe-manifest.json | cut -d' ' -f1)"
+
+          if [ -f "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            ARGS=(-f "$TAURI_SIGNING_PRIVATE_KEY")
+          else
+            ARGS=(-k "$TAURI_SIGNING_PRIVATE_KEY")
+          fi
+          ARGS+=(-p "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD")
+          pnpm exec tauri signer sign "${ARGS[@]}" probe-manifest.json > sign.log 2>&1 || { cat sign.log; exit 1; }
+
+          echo "AFTER_SIGN_SHA=$(sha256sum probe-manifest.json | cut -d' ' -f1)"
+
+          RECOMPUTED="$(tr -d '\n\r' < probe-manifest.json.sig)"
+          PUBLISHED="$(tr -d '\n\r' < ../../wb/manifest.json.sig)"
+          if [ "$RECOMPUTED" = "$PUBLISHED" ]; then
+            echo "PROBE_RESULT=REPRODUCES"
+          else
+            echo "PROBE_RESULT=DIFFERS"
+          fi
+          echo "--- first 120 chars ---"
+          echo "recomputed: ${RECOMPUTED:0:120}"
+          echo "published : ${PUBLISHED:0:120}"
+
+      - name: Does the key in config match the key that signs?
+        run: |
+          # Decode both sides the way the shell does and compare the key ids.
+          node -e '
+            const fs = require("fs")
+            const conf = JSON.parse(fs.readFileSync("packages/hoppscotch-desktop/src-tauri/tauri.conf.json", "utf8"))
+            const keyText = Buffer.from(conf.plugins.updater.pubkey.trim(), "base64").toString("utf8")
+            const key = Buffer.from(keyText.trim().split("\n")[1].trim(), "base64")
+            console.log("config keyId:", key.subarray(2, 10).toString("hex"))
+
+            const sigText = Buffer.from(fs.readFileSync("wb/manifest.json.sig", "utf8").trim(), "base64").toString("utf8")
+            const sig = Buffer.from(sigText.trim().split("\n")[1].trim(), "base64")
+            console.log("sig    keyId:", sig.subarray(2, 10).toString("hex"), "algo:", sig.subarray(0, 2).toString())
+          '

@@ -21,34 +21,42 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Variant bisect
+      - name: Exact repro of the real release step
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
           R="$GITHUB_REPOSITORY"
+          APP_TAG="probe-exact-${RANDOM}${RANDOM}"
 
-          echo "===== A: 已存在 tag + 草稿 ====="
-          gh release create probe-perms-1 --repo "$R" --title "A" --notes "A" --draft 2>&1 | head -3
-          echo "A_EXIT=${PIPESTATUS[0]}"
+          echo "--- create the tag first (mimics a tag-push run) ---"
+          git tag -a "$APP_TAG" -m "probe exact repro"
+          git push origin "$APP_TAG" 2>&1 | tail -2
+          echo "TAG_PUSH_EXIT=$?"
 
-          echo "===== B: 已存在 tag + 发布态（无资产，无 --prerelease）====="
-          gh release create probe-perms-1 --repo "$R" --title "B" --notes "B" 2>&1 | head -3
-          echo "B_EXIT=${PIPESTATUS[0]}"
+          echo "--- step 1: gh release view (silenced in the real script) ---"
+          gh release view "$APP_TAG" --repo "$R" >/dev/null 2>&1
+          echo "VIEW_EXIT=$?"
 
-          echo "===== C: 已存在 tag + 发布态 + --prerelease=false + 带资产 ====="
-          mkdir -p assets && echo "hello" > assets/probe.txt
-          gh release create probe-perms-1 --repo "$R" --title "C" --notes-file <(echo "C") --prerelease=false assets/probe.txt 2>&1 | head -3
-          echo "C_EXIT=${PIPESTATUS[0]}"
+          echo "--- step 2: git ls-remote ---"
+          git ls-remote --exit-code --tags "$R" "refs/tags/$APP_TAG" >/dev/null 2>&1
+          echo "LSREMOTE_EXIT=$?"
 
-          echo "===== D: 不存在 tag + 发布态 ====="
-          gh release create probe-perms-9$RANDOM --repo "$R" --title "D" --notes "D" 2>&1 | head -3
-          echo "D_EXIT=${PIPESTATUS[0]}"
+          echo "--- step 3: gh release create (exact flags) ---"
+          mkdir -p release-assets && echo "x" > release-assets/probe-asset.txt
+          gh release create "$APP_TAG" \
+            --repo "$R" \
+            --title "Hoppscotch Desktop ${APP_TAG}" \
+            --notes-file <(echo "probe notes") \
+            --prerelease="false" \
+            release-assets/*
+          echo "CREATE_EXIT=$?"
 
-          echo "===== 现有 release 列表 ====="
-          gh release list --repo "$R" -L 6 2>&1
+          echo "--- step 4: the same call via raw REST ---"
+          gh api -X POST "repos/$R/releases" \
+            -f tag_name="probe-rest-${RANDOM}" -f name="rest probe" -f draft=true 2>&1 | head -5
+          echo "REST_EXIT=$?"
 
-          echo "===== 清理 ====="
-          for t in probe-perms-1; do gh release delete "$t" --repo "$R" --yes 2>&1 | head -2; done
-          gh release list --repo "$R" -L 6 2>&1
+          echo "--- cleanup ---"
+          gh release delete "$APP_TAG" --repo "$R" --yes --cleanup-tag 2>&1 | head -3
+          gh release list --repo "$R" -L 8 2>&1

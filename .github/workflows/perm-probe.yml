@@ -17,23 +17,38 @@ jobs:
     name: Probe token permissions
     runs-on: ubuntu-latest
     steps:
-      - name: Diagnose
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Variant bisect
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -x
-          gh --version
-          echo "event=$GITHUB_EVENT_NAME ref=$GITHUB_REF sha=$GITHUB_SHA"
-          echo "--- repo permissions as seen by the token ---"
-          curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY" \
-            | python3 -c 'import json,sys; d=json.load(sys.stdin); print("PROBE_PERM:", d.get("permissions"))'
-          echo "--- create draft release ---"
           set +e
-          TAG="perm-probe-$RANDOM$RANDOM"
-          out=$(gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
-            --title "perm probe" --notes "probe" --draft 2>&1)
-          echo "PROBE_CREATE_EXIT=$?"
-          echo "$out"
-          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>&1 | head -5
+          R="$GITHUB_REPOSITORY"
+
+          echo "===== A: 已存在 tag + 草稿 ====="
+          gh release create probe-perms-1 --repo "$R" --title "A" --notes "A" --draft 2>&1 | head -3
+          echo "A_EXIT=${PIPESTATUS[0]}"
+
+          echo "===== B: 已存在 tag + 发布态（无资产，无 --prerelease）====="
+          gh release create probe-perms-1 --repo "$R" --title "B" --notes "B" 2>&1 | head -3
+          echo "B_EXIT=${PIPESTATUS[0]}"
+
+          echo "===== C: 已存在 tag + 发布态 + --prerelease=false + 带资产 ====="
+          mkdir -p assets && echo "hello" > assets/probe.txt
+          gh release create probe-perms-1 --repo "$R" --title "C" --notes-file <(echo "C") --prerelease=false assets/probe.txt 2>&1 | head -3
+          echo "C_EXIT=${PIPESTATUS[0]}"
+
+          echo "===== D: 不存在 tag + 发布态 ====="
+          gh release create probe-perms-9$RANDOM --repo "$R" --title "D" --notes "D" 2>&1 | head -3
+          echo "D_EXIT=${PIPESTATUS[0]}"
+
+          echo "===== 现有 release 列表 ====="
+          gh release list --repo "$R" -L 6 2>&1
+
+          echo "===== 清理 ====="
+          for t in probe-perms-1; do gh release delete "$t" --repo "$R" --yes 2>&1 | head -2; done
+          gh release list --repo "$R" -L 6 2>&1

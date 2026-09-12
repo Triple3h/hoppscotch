@@ -259,7 +259,7 @@
     <!-- Event detail panel (events mode) -->
     <div
       v-if="viewMode === 'events' && selectedEvent"
-      class="flex min-h-0 flex-1 flex-col border-t border-dividerLight"
+      class="flex min-h-0 flex-[1.5] flex-col border-t border-dividerLight"
     >
       <div
         class="flex flex-shrink-0 items-center justify-between border-b border-dividerLight bg-primary pl-4"
@@ -285,17 +285,26 @@
           />
           <HoppButtonSecondary
             v-tippy="{ theme: 'tooltip' }"
+            :title="t('state.linewrap')"
+            :class="{ '!text-accent': detailWrap }"
+            :icon="IconWrapText"
+            @click="detailWrap = !detailWrap"
+          />
+          <HoppButtonSecondary
+            v-tippy="{ theme: 'tooltip' }"
             :title="t('response.sse.copy_event')"
             :icon="IconCopy"
             @click="copyEvent"
           />
         </div>
       </div>
-      <div class="flex-1 overflow-auto bg-primaryLight">
-        <pre
-          class="whitespace-pre-wrap break-all p-4 font-mono text-body text-secondaryDark"
-          >{{ selectedDetail }}</pre>
-      </div>
+      <!--
+        The payload gets the same CodeMirror viewer as the response body and
+        the realtime log: line numbers, JSON highlighting and a fold gutter
+        with `{ … } (N fields)` summaries, so a chunk can be collapsed down to
+        the field being read instead of being one long unwrapped line.
+      -->
+      <div ref="detailEditor" class="min-h-0 flex-1 overflow-auto"></div>
     </div>
   </div>
 </template>
@@ -305,8 +314,10 @@ import IconBrain from "~icons/lucide/brain"
 import IconCheck from "~icons/lucide/check"
 import IconCopy from "~icons/lucide/copy"
 import IconFilter from "~icons/lucide/filter"
-import { computed, nextTick, ref, watch } from "vue"
+import IconWrapText from "~icons/lucide/wrap-text"
+import { computed, nextTick, reactive, ref, watch } from "vue"
 import { useVModel } from "@vueuse/core"
+import { useCodemirror } from "@composables/codemirror"
 import { useI18n } from "@composables/i18n"
 import { useToast } from "@composables/toast"
 import { useStream } from "@composables/stream"
@@ -450,6 +461,44 @@ const selectedDetail = computed(() => {
 function selectEvent(event: SSEEvent) {
   selectedEventIndex.value = event.index
 }
+
+const detailEditor = ref<any | null>(null)
+const detailWrap = ref(true)
+
+// Only payloads that actually parse as JSON are worth highlighting and
+// folding; terminal markers like `[DONE]` fall back to plain text.
+const selectedIsJson = computed(() => {
+  const event = selectedEvent.value
+  if (!event) return false
+
+  try {
+    JSON.parse(event.data)
+    return true
+  } catch (_e) {
+    return false
+  }
+})
+
+const detailEditorMode = computed(() =>
+  detailMode.value === "pretty" && selectedIsJson.value
+    ? "application/ld+json"
+    : "text/plain"
+)
+
+useCodemirror(
+  detailEditor,
+  computed(() => (selectedEvent.value ? selectedDetail.value : "")),
+  reactive({
+    extendedEditorConfig: {
+      mode: detailEditorMode,
+      readOnly: true,
+      lineWrapping: detailWrap,
+    },
+    linter: null,
+    completer: null,
+    environmentHighlights: false,
+  })
+)
 
 const assembled = computed(() => {
   return assembleMessages(

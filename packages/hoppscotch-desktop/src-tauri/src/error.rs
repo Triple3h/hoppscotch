@@ -15,4 +15,7 @@ pub enum HoppError {
 
     #[error("Tauri error: {0}")]
     Tauri(#[from] tauri::Error),
+
+    #[error("Web update error: {0}")]
+    WebUpdate(#[from] crate::web_update::WebUpdateError),
 }

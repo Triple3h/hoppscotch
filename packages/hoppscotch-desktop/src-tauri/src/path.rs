@@ -29,6 +29,17 @@ pub fn store_dir() -> io::Result<PathBuf> {
     Ok(path)
 }
 
+/// Root of the web-bundle update channel's own storage.
+///
+/// Deliberately outside appload's `latest/` tree: this is the shell's own
+/// bookkeeping about which web bundle to lay down on the next launch, not part
+/// of the bundle store the plugin owns and rewrites.
+pub fn web_update_dir() -> io::Result<PathBuf> {
+    let path = config_dir()?.join("web-update");
+    std::fs::create_dir_all(&path)?;
+    Ok(path)
+}
+
 pub fn get_versioned_backup_dir(version: &str) -> io::Result<PathBuf> {
     let backup_root = backup_dir()?;
     let versioned_path = backup_root.join(format!("v{}", version));

@@ -45,6 +45,15 @@ native-dialog = { version = "0.7.0" }
 tauri-plugin-http = { version = "2.0.1", features = ["gzip"] }
 tauri-plugin-opener = "2"
 semver = "1.0"
+# Web-bundle update channel. The manifest is verified here (minisign over the
+# manifest bytes plus a whole-archive blake3), and appload re-verifies every
+# file it extracts against that same signed manifest. Every crate below is
+# already in the graph through tauri and its plugins, so this adds no new
+# compilation units.
+minisign-verify = "0.2.3"
+blake3 = "1.5.5"
+base64 = "0.22.1"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 
 [dev-dependencies]
 tempfile = "3.20.0"

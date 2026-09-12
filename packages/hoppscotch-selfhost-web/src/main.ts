@@ -1,5 +1,6 @@
 import { nextTick, ref, watch } from "vue"
 import { emit, listen } from "@tauri-apps/api/event"
+import { invoke } from "@tauri-apps/api/core"
 import { createHoppApp } from "@hoppscotch/common"
 import { useSettingStatic } from "@hoppscotch/common/composables/settings"
 import { useDesktopSettings } from "@hoppscotch/common/composables/desktop-settings"
@@ -165,6 +166,13 @@ async function initApp() {
     backend: stdBackendDef,
     addedServices: [],
   })
+
+  // Tell the shell this bundle booted. The shell keeps the previous web bundle
+  // on standby and falls back to it when two launches pass without this call,
+  // so a bundle that cannot render itself costs one restart instead of a
+  // reinstall. Only a loaded bundle reaches this line: the launcher window runs
+  // its own entry point, and a bundle that fails to mount never gets here.
+  invoke("web_update_report_healthy").catch(() => {})
 
   if (platform === "desktop") {
     const ALLOWED_DROP_SELECTORS = [

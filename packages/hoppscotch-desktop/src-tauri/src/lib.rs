@@ -7,6 +7,7 @@ pub mod path;
 pub mod server;
 pub mod updater;
 pub mod util;
+pub mod web_update;
 pub mod webview;
 
 use std::sync::OnceLock;
@@ -160,6 +161,14 @@ pub fn run() {
         return;
     }
 
+    // A web bundle installed on an earlier run has to be laid down before the
+    // appload plugin reads these paths, because the plugin installs whatever it
+    // finds there as its vendored bundle. Failure is not fatal: the embedded
+    // bundle is already in place and is what would have been used anyway.
+    if let Err(e) = appload_config.apply_installed_web_update() {
+        tracing::warn!(error = %e, "Falling back to the embedded web bundle");
+    }
+
     let appload_config = appload_config.build();
 
     let app = tauri::Builder::default()
@@ -262,6 +271,9 @@ pub fn run() {
             updater::cancel_update,
             updater::get_download_progress,
             updater::is_portable_mode,
+            web_update::check_web_update,
+            web_update::apply_web_update,
+            web_update::web_update_report_healthy,
             path::get_config_dir,
             path::get_latest_dir,
             path::get_instance_dir,

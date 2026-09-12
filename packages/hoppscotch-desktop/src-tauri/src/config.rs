@@ -55,6 +55,24 @@ impl HoppApploadConfig {
         Ok(())
     }
 
+    /// Overlays a web bundle installed by [`crate::web_update`] on top of the
+    /// embedded one, when there is one and it is newer.
+    ///
+    /// Has to run after [`Self::write_vendored`] and before the appload plugin's
+    /// setup: appload installs whatever sits at these two paths as its vendored
+    /// bundle, so overwriting them is what makes an installed update take effect
+    /// — and what keeps it in effect across restarts, since `write_vendored`
+    /// rewrites both paths from the binary on every launch.
+    pub fn apply_installed_web_update(&self) -> Result<(), HoppError> {
+        crate::web_update::apply_installed_update(
+            &self.bundle_path,
+            &self.manifest_path,
+            crate::web_update::embedded_version().as_deref(),
+        )?;
+
+        Ok(())
+    }
+
     pub fn build(&self) -> Config {
         Config::builder()
             .api(ApiConfig {

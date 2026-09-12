@@ -1,0 +1,28 @@
+name: Token probe
+
+# 临时探针（用完即删）：验证仓库默认 workflow 权限改为 write 之后，
+# 新触发的 run 拿到的 GITHUB_TOKEN 能否创建 Release。
+# 只创建并立即删除一个 draft release —— draft 不计入 latest，不影响客户端自动更新。
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  probe:
+    name: Can create a release?
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create and delete a draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="probe-${{ github.run_id }}"
+          gh release create "$TAG" --draft --title "probe" --notes "probe" --repo "$GITHUB_REPOSITORY"
+          echo "PROBE_RESULT=WRITE_OK"
+          gh release delete "$TAG" --yes --repo "$GITHUB_REPOSITORY"
+          echo "PROBE_CLEANED=1"

@@ -1,18 +1,18 @@
 name: Signature probe
 
-# 临时诊断：用 bundler + signer 跑一遍与发布完全相同的最小序列，
-# 并上传产物，供本地用 web_update 的验签代码核对「签名是否覆盖清单」。
-# 用完即删。
+# 临时诊断（用完即删）：用 CI 的私钥签一个固定的 5 字节内容并上传，
+# 本地用 tauri.conf.json 里的公钥验签。
+# - 若能验签 => 密钥配对正常，问题在 manifest 的载荷
+# - 若不能   => CI 的私钥与配置里的公钥不配对（那 Tauri updater 同样是坏的）
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
   probe:
-    name: Minimal bundler + signer sequence
+    name: Sign a known payload with the CI key
     runs-on: ubuntu-latest
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -32,24 +32,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Bundle a small directory, exactly like the release does
+      - name: Sign a fixed payload
         run: |
-          cargo build --release --manifest-path packages/hoppscotch-desktop/crates/webapp-bundler/Cargo.toml
           mkdir -p probe-out
-          packages/hoppscotch-desktop/crates/webapp-bundler/target/release/webapp-bundler \
-            --input packages/hoppscotch-desktop/public \
-            --output probe-out/bundle.zip \
-            --manifest probe-out/manifest.json \
-            --version 1.1.2 \
-            --shell-min-version 1.0.0
-          echo "== bundle written =="
-          ls -l probe-out
-          echo "SHA_BEFORE_SIGN=$(sha256sum probe-out/manifest.json | cut -d' ' -f1)"
+          printf 'hello' > probe-out/payload.txt
+          echo "PAYLOAD_SHA=$(sha256sum probe-out/payload.txt | cut -d' ' -f1)"
+          echo "PAYLOAD_HEX=$(xxd -p probe-out/payload.txt | tr -d '\n')"
 
-      - name: Sign it, exactly like the release does
-        run: |
           cd packages/hoppscotch-desktop
           if [ -f "$TAURI_SIGNING_PRIVATE_KEY" ]; then
             ARGS=(-f "$TAURI_SIGNING_PRIVATE_KEY")
@@ -57,16 +46,15 @@ jobs:
             ARGS=(-k "$TAURI_SIGNING_PRIVATE_KEY")
           fi
           ARGS+=(-p "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD")
-          pnpm exec tauri signer sign "${ARGS[@]}" ../../probe-out/manifest.json
-          echo "SHA_AFTER_SIGN=$(sha256sum ../../probe-out/manifest.json | cut -d' ' -f1)"
-          echo "SIG_SHA=$(sha256sum ../../probe-out/manifest.json.sig | cut -d' ' -f1)"
-          ls -l ../../probe-out
+          pnpm exec tauri signer sign "${ARGS[@]}" ../../probe-out/payload.txt
+          cat ../../probe-out/payload.txt.sig | head -c 120
+          echo
 
-      - name: Upload the pair for offline verification
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: sig-probe-pair
+          name: sig-probe-payload
           path: |
-            probe-out/manifest.json
-            probe-out/manifest.json.sig
+            probe-out/payload.txt
+            probe-out/payload.txt.sig
           if-no-files-found: error

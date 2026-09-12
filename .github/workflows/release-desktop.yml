@@ -145,7 +145,15 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             packages/hoppscotch-desktop/src-tauri/target
+          # Bumping the app version rewrites Cargo.lock, so a cache key built
+          # from the lockfile alone misses on every single release and cargo
+          # recompiles every dependency from scratch (on Windows that includes
+          # building OpenSSL from source, ~19 minutes). restore-keys falls back
+          # to the previous release's cache, so only what actually changed is
+          # rebuilt.
           key: cargo-${{ runner.os }}-${{ hashFiles('packages/hoppscotch-desktop/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
 
       - name: Install system dependencies
         run: |
@@ -257,7 +265,12 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             packages/hoppscotch-desktop/src-tauri/target
+          # Same lockfile-hash caveat as the Linux job: restore-keys is what
+          # keeps a release bump from triggering a full rebuild, which on
+          # Windows also means compiling OpenSSL from source.
           key: cargo-${{ runner.os }}-${{ hashFiles('packages/hoppscotch-desktop/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
 
       - name: Install dependencies
         run: pnpm install
@@ -370,7 +383,13 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             packages/hoppscotch-desktop/src-tauri/target
+          # See the Linux job for why restore-keys is required. The matrix
+          # target is part of the key because both macOS jobs otherwise share
+          # one cache entry and overwrite each other's target directory.
           key: cargo-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('packages/hoppscotch-desktop/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ matrix.target }}-
+            cargo-${{ runner.os }}-
 
       - name: Install dependencies
         run: pnpm install

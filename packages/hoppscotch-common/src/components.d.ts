@@ -275,6 +275,7 @@ declare module 'vue' {
     LensesRenderersJSONLensRenderer: typeof import('./components/lenses/renderers/JSONLensRenderer.vue')['default']
     LensesRenderersPDFLensRenderer: typeof import('./components/lenses/renderers/PDFLensRenderer.vue')['default']
     LensesRenderersRawLensRenderer: typeof import('./components/lenses/renderers/RawLensRenderer.vue')['default']
+    LensesRenderersSseEventPayload: typeof import('./components/lenses/renderers/SseEventPayload.vue')['default']
     LensesRenderersSSELensRenderer: typeof import('./components/lenses/renderers/SSELensRenderer.vue')['default']
     LensesRenderersVideoLensRenderer: typeof import('./components/lenses/renderers/VideoLensRenderer.vue')['default']
     LensesRenderersXMLLensRenderer: typeof import('./components/lenses/renderers/XMLLensRenderer.vue')['default']

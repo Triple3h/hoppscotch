@@ -29,13 +29,17 @@
           v-if="block.kind === 'heading'"
           class="mb-1 mt-3 text-xs font-semibold tracking-wide text-secondaryLight uppercase first:mt-0"
         >
-          {{ block.text }}
+          <UpdateNoteText :spans="block.spans" />
         </p>
         <div v-else-if="block.kind === 'item'" class="flex space-x-2 py-0.5">
           <span class="bg-accent mt-1.5 h-1 w-1 shrink-0 rounded-full"></span>
-          <span class="text-secondary text-sm">{{ block.text }}</span>
+          <span class="text-secondary text-sm">
+            <UpdateNoteText :spans="block.spans" />
+          </span>
         </div>
-        <p v-else class="text-secondary py-0.5 text-sm">{{ block.text }}</p>
+        <p v-else class="text-secondary py-0.5 text-sm">
+          <UpdateNoteText :spans="block.spans" />
+        </p>
       </template>
     </div>
 
@@ -110,6 +114,7 @@ import IconLucideDownload from "~icons/lucide/download"
 import IconLucideRefreshCw from "~icons/lucide/refresh-cw"
 import type { DownloadProgress } from "~/services/updater.client"
 import { parseUpdateNotes } from "~/utils/update-notes"
+import UpdateNoteText from "./UpdateNoteText.vue"
 
 interface Props {
   state: "available" | "downloading" | "installing" | "ready"

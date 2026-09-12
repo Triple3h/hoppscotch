@@ -129,12 +129,18 @@
           />
         </div>
         <div class="flex items-center space-x-2">
+          <!--
+            This fork is personal-workspace-only: there are no team workspaces
+            and nothing to switch to, so this is a static indicator rather than
+            a control. It used to wear a hardcoded blue chip style (a cloud CTA
+            in upstream) plus `pr-8` reserved for a chevron that no longer
+            exists, which made it the one element in the header that ignored
+            the app's colour tokens. It now matches the neighbouring buttons.
+          -->
           <HoppButtonSecondary
-            v-tippy="{ theme: 'tooltip' }"
-            :title="t('workspace.change')"
             :label="mdAndLarger ? workspaceName : ``"
             :icon="IconUser"
-            class="!focus-visible:text-blue-600 !hover:text-blue-600 h-8 rounded border border-blue-600/25 bg-blue-500/10 pr-8 !text-blue-500 hover:border-blue-600/20 hover:bg-blue-600/20 focus-visible:border-blue-600/20 focus-visible:bg-blue-600/20"
+            class="rounded hover:bg-primaryDark focus-visible:bg-primaryDark !text-secondaryDark"
           />
         </div>
       </div>

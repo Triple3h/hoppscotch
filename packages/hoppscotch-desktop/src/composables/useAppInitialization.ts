@@ -457,6 +457,41 @@ export function useAppInitialization() {
     }
   }
 
+  // Web-bundle update channel. A release whose shell did not change ships the
+  // frontend on its own, and installing it here means the next launch already
+  // runs the new bundle — no installer, no reinstall, no restart prompt. The
+  // Tauri updater stays the path for anything that touches the shell, and it is
+  // the Rust side that decides which of the two a release needs.
+  //
+  // Deliberately fire-and-forget and quiet: this is an optimisation on top of
+  // the full updater, so a failure or a slow connection must not delay startup
+  // or surface an error. The bundle in use does not change under the user
+  // either — the new one is picked up on the next launch.
+  const installWebBundleUpdate = async () => {
+    try {
+      await desktopSettings.ready()
+      if (desktopSettings.settings.disableUpdateNotifications) return
+
+      const status = await invoke<{
+        state: string
+        availableVersion?: string
+      }>("check_web_update")
+      if (status.state !== "available") {
+        mainDiag(`web bundle update: ${status.state}`)
+        return
+      }
+
+      mainDiag(`web bundle update available: ${status.availableVersion}`)
+      await invoke("apply_web_update")
+      console.log(
+        "Web bundle update installed; it applies on the next launch",
+        status.availableVersion
+      )
+    } catch (err) {
+      console.warn("Web bundle update check failed:", err)
+    }
+  }
+
   const performBasicInitialization = async () => {
     try {
       appVersion.value = await getVersion()
@@ -496,6 +531,10 @@ export function useAppInitialization() {
         `Persistence init failed: ${initResult.left.kind}: ${initResult.left.message}`
       )
     }
+
+    // Started, not awaited: the app carries on to the launcher, and the download
+    // runs alongside it.
+    void installWebBundleUpdate()
   }
 
   const initialize = async (customLogic?: () => Promise<void>) => {

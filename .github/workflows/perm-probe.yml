@@ -1,0 +1,39 @@
+name: Perm probe
+
+# 临时诊断 workflow：定位 tag 触发的 run 里 GITHUB_TOKEN 为何 403。用完即删。
+on:
+  push:
+    tags:
+      - 'probe-*'
+  workflow_dispatch:
+
+# 与 release-desktop.yml 保持完全一致，确保可比
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  probe:
+    name: Probe token permissions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Diagnose
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -x
+          gh --version
+          echo "event=$GITHUB_EVENT_NAME ref=$GITHUB_REF sha=$GITHUB_SHA"
+          echo "--- repo permissions as seen by the token ---"
+          curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY" \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); print("PROBE_PERM:", d.get("permissions"))'
+          echo "--- create draft release ---"
+          set +e
+          TAG="perm-probe-$RANDOM$RANDOM"
+          out=$(gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --title "perm probe" --notes "probe" --draft 2>&1)
+          echo "PROBE_CREATE_EXIT=$?"
+          echo "$out"
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>&1 | head -5

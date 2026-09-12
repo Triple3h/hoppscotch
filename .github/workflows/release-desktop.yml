@@ -3,34 +3,24 @@ name: Build & Release Desktop
 # 本仓库为本地化 fork：无 Apple/Windows 代码签名证书，安装包本身未签名，
 # 但启用 Tauri updater 签名产物（minisign 内容签名），更新源指向本仓库 GitHub Release。
 # 构建前需在仓库设置 TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD secrets。
+#
+# 发布规则：Release 与更新清单只能由推送 v* 标签创建；
+# 手动触发（workflow_dispatch）只构建产物，永远不发布。
 
 on:
-  # 手动触发：Actions -> Build & Release Desktop -> Run workflow
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 发布版本号（不含 v 前缀），如 1.0.0
-        required: false
-        default: '1.0.0'
-        type: string
-      create_release:
-        description: 构建完成后创建 GitHub Release（tag 为 v<version>）
-        required: false
-        default: true
-        type: boolean
-      prerelease:
-        description: 将 Release 标记为预发布
-        required: false
-        default: false
-        type: boolean
-      notes:
-        description: Release 说明（Markdown，留空使用默认文案）
-        required: false
-        type: string
-  # 推送 v* 标签（如 v1.0.0）时自动构建并发布
+  # 唯一的发布入口：推送形如 v1.1.1 的标签。
+  # 版本号取自标签名（去掉 v 前缀）；标签名含 "-"（如 v1.2.0-beta.1）会发布为预发布。
   push:
     tags:
       - 'v*'
+  # 手动触发只构建产物（自取安装包 / 验证签名），不创建 Release。
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 构建产物版本号（不含 v 前缀），仅影响产物命名与内置版本，不会发布 Release
+        required: false
+        default: '0.0.0'
+        type: string
 
 concurrency:
   group: desktop-release-${{ github.event_name }}-${{ github.ref }}
@@ -444,7 +434,8 @@ jobs:
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' || inputs.create_release }}
+    # 发布只允许由标签推送触发；手动触发只构建、不发布。
+    if: github.event_name == 'push'
     needs:
       - resolve-version
       - build-linux
@@ -474,9 +465,7 @@ jobs:
 
       - name: Write release notes
         run: |
-          NOTES_INPUT="${{ inputs.notes }}"
-          if [ -z "$NOTES_INPUT" ]; then
-            cat > release-notes.md <<EOF
+          cat > release-notes.md <<EOF
           ## Hoppscotch Desktop ${APP_VERSION}
 
           本地化桌面版（无云端/登录，数据保存在本地）。
@@ -494,9 +483,6 @@ jobs:
           ---
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           EOF
-          else
-            printf '%s\n' "$NOTES_INPUT" > release-notes.md
-          fi
 
       - name: Build update manifest
         run: |
@@ -513,7 +499,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          PRERELEASE="${{ github.event_name == 'push' && 'false' || inputs.prerelease }}"
+          # 标签名含 "-" 视为预发布（如 v1.2.0-beta.1）：不会成为 latest，客户端也不会自动更新到它。
+          PRERELEASE="false"
+          case "${APP_TAG}" in *-*) PRERELEASE="true" ;; esac
           if ! gh release view "$APP_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             # `--target` is only valid while the tag does not exist yet
             # (a tag-triggered run already pushed it).

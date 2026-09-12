@@ -1,7 +1,7 @@
 name: Signature probe
 
-# 临时诊断：确认发布出来的 manifest.json.sig 是否覆盖同一个 manifest.json。
-# Ed25519 是确定性签名，因此「同一密钥 + 同一字节 => 同一签名」，可直接比对。
+# 临时诊断：用 bundler + signer 跑一遍与发布完全相同的最小序列，
+# 并上传产物，供本地用 web_update 的验签代码核对「签名是否覆盖清单」。
 # 用完即删。
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   probe:
-    name: Re-sign the published manifest
+    name: Minimal bundler + signer sequence
     runs-on: ubuntu-latest
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -32,54 +32,41 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Download the published artifact
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh run download 34685630002 --repo "$GITHUB_REPOSITORY" -n web-bundle -D wb
-          ls -l wb
-          echo "PUBLISHED_MANIFEST_SHA=$(sha256sum wb/manifest.json | cut -d' ' -f1)"
-          echo "PUBLISHED_SIG_SHA=$(sha256sum wb/manifest.json.sig | cut -d' ' -f1)"
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Re-sign the very same bytes with the very same key
+      - name: Bundle a small directory, exactly like the release does
+        run: |
+          cargo build --release --manifest-path packages/hoppscotch-desktop/crates/webapp-bundler/Cargo.toml
+          mkdir -p probe-out
+          packages/hoppscotch-desktop/crates/webapp-bundler/target/release/webapp-bundler \
+            --input packages/hoppscotch-desktop/public \
+            --output probe-out/bundle.zip \
+            --manifest probe-out/manifest.json \
+            --version 1.1.2 \
+            --shell-min-version 1.0.0
+          echo "== bundle written =="
+          ls -l probe-out
+          echo "SHA_BEFORE_SIGN=$(sha256sum probe-out/manifest.json | cut -d' ' -f1)"
+
+      - name: Sign it, exactly like the release does
         run: |
           cd packages/hoppscotch-desktop
-          cp ../../wb/manifest.json probe-manifest.json
-
-          echo "BEFORE_SIGN_SHA=$(sha256sum probe-manifest.json | cut -d' ' -f1)"
-
           if [ -f "$TAURI_SIGNING_PRIVATE_KEY" ]; then
             ARGS=(-f "$TAURI_SIGNING_PRIVATE_KEY")
           else
             ARGS=(-k "$TAURI_SIGNING_PRIVATE_KEY")
           fi
           ARGS+=(-p "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD")
-          pnpm exec tauri signer sign "${ARGS[@]}" probe-manifest.json > sign.log 2>&1 || { cat sign.log; exit 1; }
+          pnpm exec tauri signer sign "${ARGS[@]}" ../../probe-out/manifest.json
+          echo "SHA_AFTER_SIGN=$(sha256sum ../../probe-out/manifest.json | cut -d' ' -f1)"
+          echo "SIG_SHA=$(sha256sum ../../probe-out/manifest.json.sig | cut -d' ' -f1)"
+          ls -l ../../probe-out
 
-          echo "AFTER_SIGN_SHA=$(sha256sum probe-manifest.json | cut -d' ' -f1)"
-
-          RECOMPUTED="$(tr -d '\n\r' < probe-manifest.json.sig)"
-          PUBLISHED="$(tr -d '\n\r' < ../../wb/manifest.json.sig)"
-          if [ "$RECOMPUTED" = "$PUBLISHED" ]; then
-            echo "PROBE_RESULT=REPRODUCES"
-          else
-            echo "PROBE_RESULT=DIFFERS"
-          fi
-          echo "--- first 120 chars ---"
-          echo "recomputed: ${RECOMPUTED:0:120}"
-          echo "published : ${PUBLISHED:0:120}"
-
-      - name: Does the key in config match the key that signs?
-        run: |
-          # Decode both sides the way the shell does and compare the key ids.
-          node -e '
-            const fs = require("fs")
-            const conf = JSON.parse(fs.readFileSync("packages/hoppscotch-desktop/src-tauri/tauri.conf.json", "utf8"))
-            const keyText = Buffer.from(conf.plugins.updater.pubkey.trim(), "base64").toString("utf8")
-            const key = Buffer.from(keyText.trim().split("\n")[1].trim(), "base64")
-            console.log("config keyId:", key.subarray(2, 10).toString("hex"))
-
-            const sigText = Buffer.from(fs.readFileSync("wb/manifest.json.sig", "utf8").trim(), "base64").toString("utf8")
-            const sig = Buffer.from(sigText.trim().split("\n")[1].trim(), "base64")
-            console.log("sig    keyId:", sig.subarray(2, 10).toString("hex"), "algo:", sig.subarray(0, 2).toString())
-          '
+      - name: Upload the pair for offline verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: sig-probe-pair
+          path: |
+            probe-out/manifest.json
+            probe-out/manifest.json.sig
+          if-no-files-found: error

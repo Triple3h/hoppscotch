@@ -450,6 +450,10 @@ jobs:
       APP_VERSION: ${{ needs.resolve-version.outputs.version }}
       APP_TAG: ${{ needs.resolve-version.outputs.tag }}
     steps:
+      # The manifest script lives in the repo — without a checkout the
+      # "Build update manifest" step fails with MODULE_NOT_FOUND.
+      - uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -504,9 +508,15 @@ jobs:
           set -e
           PRERELEASE="${{ github.event_name == 'push' && 'false' || inputs.prerelease }}"
           if ! gh release view "$APP_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # `--target` is only valid while the tag does not exist yet
+            # (a tag-triggered run already pushed it).
+            TARGET_ARG=""
+            if ! git ls-remote --exit-code --tags "$GITHUB_REPOSITORY" "refs/tags/$APP_TAG" >/dev/null 2>&1; then
+              TARGET_ARG="--target $GITHUB_SHA"
+            fi
             gh release create "$APP_TAG" \
               --repo "$GITHUB_REPOSITORY" \
-              --target "$GITHUB_SHA" \
+              $TARGET_ARG \
               --title "Hoppscotch Desktop ${APP_TAG}" \
               --notes-file release-notes.md \
               --prerelease="$PRERELEASE" \

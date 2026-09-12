@@ -83,13 +83,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            packages/hoppscotch-desktop/crates/webapp-bundler/target
-          key: cargo-${{ runner.os }}-bundler-${{ hashFiles('packages/hoppscotch-desktop/src-tauri/Cargo.lock') }}
+          workspaces: packages/hoppscotch-desktop/crates/webapp-bundler
 
       - name: Build web app
         run: pnpm --filter @hoppscotch/selfhost-web generate
@@ -138,22 +134,19 @@ jobs:
       - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@stable
 
+      # rust-cache falls back to the previous Cargo.lock's cache when a release
+      # bump rewrites the lockfile, strips incremental artifacts from the
+      # target dir, and keys every job separately. Without that fallback a
+      # release recompiled every dependency from scratch — ~19 minutes on
+      # Windows, OpenSSL included.
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            packages/hoppscotch-desktop/src-tauri/target
-          # Bumping the app version rewrites Cargo.lock, so a cache key built
-          # from the lockfile alone misses on every single release and cargo
-          # recompiles every dependency from scratch (on Windows that includes
-          # building OpenSSL from source, ~19 minutes). restore-keys falls back
-          # to the previous release's cache, so only what actually changed is
-          # rebuilt.
-          key: cargo-${{ runner.os }}-${{ hashFiles('packages/hoppscotch-desktop/src-tauri/Cargo.lock') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-
+          # The desktop crate is its own workspace under a subdirectory; the
+          # default lookup would find no root Cargo.toml and cache nothing.
+          workspaces: packages/hoppscotch-desktop/src-tauri
+          # A failed bundle still warms the target dir for the next attempt.
+          cache-on-failure: true
 
       - name: Install system dependencies
         run: |
@@ -258,19 +251,14 @@ jobs:
       - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@stable
 
+      # See the Linux job: rust-cache's fallback to the previous lockfile is
+      # what keeps a version bump from recompiling everything (OpenSSL
+      # included, which is the bulk of this job's compile time).
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            packages/hoppscotch-desktop/src-tauri/target
-          # Same lockfile-hash caveat as the Linux job: restore-keys is what
-          # keeps a release bump from triggering a full rebuild, which on
-          # Windows also means compiling OpenSSL from source.
-          key: cargo-${{ runner.os }}-${{ hashFiles('packages/hoppscotch-desktop/src-tauri/Cargo.lock') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-
+          workspaces: packages/hoppscotch-desktop/src-tauri
+          cache-on-failure: true
 
       - name: Install dependencies
         run: pnpm install
@@ -310,7 +298,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: pnpm --filter hoppscotch-desktop tauri build --bundles nsis,msi --config '{"bundle":{"createUpdaterArtifacts":true}}'
+        # NSIS only: it is what the updater consumes (`-setup.exe` + `.sig`).
+        # The MSI needed the WiX toolchain download on every run for an
+        # installer nobody installs from.
+        run: pnpm --filter hoppscotch-desktop tauri build --bundles nsis --config '{"bundle":{"createUpdaterArtifacts":true}}'
 
       - name: Prepare artifacts
         run: |
@@ -321,9 +312,6 @@ jobs:
           done
           for f in src-tauri/target/release/bundle/nsis/*.sig; do
             [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_windows_x86_64-setup.exe.sig"
-          done
-          for f in src-tauri/target/release/bundle/msi/*.msi; do
-            [ -e "$f" ] && mv "$f" "../../dist/hoppscotch-desktop_${APP_VERSION}_windows_x86_64.msi"
           done
           cd ../..
           ls -lh dist
@@ -376,20 +364,13 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      # See the Linux job. rust-cache keys by job id, so the two macOS matrix
+      # entries no longer share (and overwrite) a single cache entry.
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            packages/hoppscotch-desktop/src-tauri/target
-          # See the Linux job for why restore-keys is required. The matrix
-          # target is part of the key because both macOS jobs otherwise share
-          # one cache entry and overwrite each other's target directory.
-          key: cargo-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('packages/hoppscotch-desktop/src-tauri/Cargo.lock') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-${{ matrix.target }}-
-            cargo-${{ runner.os }}-
+          workspaces: packages/hoppscotch-desktop/src-tauri
+          cache-on-failure: true
 
       - name: Install dependencies
         run: pnpm install
@@ -494,7 +475,7 @@ jobs:
           本地化桌面版（无云端/登录，数据保存在本地）。
 
           ### 下载
-          - **Windows**: *_windows_x86_64-setup.exe（NSIS 安装包）、*.msi
+          - **Windows**: *_windows_x86_64-setup.exe（NSIS 安装包）
           - **macOS**: *_macos_aarch64.dmg（Apple Silicon）、*_macos_x86_64.dmg（Intel）
           - **Linux**: *_linux_x86_64.AppImage、*.deb
 

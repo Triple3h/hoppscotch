@@ -1,4 +1,5 @@
 /// This is just `webapp-server`'s bundler part as a CLI
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Cursor, Write};
 use std::path::PathBuf;
@@ -7,7 +8,7 @@ use clap::Parser;
 use rayon::prelude::*;
 use thiserror::Error;
 use walkdir::WalkDir;
-use zip::{ZipWriter, write::SimpleFileOptions};
+use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
 #[derive(Error, Debug)]
 pub enum BundlerError {
@@ -47,6 +48,12 @@ struct Args {
     /// Custom version for the bundle (defaults to CLI tool version)
     #[arg(short, long)]
     version: Option<String>,
+
+    /// Lowest shell (desktop app) version that can load this bundle. A client
+    /// running an older shell must take the full app-update path instead of
+    /// applying this bundle incrementally.
+    #[arg(long, default_value = "0.0.0")]
+    shell_min_version: String,
 }
 
 #[derive(serde::Serialize)]
@@ -56,6 +63,15 @@ struct FileEntry {
     #[serde(with = "hash_serde")]
     hash: blake3::Hash,
     mime_type: Option<String>,
+    /// Byte offset of this entry's compressed data inside the zip. Together
+    /// with `length` it lets an updating client fetch one file with a single
+    /// HTTP Range request instead of downloading the whole bundle.
+    offset: u64,
+    /// Compressed size in bytes, i.e. what a Range request has to ask for.
+    length: u64,
+    /// ZIP compression method (0 = stored, 8 = deflate). The client needs it to
+    /// inflate whatever a Range request hands back.
+    method: u16,
 }
 
 #[derive(serde::Serialize)]
@@ -63,6 +79,19 @@ struct Manifest {
     files: Vec<FileEntry>,
     version: String,
     created_at: chrono::DateTime<chrono::Utc>,
+    /// Compatibility gate for incremental updates; see `--shell-min-version`.
+    shell_min_version: String,
+    /// Whole-archive facts, used by the client's full-download fallback and by
+    /// tooling that wants to check a bundle it has on disk.
+    bundle: BundleInfo,
+}
+
+#[derive(serde::Serialize)]
+struct BundleInfo {
+    name: String,
+    size: u64,
+    #[serde(with = "hash_serde")]
+    blake3: blake3::Hash,
 }
 
 mod hash_serde {
@@ -160,6 +189,11 @@ impl BundleBuilder {
                 size: file_info.size,
                 hash: file_info.hash,
                 mime_type: file_info.mime_type,
+                // Filled in by `index_zip` once the archive is final; offsets
+                // only exist after every entry has been written.
+                offset: 0,
+                length: 0,
+                method: 0,
             });
         }
 
@@ -176,6 +210,47 @@ impl BundleBuilder {
     }
 }
 
+/// ZIP spec compression method code (0 = stored, 8 = deflate). The crate's
+/// `to_u16` is deprecated in favour of matching on constants, but an integer is
+/// exactly what the manifest — and therefore the client's Range + inflate step
+/// — needs, so the conversion stays in one place here.
+#[allow(deprecated)]
+fn method_code(method: zip::CompressionMethod) -> u16 {
+    method.to_u16()
+}
+
+/// Fills in `offset` / `length` / `method` for every entry by reading the
+/// finished archive back.
+///
+/// The values are read from the produced zip rather than predicted while
+/// writing: local headers carry extra fields (unix permissions), so computing
+/// where an entry's data starts is easy to get subtly wrong, and a wrong offset
+/// would make a client's Range request return the wrong bytes.
+fn index_zip(content: &[u8], files: &mut [FileEntry]) -> Result<()> {
+    let index_by_path: HashMap<String, usize> = files
+        .iter()
+        .enumerate()
+        .map(|(index, file)| (file.path.clone(), index))
+        .collect();
+
+    let mut archive = ZipArchive::new(Cursor::new(content))?;
+
+    for archive_index in 0..archive.len() {
+        let file = archive.by_index(archive_index)?;
+
+        let Some(&index) = index_by_path.get(file.name()) else {
+            continue;
+        };
+
+        let entry = &mut files[index];
+        entry.offset = file.data_start();
+        entry.length = file.compressed_size();
+        entry.method = method_code(file.compression());
+    }
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
 
@@ -189,12 +264,16 @@ fn main() -> Result<()> {
     println!("Creating bundle from directory: {}", args.input.display());
 
     let builder = BundleBuilder::new(&args.input)?;
-    let (content, files) = builder.finish()?;
+    let (content, mut files) = builder.finish()?;
+
+    // Offsets are only knowable once the archive is complete.
+    index_zip(&content, &mut files)?;
 
     let version = args.version
         .or_else(|| std::env::var("WEBAPP_BUNDLE_VERSION").ok())
         .unwrap_or_else(|| env!("CARGO_PKG_VERSION").to_string());
     println!("Using bundle version: {}", version);
+    println!("Shell compatibility: >= {}", args.shell_min_version);
 
     let mut output_file = File::create(&args.output)?;
     output_file.write_all(&content)?;
@@ -204,6 +283,16 @@ fn main() -> Result<()> {
         files,
         version,
         created_at: chrono::Utc::now(),
+        shell_min_version: args.shell_min_version.clone(),
+        bundle: BundleInfo {
+            name: args
+                .output
+                .file_name()
+                .map(|name| name.to_string_lossy().to_string())
+                .unwrap_or_else(|| "bundle.zip".to_string()),
+            size: content.len() as u64,
+            blake3: blake3::hash(&content),
+        },
     };
 
     if let Some(manifest_path) = args.manifest {

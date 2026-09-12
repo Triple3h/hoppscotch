@@ -61,6 +61,13 @@ jobs:
     name: Bundle web frontend
     runs-on: ubuntu-24.04
     needs: resolve-version
+    env:
+      APP_VERSION: ${{ needs.resolve-version.outputs.version }}
+      # Compatibility floor for incremental updates: the lowest shell version
+      # that may load this bundle. Only raise it when the Rust-side IPC surface
+      # changes in a breaking way — raising it forces clients on older shells
+      # back onto the full app-update path, which is the thing we're avoiding.
+      SHELL_MIN_VERSION: '1.0.0'
     steps:
       - uses: actions/checkout@v4
 
@@ -93,10 +100,38 @@ jobs:
       - name: Build and run webapp-bundler
         run: |
           cargo build --release --manifest-path packages/hoppscotch-desktop/crates/webapp-bundler/Cargo.toml
+          # `--version` is not optional in practice: omitting it makes the
+          # manifest carry the bundler crate's own version (0.1.0) for every
+          # release, so a client comparing versions can never see a change.
           packages/hoppscotch-desktop/crates/webapp-bundler/target/release/webapp-bundler \
             --input packages/hoppscotch-selfhost-web/dist \
             --output packages/hoppscotch-desktop/bundle.zip \
-            --manifest packages/hoppscotch-desktop/manifest.json
+            --manifest packages/hoppscotch-desktop/manifest.json \
+            --version "$APP_VERSION" \
+            --shell-min-version "$SHELL_MIN_VERSION"
+
+      # The incremental manifest has to be signed: a client only trusts the
+      # per-file hashes it finds inside a signed manifest. The updater's
+      # minisign key pair is reused (its public half is already in
+      # tauri.conf.json under plugins.updater.pubkey), so no new secret is
+      # needed and a rotated key cannot leave the two channels out of sync.
+      - name: Sign the web manifest
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          cd packages/hoppscotch-desktop
+          # The secret is usually the key content itself, but a path works too.
+          if [ -f "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            ARGS=(-f "$TAURI_SIGNING_PRIVATE_KEY")
+          else
+            ARGS=(-k "$TAURI_SIGNING_PRIVATE_KEY")
+          fi
+          # `-p` must be passed even for an empty password: leaving it out makes
+          # the CLI try to prompt, which fails on a runner without a TTY.
+          ARGS+=(-p "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD")
+          pnpm exec tauri signer sign "${ARGS[@]}" manifest.json
+          ls -l manifest.json.sig
 
       - name: Upload web bundle
         uses: actions/upload-artifact@v4
@@ -105,6 +140,7 @@ jobs:
           path: |
             packages/hoppscotch-desktop/bundle.zip
             packages/hoppscotch-desktop/manifest.json
+            packages/hoppscotch-desktop/manifest.json.sig
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
@@ -465,6 +501,12 @@ jobs:
             \( -name '*.AppImage' -o -name '*.deb' -o -name '*-setup.exe' \
                -o -name '*.msi' -o -name '*.dmg' -o -name '*.app.zip' \
                -o -name '*.sig' -o -name '*.app.tar.gz' \) \
+            -exec cp -v {} release-assets/ \;
+          # Web-update artifacts for the incremental channel: the signed
+          # manifest (per-file blake3 + byte offsets into the zip) and the whole
+          # bundle as the fallback for clients with no usable local base.
+          find artifacts/web-bundle -type f \
+            \( -name 'bundle.zip' -o -name 'manifest.json' -o -name 'manifest.json.sig' \) \
             -exec cp -v {} release-assets/ \;
 
       - name: Write release notes

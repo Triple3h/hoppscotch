@@ -27,7 +27,10 @@ export default defineConfig({
   },
   publicDir: path.resolve(__dirname, "../hoppscotch-common/public"),
   build: {
-    sourcemap: true,
+    // Production bundles ship without sourcemaps: they were 18.6 MB of the
+    // 31 MB web bundle (60%), and every updater download carries the whole
+    // bundle. Set HOPP_SOURCEMAP=1 to get them back when debugging a build.
+    sourcemap: process.env.HOPP_SOURCEMAP === "1",
     emptyOutDir: true,
     rollupOptions: {
       maxParallelFileOps: 2,

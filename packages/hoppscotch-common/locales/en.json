@@ -793,7 +793,29 @@
       "actual_request": "Actual Request",
       "request_url": "Request URL",
       "request_body": "Body",
-      "request_code": "Request Code"
+      "request_code": "Request Code",
+      "events": "Events",
+      "sse": {
+         "events_view": "Events",
+         "merged_view": "Auto Merge",
+         "reasoning": "Thinking",
+         "receiving": "receiving…",
+         "message_format": "Message Format",
+         "custom": "Custom",
+         "content_path": "Content path",
+         "reasoning_path": "Reasoning path",
+         "custom_paths_hint": "Dot path into each chunk's JSON, e.g. choices.0.delta.content",
+         "no_events": "No SSE events received yet",
+         "select_event": "Select an event to inspect it",
+         "pretty": "Pretty",
+         "raw": "Raw",
+         "filter_events": "Filter events",
+         "chunks": "{count} chunks",
+         "terminal": "Stream end marker",
+         "copy_merged": "Copy assembled message",
+         "copy_event": "Copy event",
+         "copied": "Copied to clipboard"
+      }
    },
    "script": {
       "inheriting": "Inheriting scripts from",

@@ -770,7 +770,29 @@
       "actual_request": "实际请求",
       "request_url": "请求 URL",
       "request_body": "Body",
-      "request_code": "请求代码"
+      "request_code": "请求代码",
+      "events": "事件",
+      "sse": {
+         "events_view": "分条展示",
+         "merged_view": "自动合并",
+         "reasoning": "思考过程",
+         "receiving": "接收中…",
+         "message_format": "消息格式",
+         "custom": "自定义",
+         "content_path": "内容路径",
+         "reasoning_path": "思考路径",
+         "custom_paths_hint": "事件 JSON 的点分路径，如 choices.0.delta.content",
+         "no_events": "尚未收到 SSE 事件",
+         "select_event": "点击事件查看详情",
+         "pretty": "格式化",
+         "raw": "原文",
+         "filter_events": "筛选事件",
+         "chunks": "{count} 条",
+         "terminal": "流结束标记",
+         "copy_merged": "复制拼接消息",
+         "copy_event": "复制事件",
+         "copied": "已复制到剪贴板"
+      }
    },
    "script": {
       "inheriting": "正在从以下位置继承脚本",

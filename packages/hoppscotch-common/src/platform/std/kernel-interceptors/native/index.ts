@@ -9,7 +9,9 @@ import {
 import {
   relayRequestToNativeAdapter,
   type RelayCapabilities,
+  type RelayEventEmitter,
   type RelayRequest,
+  type RelayRequestEvents,
   type RelayResponse,
 } from "@hoppscotch/kernel"
 import { Relay } from "~/kernel/relay"
@@ -23,6 +25,66 @@ import { CookieJarService } from "~/services/cookie-jar.service"
 import InterceptorsErrorPlaceholder from "~/components/settings/InterceptorErrorPlaceholder.vue"
 import SettingsNative from "~/components/settings/Native.vue"
 import { KernelInterceptorNativeStore } from "./store"
+
+/**
+ * Event hub backing `ExecutionResult.emitter`.
+ *
+ * It has to exist synchronously: subscribers (`helpers/network.ts`)
+ * attach right after `execute()` returns, while the relay execution
+ * that actually produces the streaming events is only created further
+ * down the async request pipeline, once it reaches `Relay.execute`.
+ * Relay events are forwarded into this hub.
+ */
+class RelayEventHub implements RelayEventEmitter<RelayRequestEvents> {
+  private handlers = new Map<string, Set<(payload: never) => void>>()
+
+  on<K extends keyof RelayRequestEvents>(
+    event: K,
+    handler: (payload: RelayRequestEvents[K]) => void
+  ): () => void {
+    let set = this.handlers.get(event as string)
+    if (!set) {
+      set = new Set()
+      this.handlers.set(event as string, set)
+    }
+    set.add(handler as (payload: never) => void)
+    return () => this.off(event, handler)
+  }
+
+  once<K extends keyof RelayRequestEvents>(
+    event: K,
+    handler: (payload: RelayRequestEvents[K]) => void
+  ): () => void {
+    const off = this.on(event, (payload) => {
+      off()
+      handler(payload)
+    })
+    return off
+  }
+
+  off<K extends keyof RelayRequestEvents>(
+    event: K,
+    handler: (payload: RelayRequestEvents[K]) => void
+  ): void {
+    this.handlers
+      .get(event as string)
+      ?.delete(handler as (payload: never) => void)
+  }
+
+  emit<K extends keyof RelayRequestEvents>(
+    event: K,
+    payload: RelayRequestEvents[K]
+  ): void {
+    this.handlers.get(event as string)?.forEach((handler) => {
+      try {
+        handler(payload as never)
+      } catch (e) {
+        // A faulty subscriber must not break the relay pipeline
+        console.error("[relay] event handler error", e)
+      }
+    })
+  }
+}
 
 export class NativeKernelInterceptorService
   extends Service
@@ -78,7 +140,30 @@ export class NativeKernelInterceptorService
   public execute(
     request: RelayRequest
   ): ExecutionResult<KernelInterceptorError> {
-    let relayExecution: { cancel: () => Promise<void> } | null = null
+    const emitter = new RelayEventHub()
+
+    let relayExecution: {
+      cancel: () => Promise<void>
+      emitter?: ExecutionResult["emitter"]
+    } | null = null
+
+    // The relay execution only exists once the async `executeRequest`
+    // pipeline reaches `Relay.execute`. Forward its streaming events
+    // (`headersReceived` / `chunk`) into the eager hub above so
+    // subscribers attached at `execute()` time never miss the stream.
+    const bindRelayExecution = (execution: {
+      cancel: () => Promise<void>
+      emitter?: ExecutionResult["emitter"]
+    }) => {
+      relayExecution = execution
+
+      execution.emitter?.on("headersReceived", (event) => {
+        emitter.emit("headersReceived", event)
+      })
+      execution.emitter?.on("chunk", (event) => {
+        emitter.emit("chunk", event)
+      })
+    }
 
     return {
       cancel: async () => {
@@ -86,10 +171,9 @@ export class NativeKernelInterceptorService
           await relayExecution.cancel()
         }
       },
+      emitter,
       response: pipe(
-        this.executeRequest(request, (execution) => {
-          relayExecution = execution
-        }),
+        this.executeRequest(request, bindRelayExecution),
         (promise) =>
           promise.then((either) =>
             pipe(
@@ -178,7 +262,10 @@ export class NativeKernelInterceptorService
 
   private async executeRequest(
     request: RelayRequest,
-    setRelayExecution: (execution: { cancel: () => Promise<void> }) => void
+    setRelayExecution: (execution: {
+      cancel: () => Promise<void>
+      emitter?: ExecutionResult["emitter"]
+    }) => void
   ): Promise<E.Either<any, RelayResponse>> {
     try {
       const effectiveRequest = this.store.completeRequest(

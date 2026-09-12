@@ -222,6 +222,18 @@ watch(
   { immediate: true }
 )
 
+// A server-sent stream should always land on the events timeline, no
+// matter which tab was remembered before. Only the transition into an
+// SSE response switches tabs so the user stays free to inspect the
+// other tabs afterwards.
+watch(
+  () => validLenses.value.some((lens) => lens.renderer === "sse"),
+  (isSSE, wasSSE) => {
+    if (isSSE && !wasSSE) selectedLensTab.value = "sse"
+  },
+  { immediate: true }
+)
+
 watch(selectedLensTab, (newLensID) => {
   if (props.isTestRunner) return
   doc.value.responseTabPreference = newLensID

@@ -229,6 +229,17 @@ export interface RelayRequestEvents {
     phase: "preparation" | "connection" | "request" | "response"
     error: RelayError
   }
+  headersReceived: {
+    requestId: number
+    status: number
+    statusText: string
+    headers: Record<string, string>
+  }
+  chunk: {
+    requestId: number
+    /** base64-encoded incremental response body bytes */
+    data: string
+  }
 }
 
 export type RelayEventEmitter<T> = {

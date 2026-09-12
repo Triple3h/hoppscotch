@@ -7,6 +7,9 @@ import xmlLens from "./xmlLens"
 import pdfLens from "./pdfLens"
 import audioLens from "./audioLens"
 import videoLens from "./videoLens"
+import sseLens from "./sseLens"
+import { isSSEContentType } from "../utils/contenttypes"
+import { looksLikeSSE } from "../sse/parser"
 import { defineAsyncComponent } from "vue"
 
 export type Lens = {
@@ -18,6 +21,7 @@ export type Lens = {
 
 export const lenses: Lens[] = [
   jsonLens,
+  sseLens,
   imageLens,
   htmlLens,
   xmlLens,
@@ -28,9 +32,24 @@ export const lenses: Lens[] = [
 ]
 
 export function getSuitableLenses(response: HoppRESTResponse): Lens[] {
-  // return empty array if response is loading or error
+  // While the body is still streaming in, only the SSE timeline can
+  // render something meaningful (and only when the already-received
+  // headers identify an event stream). Everything else keeps the
+  // plain loading state with no lens tabs.
+  if (response.type === "loading") {
+    const streamingHeaders = response.streaming?.headers
+    if (!streamingHeaders) return []
+
+    const streamingContentType = streamingHeaders.find(
+      (h) => h.key.toLowerCase() === "content-type"
+    )?.value
+
+    return streamingContentType && isSSEContentType(streamingContentType)
+      ? [sseLens]
+      : []
+  }
+
   if (
-    response.type === "loading" ||
     response.type === "network_fail" ||
     response.type === "script_fail" ||
     response.type === "fail" ||
@@ -70,6 +89,17 @@ export function getSuitableLenses(response: HoppRESTResponse): Lens[] {
         // Add JSON lens as an additional option, but keep it after the original content type lens
         // This ensures the original content type lens is selected by default
         matchingLenses.push(jsonLens)
+      }
+
+      // Gateways sometimes serve SSE under a generic content type
+      // (`text/plain` etc.) — sniff the body for SSE fields and offer
+      // the events timeline as an extra option when it looks like a
+      // server-sent stream
+      if (
+        !matchingLenses.includes(sseLens) &&
+        looksLikeSSE(response.body)
+      ) {
+        matchingLenses.push(sseLens)
       }
 
       // Add other content type detection here if needed

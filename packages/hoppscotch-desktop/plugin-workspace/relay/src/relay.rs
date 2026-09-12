@@ -16,6 +16,7 @@ use crate::{
     interop::{Request, Response},
     request::CurlRequest,
     response::ResponseHandler,
+    stream::StreamEventCallback,
     transfer::TransferHandler,
 };
 
@@ -23,8 +24,12 @@ lazy_static::lazy_static! {
     static ref ACTIVE_REQUESTS: DashMap<i64, Arc<AtomicBool>> = DashMap::new();
 }
 
-#[tracing::instrument(skip(request), fields(request_id = request.id), level = "debug")]
-fn execute_request(request: &Request, cancel_token: &CancellationToken) -> Result<Response> {
+#[tracing::instrument(skip(request, on_event), fields(request_id = request.id), level = "debug")]
+fn execute_request(
+    request: &Request,
+    cancel_token: &CancellationToken,
+    on_event: Option<StreamEventCallback>,
+) -> Result<Response> {
     tracing::info!(
         method = %request.method,
         url = %request.url,
@@ -56,7 +61,7 @@ fn execute_request(request: &Request, cancel_token: &CancellationToken) -> Resul
             cause: Some(e.to_string()),
         })?;
 
-    let mut transfer_handler = TransferHandler::new();
+    let mut transfer_handler = TransferHandler::new(id, on_event);
     transfer_handler.handle_transfer(&mut handle, cancel_token)?;
 
     let status = handle.response_code().map_err(|e| {
@@ -100,8 +105,11 @@ fn execute_request(request: &Request, cancel_token: &CancellationToken) -> Resul
     .build()
 }
 
-#[tracing::instrument(skip(request), fields(request_id = request.id), level = "debug")]
-pub async fn execute(request: Request) -> Result<Response> {
+#[tracing::instrument(skip(request, on_event), fields(request_id = request.id), level = "debug")]
+pub async fn execute(
+    request: Request,
+    on_event: Option<StreamEventCallback>,
+) -> Result<Response> {
     let request_id = request.id;
     let cancelled = Arc::new(AtomicBool::new(false));
 
@@ -118,7 +126,7 @@ pub async fn execute(request: Request) -> Result<Response> {
     let cancelled_clone = Arc::clone(&cancelled);
 
     let handle = std::thread::spawn(move || {
-        let result = execute_request(&request, &cancel_token);
+        let result = execute_request(&request, &cancel_token, on_event);
         if cancel_token_clone.is_cancelled() {
             cancelled_clone.store(true, Ordering::SeqCst);
         }

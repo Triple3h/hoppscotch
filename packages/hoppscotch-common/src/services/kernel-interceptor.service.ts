@@ -7,6 +7,8 @@ import {
   RelayResponse,
   RelayError,
   RelayCapabilities,
+  RelayEventEmitter,
+  RelayRequestEvents,
 } from "@hoppscotch/kernel"
 
 export function isCancellationError(
@@ -51,6 +53,12 @@ export type ExecutionResult<
 > = {
   cancel: () => Promise<void>
   response: Promise<E.Either<Err, RelayResponse>>
+  /**
+   * Streaming side-channel for the response body (`headersReceived` /
+   * `chunk` events). Only provided by interceptors whose transport
+   * supports incremental response delivery (desktop native relay).
+   */
+  emitter?: RelayEventEmitter<RelayRequestEvents>
 }
 
 export type KernelInterceptor<

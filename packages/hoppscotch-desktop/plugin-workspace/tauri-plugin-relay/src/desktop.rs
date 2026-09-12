@@ -1,6 +1,9 @@
+use std::sync::Arc;
+
 use crate::{models::*, Result};
+use relay::StreamEventCallback;
 use serde::de::DeserializeOwned;
-use tauri::{plugin::PluginApi, AppHandle, Runtime};
+use tauri::{ipc::Channel, plugin::PluginApi, AppHandle, Runtime};
 
 pub fn init<R: Runtime, C: DeserializeOwned>(
     app: &AppHandle<R>,
@@ -13,10 +16,24 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
 pub struct Relay<R: Runtime>(AppHandle<R>);
 
 impl<R: Runtime> Relay<R> {
-    pub async fn execute(&self, request: RunRequest) -> Result<ExecuteResponse> {
+    pub async fn execute(
+        &self,
+        request: RunRequest,
+        on_event: Channel<StreamEvent>,
+    ) -> Result<ExecuteResponse> {
         tracing::debug!(?request, "Executing request");
 
-        match relay::execute(request).await {
+        // Bridge the Tauri IPC channel into the relay's streaming
+        // callback; the curl transfer thread invokes it per chunk.
+        // Event delivery is best-effort — a closed webview must not
+        // abort the underlying transfer.
+        let callback: StreamEventCallback = Arc::new(move |event: StreamEvent| {
+            if let Err(e) = on_event.send(event) {
+                tracing::warn!(error = %e, "Failed to push stream event to webview");
+            }
+        });
+
+        match relay::execute(request, Some(callback)).await {
             Ok(response) => {
                 tracing::debug!("Request executed successfully");
                 Ok(ExecuteResponse::Success { response })

@@ -1,13 +1,14 @@
 use crate::{models::*, RelayExt, Result};
-use tauri::{command, AppHandle, Runtime};
+use tauri::{command, ipc::Channel, AppHandle, Runtime};
 
 #[command]
 pub(crate) async fn execute<R: Runtime>(
     app: AppHandle<R>,
     request: RunRequest,
+    on_event: Channel<StreamEvent>,
 ) -> Result<ExecuteResponse> {
     tracing::debug!(?request, "Received execute command");
-    let response = app.relay().execute(request).await;
+    let response = app.relay().execute(request, on_event).await;
 
     match &response {
         Ok(_) => {

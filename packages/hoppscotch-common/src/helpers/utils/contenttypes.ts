@@ -56,3 +56,8 @@ export const segmentedContentTypes: SegmentedContentType[] = [
 export function isJSONContentType(contentType: string) {
   return /\bjson\b/i.test(contentType)
 }
+
+/** Standard Server-Sent Events media type (W3C `text/event-stream`) */
+export function isSSEContentType(contentType: string) {
+  return /text\/event-stream/i.test(contentType)
+}

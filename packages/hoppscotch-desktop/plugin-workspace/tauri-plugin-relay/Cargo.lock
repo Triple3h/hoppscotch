@@ -530,7 +530,7 @@ dependencies = [
 [[package]]
 name = "curl"
 version = "0.4.47"
-source = "git+https://github.com/CuriousCorrelation/curl-rust.git#1ec8079cf527b9cf47cc7a48c68b458affdae273"
+source = "git+https://github.com/CuriousCorrelation/curl-rust.git?rev=1ec8079cf527b9cf47cc7a48c68b458affdae273#1ec8079cf527b9cf47cc7a48c68b458affdae273"
 dependencies = [
  "curl-sys",
  "libc",
@@ -542,7 +542,7 @@ dependencies = [
 [[package]]
 name = "curl-sys"
 version = "0.4.77+curl-8.10.1"
-source = "git+https://github.com/CuriousCorrelation/curl-rust.git#1ec8079cf527b9cf47cc7a48c68b458affdae273"
+source = "git+https://github.com/CuriousCorrelation/curl-rust.git?rev=1ec8079cf527b9cf47cc7a48c68b458affdae273#1ec8079cf527b9cf47cc7a48c68b458affdae273"
 dependencies = [
  "cc",
  "libc",
@@ -2931,8 +2931,8 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 [[package]]
 name = "relay"
 version = "0.1.1"
-source = "git+https://github.com/CuriousCorrelation/relay.git?rev=1c4f1e16106ed48983926ea6ddb114c1dbb2f688#1c4f1e16106ed48983926ea6ddb114c1dbb2f688"
 dependencies = [
+ "base64 0.22.1",
  "bytes",
  "cookie",
  "curl",

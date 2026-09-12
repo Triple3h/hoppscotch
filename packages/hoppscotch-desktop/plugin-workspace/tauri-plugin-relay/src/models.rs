@@ -1,7 +1,11 @@
-use relay::{error::RelayError, Request as RelayRequest, Response as RelayResponse};
+use relay::{
+    error::RelayError, Request as RelayRequest, Response as RelayResponse, RelayStreamEvent,
+};
 use serde::{Deserialize, Serialize};
 
 pub type RunRequest = RelayRequest;
+
+pub type StreamEvent = RelayStreamEvent;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "kind")]

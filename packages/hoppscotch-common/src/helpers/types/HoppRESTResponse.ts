@@ -57,6 +57,19 @@ export type HoppRESTErrorInterceptor = {
 export type HoppRESTLoadingResponse = {
   type: "loading"
   req: HoppRESTRequest
+  /**
+   * Present while the response body is still streaming in (relay chunk
+   * events). Carries the accumulated body so far plus whatever response
+   * headers/status have already arrived, so the SSE lens can render the
+   * timeline live. Absent for plain loading states.
+   */
+  streaming?: {
+    headers: HoppRESTResponseHeader[]
+    statusCode: number
+    statusText: string
+    body: ArrayBuffer
+    receivedBytes: number
+  }
 }
 
 export type HoppRESTResponse =

@@ -6,7 +6,7 @@
       :is-loading="loading"
     />
     <LensesResponseBodyRenderer
-      v-if="!loading && hasResponse"
+      v-if="showLenses"
       v-model:document="doc"
       :is-editable="false"
       :tab-id="tabId"
@@ -71,6 +71,18 @@ const loading = computed(
   // Check both response type AND testResults to ensure we stay in loading state
   // during test execution (when testResults is null)
   () => doc.value.response?.type === "loading" || doc.value.testResults === null
+)
+
+// SSE responses stream headers + body chunks into a `loading` response
+// before they finish; that payload is already renderable (the events
+// timeline), so the lens renderers must not wait for completion.
+const hasStreamingResponse = computed(() => {
+  const response = doc.value.response
+  return response?.type === "loading" && Boolean(response.streaming)
+})
+
+const showLenses = computed(
+  () => hasStreamingResponse.value || (hasResponse.value && !loading.value)
 )
 
 const saveAsExample = () => {

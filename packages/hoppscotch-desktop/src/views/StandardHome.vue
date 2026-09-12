@@ -17,7 +17,9 @@
           appState === AppState.UPDATE_READY
         "
         :state="updateFlowState"
-        :message="updateMessage"
+        :current-version="updateInfo?.currentVersion"
+        :latest-version="updateInfo?.latestVersion"
+        :notes="updateInfo?.releaseNotes"
         :progress="downloadProgress"
         :show-progress="true"
         :show-cancel="appState === AppState.UPDATE_AVAILABLE"
@@ -49,6 +51,7 @@ import {
   UpdaterClient,
   type UpdateEvent,
   type DownloadProgress,
+  type UpdateInfo,
 } from "~/services/updater.client"
 import { DesktopPersistenceService } from "~/services/persistence.service"
 
@@ -63,7 +66,7 @@ const { appState, error, statusMessage, appVersion, loadRecent, initialize } =
 
 const updaterClient = new UpdaterClient()
 
-const updateMessage = ref("")
+const updateInfo = ref<UpdateInfo | null>(null)
 const downloadProgress = ref<DownloadProgress>({
   downloaded: 0,
   total: undefined,
@@ -123,17 +126,16 @@ const cancelUpdate = async () => {
 const checkForUpdates = async () => {
   try {
     statusMessage.value = "Checking for updates..."
-    const updateInfo = await updaterClient.checkForUpdates(false)
+    const info = await updaterClient.checkForUpdates(false)
 
-    if (updateInfo.available) {
+    if (info.available) {
       console.log("Updates available (standard)")
-      updateMessage.value =
-        updateInfo.releaseNotes ||
-        `Version ${updateInfo.latestVersion} is available`
+      updateInfo.value = info
       appState.value = AppState.UPDATE_AVAILABLE
       return true
     }
 
+    updateInfo.value = null
     return false
   } catch (err) {
     console.error("Error checking for updates:", err)

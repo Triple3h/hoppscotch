@@ -446,8 +446,12 @@ jobs:
       APP_TAG: ${{ needs.resolve-version.outputs.tag }}
     steps:
       # The manifest script lives in the repo — without a checkout the
-      # "Build update manifest" step fails with MODULE_NOT_FOUND.
+      # "Build update manifest" step fails with MODULE_NOT_FOUND. Full history
+      # (not the default depth-1 fetch) is required to diff release tags when
+      # building the in-app update notes.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -484,6 +488,19 @@ jobs:
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           EOF
 
+      - name: Write in-app update notes
+        run: |
+          # Notes shown inside the app's update screen: what changed since the
+          # previous release tag, grouped. The GitHub release body above is
+          # written for installer downloads and would only be noise there.
+          PREV_TAG="$(git tag --list 'v*' --sort=-v:refname | grep -v "^${APP_TAG}$" | head -n 1 || true)"
+          echo "Previous tag: ${PREV_TAG:-(none)}"
+          node .github/scripts/build-update-notes.mjs \
+            --from "$PREV_TAG" \
+            --to "$APP_TAG" \
+            --output update-notes.md
+          cat update-notes.md
+
       - name: Build update manifest
         run: |
           node .github/scripts/build-update-manifest.mjs \
@@ -491,7 +508,7 @@ jobs:
             --version "$APP_VERSION" \
             --repo "$GITHUB_REPOSITORY" \
             --tag "$APP_TAG" \
-            --notes release-notes.md \
+            --notes update-notes.md \
             --output release-assets/hoppscotch-desktop-latest.json
 
       - name: Create or update GitHub Release

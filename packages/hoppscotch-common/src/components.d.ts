@@ -71,6 +71,7 @@ declare module 'vue' {
     CollectionsImportExport: typeof import('./components/collections/ImportExport.vue')['default']
     CollectionsMyCollections: typeof import('./components/collections/MyCollections.vue')['default']
     CollectionsProperties: typeof import('./components/collections/Properties.vue')['default']
+    CollectionsPropertiesTabs: typeof import('./components/collections/PropertiesTabs.vue')['default']
     CollectionsRequest: typeof import('./components/collections/Request.vue')['default']
     CollectionsSaveRequest: typeof import('./components/collections/SaveRequest.vue')['default']
     CollectionsVariables: typeof import('./components/collections/Variables.vue')['default']

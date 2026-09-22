@@ -485,6 +485,34 @@ interface Expectation extends ChaiExpectation {}
 interface BaseExpectation extends ChaiExpectation {}
 interface ExpectationMethods extends ChaiExpectation {}
 
+/**
+ * Sandbox global shim: only the SHA256 + Hex/Utf8/WordArray subset is
+ * implemented at runtime (see packages/hoppscotch-js-sandbox/src/cage-modules/crypto-js.ts)
+ */
+interface CryptoJSWordArray {
+  words: number[]
+  sigBytes: number
+  toString(encoder?: CryptoJSEncoder): string
+}
+
+interface CryptoJSEncoder {
+  stringify(wordArray: CryptoJSWordArray): string
+  parse(input: string): CryptoJSWordArray
+}
+
+declare namespace CryptoJS {
+  function SHA256(
+    message: string | CryptoJSWordArray | ArrayLike<number>
+  ): CryptoJSWordArray
+  const enc: Readonly<{ Hex: CryptoJSEncoder; Utf8: CryptoJSEncoder }>
+  const lib: Readonly<{
+    WordArray: {
+      new (words?: number[], sigBytes?: number): CryptoJSWordArray
+      create(words?: number[], sigBytes?: number): CryptoJSWordArray
+    }
+  }>
+}
+
 declare namespace pw {
   function test(name: string, func: () => void): void
   function expect(value: any): LegacyExpectation

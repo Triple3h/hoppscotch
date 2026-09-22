@@ -726,6 +726,13 @@ export const WORKSPACE_TABS_STATE_SCHEMA = z
             cancelFunction: z.optional(z.function()),
           }),
           z.object({
+            type: z.literal("collection"),
+            collection: HoppRESTCollectionSchema,
+            folderPath: z.string(),
+            isDirty: z.boolean(),
+            inheritedProperties: z.optional(HoppInheritedPropertySchema),
+          }),
+          z.object({
             type: z.literal("example-response").catch("example-response"),
             response: entityReference(HoppRESTRequestResponse),
             saveContext: z.optional(HoppTabSaveContextSchema),

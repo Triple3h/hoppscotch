@@ -179,6 +179,37 @@ export type HoppTestRunnerDocument = {
   inheritedProperties?: HoppInheritedProperty
 }
 
+export type HoppCollectionDocument = {
+  /**
+   * The document type
+   */
+  type: "collection"
+
+  /**
+   * The collection/folder as it is in the document (the unsaved draft).
+   * Only its editable fields are written back on save; `folders` is carried
+   * for display but never saved.
+   */
+  collection: HoppCollection
+
+  /**
+   * Index path of the collection in the collection store (e.g. "0/2")
+   */
+  folderPath: string
+
+  /**
+   * Whether the collection has any unsaved changes
+   * (atleast as far as we can say)
+   */
+  isDirty: boolean
+
+  /**
+   * The inherited properties from the parent collections
+   * (if any)
+   */
+  inheritedProperties?: HoppInheritedProperty
+}
+
 export type HoppRequestDocument = {
   /**
    * The document type
@@ -362,6 +393,7 @@ export type HoppGQLRequestDocument = {
 export type HoppTabDocument =
   | HoppSavedExampleDocument
   | HoppSavedGQLExampleDocument
+  | HoppCollectionDocument
   | HoppRequestDocument
   | HoppTestRunnerDocument
   | HoppGQLRequestDocument

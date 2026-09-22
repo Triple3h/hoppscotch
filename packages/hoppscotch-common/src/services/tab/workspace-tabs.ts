@@ -203,6 +203,21 @@ export class WorkspaceTabsService extends TabService<HoppTabDocument> {
         }
       }
 
+      if (tab.document.type === "collection") {
+        // Children are dropped: the collection tab only edits this
+        // collection's own fields (and the save never writes `folders` back),
+        // so persisting the subtree would just duplicate the collection store
+        // into the (quota-bound) tabs state.
+        return {
+          tabID: tab.id,
+          doc: {
+            ...tab.document,
+            collection: { ...tab.document.collection, folders: [] },
+          },
+          protocolDrafts,
+        }
+      }
+
       if (tab.document.type === "test-runner") {
         // Run results are deliberately not persisted: the collection schema
         // strips `response`/`testResults`/counters so restored rows come back
@@ -289,7 +304,11 @@ export class WorkspaceTabsService extends TabService<HoppTabDocument> {
     tab: HoppTab<HoppTabDocument>,
     ctx: HoppTabSaveContext
   ) {
-    if (tab.document.type === "test-runner") return false
+    if (
+      tab.document.type === "test-runner" ||
+      tab.document.type === "collection"
+    )
+      return false
 
     const tabCtx = tab.document.saveContext
 

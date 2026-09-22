@@ -55,7 +55,6 @@
       @duplicate-collection="duplicateCollection"
       @duplicate-request="duplicateRequest"
       @duplicate-response="duplicateResponse"
-      @edit-properties="editProperties"
       @export-data="exportData"
       @remove-collection="removeCollection"
       @remove-folder="removeFolder"
@@ -95,20 +94,6 @@
       :loading-state="modalLoadingState"
       @add-folder="onAddFolder"
       @hide-modal="displayModalAddFolder(false)"
-    />
-    <CollectionsEdit
-      :show="showModalEditCollection"
-      :editing-collection-name="editingCollectionName ?? ''"
-      :loading-state="modalLoadingState"
-      @hide-modal="displayModalEditCollection(false)"
-      @submit="updateEditingCollection"
-    />
-    <CollectionsEditFolder
-      :show="showModalEditFolder"
-      :editing-folder-name="editingFolderName ?? ''"
-      :loading-state="modalLoadingState"
-      @submit="updateEditingFolder"
-      @hide-modal="displayModalEditFolder(false)"
     />
     <CollectionsEditRequest
       v-model="editingRequestName"
@@ -246,7 +231,6 @@ import {
 import { stripRefIdReplacer } from "~/helpers/import-export/export"
 import { hoppCollectionToOpenAPI } from "~/helpers/import-export/export/openapi"
 import { HoppTabDocument } from "~/helpers/tab/document"
-import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
 import { Picked } from "~/helpers/types/HoppPicked"
 import {
   addRESTCollection,
@@ -277,8 +261,8 @@ import { PersistedOAuthConfig } from "~/services/oauth/oauth.service"
 import { PersistenceService } from "~/services/persistence"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
 import { RESTOptionTabs } from "../http/RequestOptions.vue"
-import { Collection as NodeCollection } from "./MyCollections.vue"
 import { EditingProperties } from "./Properties.vue"
+import { withStoredVariableValues } from "~/helpers/collection/collectionProperties"
 import { CollectionRunnerData } from "../http/test/RunnerModal.vue"
 import { SecretEnvironmentService } from "~/services/secret-environment.service"
 import { CurrentValueService } from "~/services/current-environment-value.service"
@@ -317,12 +301,10 @@ const collectionsType = {
 
 // Collection Data
 const editingCollection = ref<HoppCollection | null>(null)
-const editingCollectionName = ref<string | null>(null)
 const editingCollectionIndex = ref<number | null>(null)
 const editingCollectionID = ref<string | null>(null)
 
 const editingFolder = ref<HoppCollection | null>(null)
-const editingFolderName = ref<string | null>(null)
 const editingFolderPath = ref<string | null>(null)
 const requestTypeToAdd = ref<"rest" | "gql">("rest")
 
@@ -516,8 +498,6 @@ const exportLoading = ref(false)
 const showModalAdd = ref(false)
 const showModalAddRequest = ref(false)
 const showModalAddFolder = ref(false)
-const showModalEditCollection = ref(false)
-const showModalEditFolder = ref(false)
 const showModalEditRequest = ref(false)
 const showModalEditResponse = ref(false)
 const showModalImportExport = ref(false)
@@ -541,18 +521,6 @@ const displayModalAddRequest = (show: boolean) => {
 
 const displayModalAddFolder = (show: boolean) => {
   showModalAddFolder.value = show
-
-  if (!show) resetSelectedData()
-}
-
-const displayModalEditCollection = (show: boolean) => {
-  showModalEditCollection.value = show
-
-  if (!show) resetSelectedData()
-}
-
-const displayModalEditFolder = (show: boolean) => {
-  showModalEditFolder.value = show
 
   if (!show) resetSelectedData()
 }
@@ -762,68 +730,66 @@ const onAddFolder = async (folderName: string) => {
   displayModalAddFolder(false)
 }
 
+/**
+ * Opens (or focuses) the collection/folder in a tab — the tab owns the draft
+ * and saves on Ctrl/Cmd+S, so nothing is written here.
+ */
+const openCollectionTab = (payload: {
+  path: string
+  collection: HoppCollection
+}) => {
+  const { path, collection } = payload
+
+  const openTab = tabs
+    .getTabs()
+    .find(
+      (tab) =>
+        tab.document.type === "collection" && tab.document.folderPath === path
+    )
+
+  if (openTab) {
+    tabs.setActiveTab(openTab.id)
+    return
+  }
+
+  const parentPath = path.split("/").slice(0, -1).join("/")
+
+  tabs.createNewTab({
+    type: "collection",
+    folderPath: path,
+    collection: {
+      ...cloneDeep(collection),
+      // Display values live in the local secret/current-value stores, not in
+      // the persisted collection — same read the properties modal does.
+      variables: withStoredVariableValues(collection, path),
+    },
+    isDirty: false,
+    inheritedProperties: parentPath
+      ? cascadeParentCollectionForProperties(parentPath, "rest")
+      : undefined,
+  })
+}
+
 const editCollection = (payload: {
   collectionIndex: string
   collection: HoppCollection
 }) => {
-  const { collectionIndex, collection } = payload
-  editingCollection.value = collection
-  editingCollectionIndex.value = parseInt(collectionIndex)
-  editingCollectionName.value = collection.name
-
-  displayModalEditCollection(true)
-}
-
-const updateEditingCollection = async (newName: string) => {
-  if (!editingCollection.value) return
-
-  if (!newName) {
-    toast.error(t("collection.invalid_name"))
-    return
-  }
-
-  const isValidToken = await handleTokenValidation()
-  if (!isValidToken) return
-  const collectionIndex = editingCollectionIndex.value
-  if (collectionIndex === null) return
-
-  const collectionUpdated = {
-    ...editingCollection.value,
-    name: newName,
-  }
-
-  editRESTCollection(
-    collectionIndex,
-    collectionUpdated as NodeCollection["data"]["data"]
-  )
-  displayModalEditCollection(false)
+  openCollectionTab({
+    path: payload.collectionIndex,
+    collection: payload.collection,
+  })
 }
 
 const editFolder = (payload: {
   folderPath: string | undefined
   folder: HoppCollection
 }) => {
-  const { folderPath, folder } = payload
-  editingFolder.value = folder
-  if (folderPath) {
-    editingFolderPath.value = folderPath
-    editingFolderName.value = folder.name
-  }
-  displayModalEditFolder(true)
-}
+  if (!payload.folderPath) return
 
-const updateEditingFolder = async (newName: string) => {
-  if (!editingFolder.value) return
-
-  const isValidToken = await handleTokenValidation()
-  if (!isValidToken) return
-  if (!editingFolderPath.value) return
-
-  editRESTFolder(editingFolderPath.value, {
-    ...(editingFolder.value as HoppCollection),
-    name: newName,
+  openCollectionTab({
+    path: payload.folderPath,
+    collection: payload.folder,
   })
-  displayModalEditFolder(false)
 }
 
 const duplicateCollection = async ({
@@ -2199,118 +2165,6 @@ const doExportOpenAPI = async (format: "json" | "yaml") => {
   } finally {
     if (thisGeneration === exportGeneration) closeExportModal()
   }
-}
-
-/**
- * Used to get the current value of a variable
- * It checks if the variable is a secret or not and returns the value accordingly.
- * @param isSecret If the variable is a secret
- * @param varIndex The index of the variable in the collection
- * @param collectionID The ID of the collection
- * @returns The current value of the variable, either from the secret environment or the current environment service
- */
-const getCurrentValue = (
-  isSecret: boolean,
-  varIndex: number,
-  collectionID: string
-) => {
-  if (isSecret) {
-    return secretEnvironmentService.getSecretEnvironmentVariable(
-      collectionID,
-      varIndex
-    )?.value
-  }
-  return currentEnvironmentValueService.getEnvironmentVariable(
-    collectionID,
-    varIndex
-  )?.currentValue
-}
-
-/**
- * Restore both `initialValue` and `currentValue` for a secret variable from
- * the local secret store. Both fields are blanked at the wire boundary
- * before the variable is sent to the backend, so when the user reopens the
- * Properties modal we re-populate from `secretEnvironmentService`.
- * Returns null for non-secret variables (callers fall back to existing
- * current-value lookup) or when the slot has no entry in the secret store.
- */
-const getSecretValues = (
-  isSecret: boolean,
-  varIndex: number,
-  collectionID: string
-): { value: string; initialValue: string } | null => {
-  if (!isSecret) return null
-  return secretEnvironmentService.getSecretEnvironmentVariableValue(
-    collectionID,
-    varIndex
-  )
-}
-
-const editProperties = async (payload: {
-  collectionIndex: string
-  collection: HoppCollection
-}) => {
-  const { collection, collectionIndex } = payload
-
-  const collectionId = collection.id ?? collectionIndex.split("/").pop()
-
-  const isValidToken = await handleTokenValidation()
-  if (!isValidToken) return
-  const parentIndex = collectionIndex.split("/").slice(0, -1).join("/") // remove last folder to get parent folder
-
-  let inheritedProperties: HoppInheritedProperty = {
-    auth: {
-      parentID: "",
-      parentName: "",
-      inheritedAuth: {
-        authType: "inherit",
-        authActive: true,
-      },
-    },
-    headers: [],
-    variables: [],
-    scripts: [],
-  }
-
-  if (parentIndex) {
-    inheritedProperties = cascadeParentCollectionForProperties(
-      parentIndex,
-      "rest"
-    )
-  }
-
-  const storeID = collection._ref_id ?? collectionId!
-
-  const collectionVariables = pipe(
-    collection.variables ?? [],
-    A.mapWithIndex((index, e) => {
-      const stored = getSecretValues(e.secret, index, storeID)
-      return {
-        ...e,
-        currentValue:
-          stored?.value ??
-          getCurrentValue(e.secret, index, storeID) ??
-          e.currentValue,
-        initialValue: stored?.initialValue ?? e.initialValue,
-      }
-    })
-  )
-
-  editingProperties.value = {
-    collection: {
-      ...collection,
-      variables: collectionVariables,
-    } as Partial<HoppCollection>,
-    isRootCollection: isAlreadyInRoot(collectionIndex),
-    path: collectionIndex,
-    inheritedProperties,
-    // Persist the exact key secrets/current values were read under, so the
-    // properties modal resolves them without re-deriving (and diverging from)
-    // this keying.
-    collectionStoreKey: storeID,
-  }
-
-  displayModalEditProperties(true)
 }
 
 const setCollectionProperties = (newCollection: {

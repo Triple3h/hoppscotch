@@ -3,26 +3,9 @@
     <div
       class="sticky top-upperMobileSecondaryStickyFold z-10 flex flex-shrink-0 items-center justify-between overflow-x-auto border-b border-dividerLight bg-primary pl-4 sm:top-upperSecondaryStickyFold"
     >
-      <div class="flex items-center gap-2">
-        <label class="truncate font-semibold text-secondaryLight">
-          {{ t("preRequest.javascript_code") }}
-        </label>
-        <HoppButtonSecondary
-          v-if="inheritedScripts.length > 0"
-          v-tippy="{ theme: 'tooltip' }"
-          :title="t('script.view_inherited')"
-          :label="
-            t('script.inheriting_from_count', {
-              count: inheritedScripts.length,
-            })
-          "
-          :icon="IconFileSymlink"
-          class="!px-1 !py-0.5 text-yellow-500 hover:text-yellow-500"
-          filled
-          outline
-          @click="showInheritedModal = true"
-        />
-      </div>
+      <label class="truncate font-semibold text-secondaryLight">
+        {{ t("preRequest.javascript_code") }}
+      </label>
       <div class="flex">
         <HoppButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
@@ -54,19 +37,50 @@
       </div>
     </div>
     <div class="flex flex-1 border-b border-dividerLight">
-      <div class="w-2/3 border-r border-dividerLight h-full relative">
-        <MonacoScriptEditor
-          v-if="EXPERIMENTAL_SCRIPTING_SANDBOX && props.isActive"
-          v-model="preRequestScript"
-          :is-active="props.isActive"
-          type="pre-request"
-        />
-
+      <div class="flex h-full w-2/3 flex-col border-r border-dividerLight">
         <div
-          v-else
-          ref="preRequestEditor"
-          class="h-full absolute inset-0"
-        ></div>
+          v-if="inheritedScripts.length > 0"
+          class="frosted-pane m-2 flex min-h-0 flex-1 flex-col"
+        >
+          <div
+            class="flex flex-shrink-0 items-center gap-2 overflow-hidden border-b border-dividerLight px-3 py-1.5"
+          >
+            <icon-lucide-file-symlink
+              class="svg-icons flex-shrink-0 !h-3.5 !w-3.5 text-yellow-500"
+              aria-hidden="true"
+            />
+            <span class="truncate text-tiny text-secondaryLight">
+              {{ t("script.inheriting") }}
+              <span class="font-semibold text-secondaryDark">
+                {{ inheritedParentNames }}
+              </span>
+            </span>
+            <span
+              class="ml-auto flex flex-shrink-0 items-center gap-1 text-tiny text-secondaryLight"
+            >
+              <icon-lucide-lock
+                class="svg-icons !h-3 !w-3"
+                aria-hidden="true"
+              />
+              {{ t("script.read_only") }}
+            </span>
+          </div>
+          <div ref="inheritedEditor" class="min-h-0 flex-1 overflow-auto"></div>
+        </div>
+        <div class="relative min-h-0 flex-1">
+          <MonacoScriptEditor
+            v-if="EXPERIMENTAL_SCRIPTING_SANDBOX && props.isActive"
+            v-model="preRequestScript"
+            :is-active="props.isActive"
+            type="pre-request"
+          />
+
+          <div
+            v-else
+            ref="preRequestEditor"
+            class="h-full absolute inset-0"
+          ></div>
+        </div>
       </div>
       <div
         class="z-[9] sticky top-upperTertiaryStickyFold h-full min-w-[12rem] max-w-1/3 flex-shrink-0 overflow-auto overflow-x-auto bg-primary p-4"
@@ -93,12 +107,6 @@
         </div>
       </div>
     </div>
-    <HttpInheritedScriptsModal
-      :show="showInheritedModal"
-      :scripts="inheritedScripts"
-      script-type="preRequestScript"
-      @close="showInheritedModal = false"
-    />
     <AiexperimentsModifyPreRequestModal
       v-if="isModifyPreRequestModalOpen && currentRequest"
       :current-script="preRequestScript"
@@ -122,11 +130,13 @@ import { useAIExperiments } from "~/composables/ai-experiments"
 import { useNestedSetting, useSetting } from "~/composables/settings"
 import completer from "~/helpers/editor/completion/preRequest"
 import linter from "~/helpers/editor/linting/preRequest"
-import { hasActualScript } from "@hoppscotch/js-sandbox/scripting"
+import {
+  hasActualScript,
+  stripModulePrefix,
+} from "@hoppscotch/js-sandbox/scripting"
 import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
 import { toggleNestedSetting } from "~/newstore/settings"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
-import IconFileSymlink from "~icons/lucide/file-symlink"
 import IconHelpCircle from "~icons/lucide/help-circle"
 import IconSparkles from "~icons/lucide/sparkles"
 import IconTrash2 from "~icons/lucide/trash-2"
@@ -145,8 +155,6 @@ const emit = defineEmits<{
 
 const preRequestScript = useVModel(props, "modelValue", emit)
 
-const showInheritedModal = ref(false)
-
 const inheritedScripts = computed(() => {
   return (
     props.inheritedProperties?.scripts?.filter((script) =>
@@ -154,6 +162,25 @@ const inheritedScripts = computed(() => {
     ) ?? []
   )
 })
+
+// Inherited scripts are shown read-only above the request's own script, in the
+// order they run (root → child). Each block is tagged with its collection name
+// when more than one collection contributes.
+const inheritedScript = computed(() =>
+  inheritedScripts.value
+    .map((script) => {
+      const body = stripModulePrefix(script.preRequestScript).trim()
+
+      return inheritedScripts.value.length > 1
+        ? `// ${script.parentName}\n${body}`
+        : body
+    })
+    .join("\n\n")
+)
+
+const inheritedParentNames = computed(() =>
+  inheritedScripts.value.map((script) => script.parentName).join(" · ")
+)
 
 const preRequestEditor = ref<any | null>(null)
 const WRAP_LINES = useNestedSetting("WRAP_LINES", "httpPreRequest")
@@ -176,6 +203,23 @@ useCodemirror(
 
 const EXPERIMENTAL_SCRIPTING_SANDBOX = useSetting(
   "EXPERIMENTAL_SCRIPTING_SANDBOX"
+)
+
+const inheritedEditor = ref<any | null>(null)
+
+useCodemirror(
+  inheritedEditor,
+  inheritedScript,
+  reactive({
+    extendedEditorConfig: {
+      mode: "application/javascript",
+      readOnly: true,
+      lineWrapping: WRAP_LINES,
+    },
+    linter: null,
+    completer: null,
+    environmentHighlights: false,
+  })
 )
 
 const useSnippet = (script: string) => {

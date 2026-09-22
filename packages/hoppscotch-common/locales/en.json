@@ -821,7 +821,8 @@
       "inheriting": "Inheriting scripts from",
       "inheriting_from_count": "Inheriting from {count} collection | Inheriting from {count} collections",
       "inherited_scripts": "Inherited Scripts",
-      "view_inherited": "View inherited scripts"
+      "view_inherited": "View inherited scripts",
+      "read_only": "Read-only"
    },
    "settings": {
       "accent_color": "Accent color",

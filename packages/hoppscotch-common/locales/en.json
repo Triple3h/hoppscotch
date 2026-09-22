@@ -821,7 +821,8 @@
       "inheriting": "Inheriting scripts from",
       "inheriting_from_count": "Inheriting from {count} collection | Inheriting from {count} collections",
       "inherited_scripts": "Inherited Scripts",
-      "view_inherited": "View inherited scripts"
+      "view_inherited": "View inherited scripts",
+      "read_only": "Read-only"
    },
    "settings": {
       "accent_color": "Accent color",
@@ -910,12 +911,15 @@
       "update_check_description": "Manually check for a new version and install it. Works regardless of the toggle below.",
       "update_check_now": "Check for updates",
       "update_checking": "Checking…",
+      "update_current_version": "Current v{version}",
       "update_download_version": "Download v{version}",
       "update_downloading": "Downloading…",
       "update_downloading_percent": "Downloading {percent}%",
       "update_installing": "Installing…",
+      "update_latest_version": "New v{version}",
       "update_restart_now": "Restart to apply update",
       "update_up_to_date": "Up to date",
+      "update_whats_new": "What's new",
       "verify_host": "Verify Host",
       "verify_peer": "Verify Peer",
       "follow_redirects": "Follow Redirects",

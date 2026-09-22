@@ -106,7 +106,6 @@
                   @keyup.d="duplicateAction?.$el.click()"
                   @keyup.delete="deleteAction?.$el.click()"
                   @keyup.x="exportAction?.$el.click()"
-                  @keyup.p="propertiesAction?.$el.click()"
                   @keyup.t="runCollectionAction?.$el.click()"
                   @keyup.s="sortAction?.$el.click()"
                   @keyup.escape="hide()"
@@ -212,19 +211,6 @@
                     "
                   />
                   <HoppSmartItem
-                    ref="propertiesAction"
-                    :icon="IconSettings2"
-                    :label="t('action.properties')"
-                    :shortcut="['P']"
-                    @click="
-                      () => {
-                        emit('edit-properties')
-                        hide()
-                      }
-                    "
-                  />
-
-                  <HoppSmartItem
                     ref="deleteAction"
                     :icon="IconTrash2"
                     :label="t('action.delete')"
@@ -281,7 +267,7 @@ import IconFolderOpen from "~icons/lucide/folder-open"
 import IconFolderPlus from "~icons/lucide/folder-plus"
 import IconMoreVertical from "~icons/lucide/more-vertical"
 import IconPlaySquare from "~icons/lucide/play-square"
-import IconSettings2 from "~icons/lucide/settings-2"
+
 import IconTrash2 from "~icons/lucide/trash-2"
 import IconArrowUpDown from "~icons/lucide/arrow-up-down"
 import IconGraphql from "~icons/hopp/graphql"
@@ -332,7 +318,6 @@ const emit = defineEmits<{
   (event: "add-folder"): void
   (event: "run-collection"): void
   (event: "edit-collection"): void
-  (event: "edit-properties"): void
   (event: "duplicate-collection"): void
   (event: "export-data"): void
   (event: "remove-collection"): void
@@ -361,7 +346,7 @@ const duplicateAction = ref<HTMLButtonElement | null>(null)
 const deleteAction = ref<HTMLButtonElement | null>(null)
 const exportAction = ref<HTMLButtonElement | null>(null)
 const options = ref<TippyComponent | null>(null)
-const propertiesAction = ref<HTMLButtonElement | null>(null)
+
 const runCollectionAction = ref<HTMLButtonElement | null>(null)
 const sortAction = ref<HTMLButtonElement | null>(null)
 

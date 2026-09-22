@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from "vitest"
 import { TestContainer } from "dioc/testing"
+import { HoppCollection, makeCollection } from "@hoppscotch/data"
 
 import { getDefaultRESTRequest } from "~/helpers/rest/default"
-import { HoppTabSaveContext } from "~/helpers/tab/document"
+import {
+  HoppCollectionDocument,
+  HoppTabSaveContext,
+} from "~/helpers/tab/document"
+import { WORKSPACE_TABS_STATE_SCHEMA } from "~/services/persistence/validation-schemas"
 import { WorkspaceTabsService } from "../workspace-tabs"
 
 // The persistence import drags in stores with top-level side effects that
@@ -16,6 +21,22 @@ const makeService = () => {
   const container = new TestContainer()
   return container.bind(WorkspaceTabsService)
 }
+
+const makeTestCollection = (
+  name: string,
+  folders: HoppCollection[] = []
+): HoppCollection =>
+  makeCollection({
+    name,
+    folders,
+    requests: [],
+    auth: { authType: "inherit", authActive: true },
+    headers: [],
+    variables: [],
+    description: null,
+    preRequestScript: "",
+    testScript: "",
+  })
 
 const openRequestTab = (
   service: WorkspaceTabsService,
@@ -268,6 +289,36 @@ describe("WorkspaceTabsService", () => {
 
       expect(foundRequest?.value.id).toEqual(requestTab.id)
       expect(foundExample?.value.id).toEqual(exampleTab.id)
+    })
+  })
+
+  describe("collection documents", () => {
+    it("persists without the folder subtree, and still validates", () => {
+      const service = makeService()
+
+      service.createNewTab({
+        type: "collection",
+        folderPath: "0/1",
+        isDirty: true,
+        // Children are carried by the live draft (the store owns them) but
+        // must never be persisted into the tabs state
+        collection: makeTestCollection("Parent", [makeTestCollection("Child")]),
+      })
+
+      const persisted = service.persistableTabState.value.orderedDocs.find(
+        (entry) => entry.doc.type === "collection"
+      )?.doc as HoppCollectionDocument
+
+      expect(persisted.collection.name).toEqual("Parent")
+      expect(persisted.collection.folders).toEqual([])
+
+      const parsed = WORKSPACE_TABS_STATE_SCHEMA.safeParse({
+        lastActiveTabID: "tab",
+        orderedDocs: service.persistableTabState.value.orderedDocs,
+      })
+
+      expect(parsed.error).toBeUndefined()
+      expect(parsed.success).toBe(true)
     })
   })
 

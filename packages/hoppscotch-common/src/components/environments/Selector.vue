@@ -36,92 +36,85 @@
             :context-menu-enabled="false"
             class="border border-dividerDark focus:border-primaryDark rounded"
           />
-          <HoppSmartItem
-            v-if="!isScopeSelector"
-            class="my-2"
-            :label="`${t('environment.no_environment')}`"
-            :info-icon="
-              selectedEnvironmentIndex.type === 'NO_ENV_SELECTED'
-                ? IconCheck
-                : undefined
-            "
-            :active-info-icon="
-              selectedEnvironmentIndex.type === 'NO_ENV_SELECTED'
-            "
-            @click="
-              () => {
-                selectedEnvironmentIndex = { type: 'NO_ENV_SELECTED' }
-                hide()
-              }
-            "
-          />
-          <HoppSmartItem
-            v-else-if="isScopeSelector && modelValue"
-            :label="t('environment.global')"
-            :icon="IconGlobe"
-            :info-icon="modelValue.type === 'global' ? IconCheck : undefined"
-            :active-info-icon="modelValue.type === 'global'"
-            @click="
-              () => {
-                $emit('update:modelValue', {
-                  type: 'global',
-                  variables: globalVals.variables,
-                })
-                hide()
-              }
-            "
-          />
-          <HoppSmartTabs
-            v-model="selectedEnvTab"
-            :styles="`sticky overflow-x-auto mb-2 border border-divider rounded flex-shrink-0 z-10 top-0 bg-primaryLight`"
-            render-inactive-tabs
-          >
-            <HoppSmartTab
-              :id="'my-environments'"
-              :label="`${t('environment.my_environments')}`"
+          <div class="flex flex-col">
+            <HoppSmartItem
+              v-if="!isScopeSelector"
+              :icon="IconCircleSlash"
+              :label="`${t('environment.no_environment')}`"
+              :info-icon="
+                selectedEnvironmentIndex.type === 'NO_ENV_SELECTED'
+                  ? IconCheck
+                  : undefined
+              "
+              :active-info-icon="
+                selectedEnvironmentIndex.type === 'NO_ENV_SELECTED'
+              "
+              @click="
+                () => {
+                  selectedEnvironmentIndex = { type: 'NO_ENV_SELECTED' }
+                  hide()
+                }
+              "
+            />
+            <HoppSmartItem
+              v-else-if="isScopeSelector && modelValue"
+              :label="t('environment.global')"
+              :icon="IconGlobe"
+              :info-icon="modelValue.type === 'global' ? IconCheck : undefined"
+              :active-info-icon="modelValue.type === 'global'"
+              @click="
+                () => {
+                  $emit('update:modelValue', {
+                    type: 'global',
+                    variables: globalVals.variables,
+                  })
+                  hide()
+                }
+              "
+            />
+          </div>
+          <div class="flex flex-col">
+            <HoppSmartItem
+              v-for="{ env, index } in filteredAndAlphabetizedPersonalEnvs"
+              :key="`gen-${index}`"
+              :icon="IconLayers"
+              :label="env.name"
+              :info-icon="isEnvActive(index) ? IconCheck : undefined"
+              :active-info-icon="isEnvActive(index)"
+              @click="
+                () => {
+                  handleEnvironmentChange(index, {
+                    type: 'my-environment',
+                    environment: env,
+                  })
+                  hide()
+                }
+              "
+            />
+            <HoppSmartPlaceholder
+              v-if="filteredAndAlphabetizedPersonalEnvs.length === 0"
+              class="break-words"
+              :src="
+                filterText
+                  ? undefined
+                  : `/images/states/${colorMode.value}/blockchain.svg`
+              "
+              :alt="
+                filterText
+                  ? `${t('empty.search_environment')}`
+                  : t('empty.environments')
+              "
+              :text="
+                filterText
+                  ? `${t('empty.search_environment')} '${filterText}'`
+                  : t('empty.environments')
+              "
             >
-              <HoppSmartItem
-                v-for="{ env, index } in filteredAndAlphabetizedPersonalEnvs"
-                :key="`gen-${index}`"
-                :icon="IconLayers"
-                :label="env.name"
-                :info-icon="isEnvActive(index) ? IconCheck : undefined"
-                :active-info-icon="isEnvActive(index)"
-                @click="
-                  () => {
-                    handleEnvironmentChange(index, {
-                      type: 'my-environment',
-                      environment: env,
-                    })
-                    hide()
-                  }
-                "
-              />
-              <HoppSmartPlaceholder
-                v-if="filteredAndAlphabetizedPersonalEnvs.length === 0"
-                class="break-words"
-                :src="
-                  filterText
-                    ? undefined
-                    : `/images/states/${colorMode.value}/blockchain.svg`
-                "
-                :alt="
-                  filterText
-                    ? `${t('empty.search_environment')}`
-                    : t('empty.environments')
-                "
-                :text="
-                  filterText
-                    ? `${t('empty.search_environment')} '${filterText}'`
-                    : t('empty.environments')
-                "
-              >
-                <template v-if="filterText" #icon>
-                  <icon-lucide-search class="svg-icons opacity-75" />
-                </template>
-              </HoppSmartPlaceholder>
-            </HoppSmartTab>
-          </HoppSmartTabs>
+              <template v-if="filterText" #icon>
+                <icon-lucide-search class="svg-icons opacity-75" />
+              </template>
+            </HoppSmartPlaceholder>
+          </div>
         </div>
       </template>
     </tippy>
@@ -293,6 +286,7 @@ import {
 import { CurrentValueService } from "~/services/current-environment-value.service"
 import { SecretEnvironmentService } from "~/services/secret-environment.service"
 import IconCheck from "~icons/lucide/check"
+import IconCircleSlash from "~icons/lucide/circle-slash"
 import IconEdit from "~icons/lucide/edit"
 import IconEye from "~icons/lucide/eye"
 import IconGlobe from "~icons/lucide/globe"
@@ -322,8 +316,6 @@ const mdAndLarger = breakpoints.greater("md")
 const t = useI18n()
 
 const colorMode = useColorMode()
-
-type EnvironmentType = "my-environments"
 
 const filterText = ref("")
 
@@ -391,8 +383,6 @@ const selectedEnvironmentIndex = useStream(
   { type: "NO_ENV_SELECTED" },
   setSelectedEnvironmentIndex
 )
-
-const selectedEnvTab = ref<EnvironmentType>("my-environments")
 
 const selectedEnv = computed(() => {
   if (props.isScopeSelector) {

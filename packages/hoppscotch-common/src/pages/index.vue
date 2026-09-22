@@ -44,10 +44,15 @@
                 @duplicate-tab="duplicateTab(tab.id)"
               />
               <!-- Fallback for document types without a dedicated head
-                   (test-runner) — providing the #tabhead slot suppresses the
-                   Window's own `label`, so an unmatched type would otherwise
-                   render a blank tab head. -->
-              <span v-else class="flex items-center truncate px-2">
+                   (test-runner, collection) — providing the #tabhead slot
+                   suppresses the Window's own `label`, so an unmatched type
+                   would otherwise render a blank tab head. -->
+              <span v-else class="flex items-center gap-1 truncate px-2">
+                <icon-lucide-folder
+                  v-if="tab.document.type === 'collection'"
+                  class="svg-icons flex-shrink-0"
+                  aria-hidden="true"
+                />
                 <span class="truncate">{{ getTabName(tab) }}</span>
               </span>
             </template>
@@ -100,6 +105,11 @@
               v-if="tab.document.type === 'request'"
               :model-value="tab"
               @update:model-value="onTabUpdate"
+            />
+            <!-- Collection/folder properties tab -->
+            <CollectionsCollectionTab
+              v-if="tab.document.type === 'collection'"
+              :model-value="tab"
             />
             <!-- When document.type === 'gql-request' render GQL tab -->
             <GqlRequestTab
@@ -303,6 +313,8 @@ const getTabName = (tab: HoppTab<HoppTabDocument>) => {
     return tab.document.response?.name ?? "Untitled"
   } else if (tab.document.type === "gql-example-response") {
     return tab.document.response?.name ?? "Untitled"
+  } else if (tab.document.type === "collection") {
+    return tab.document.collection?.name ?? "Untitled"
   }
 
   return "Unnamed tab"

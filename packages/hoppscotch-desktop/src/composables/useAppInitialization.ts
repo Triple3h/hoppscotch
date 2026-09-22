@@ -463,14 +463,23 @@ export function useAppInitialization() {
   // Tauri updater stays the path for anything that touches the shell, and it is
   // the Rust side that decides which of the two a release needs.
   //
-  // Deliberately fire-and-forget and quiet: this is an optimisation on top of
-  // the full updater, so a failure or a slow connection must not delay startup
-  // or surface an error. The bundle in use does not change under the user
-  // either — the new one is picked up on the next launch.
+  // The only automatic check left, and deliberately fire-and-forget and quiet:
+  // this is an optimisation on top of the full updater, so a failure or a slow
+  // connection must not delay startup or surface an error. Blocking startup on
+  // an update check is what used to leave the user stuck on the launcher when
+  // the release host was unreachable. The bundle in use does not change under
+  // the user either — the new one is picked up on the next launch.
   const installWebBundleUpdate = async () => {
     try {
       await desktopSettings.ready()
-      if (desktopSettings.settings.disableUpdateNotifications) return
+      // Two flags mean "no automatic checks": the settings-page toggle and the
+      // portable welcome checkbox. Honouring both keeps a user who set either
+      // one opted out.
+      if (
+        desktopSettings.settings.disableUpdateChecks ||
+        desktopSettings.settings.disableUpdateNotifications
+      )
+        return
 
       const status = await invoke<{
         state: string

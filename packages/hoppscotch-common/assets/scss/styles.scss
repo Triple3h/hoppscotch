@@ -132,6 +132,44 @@ body {
   width: var(--line-height-body);
 }
 
+/**
+ * Read-only surfaces (inherited collection scripts). Frosted glass reads as
+ * "look, don't touch": a floating card silhouette over a translucent, blurred
+ * pane, with a slight veil so the code never looks like an editor you can
+ * type into. `--frosted-veil` is the knob — raise it for more frost.
+ */
+.frosted-pane {
+  --frosted-veil: 0.45px;
+
+  @apply backdrop-blur-md relative overflow-hidden rounded-lg;
+  background: color-mix(in srgb, var(--divider-color) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--divider-color) 70%, transparent);
+  box-shadow: inset 0 1px 0 0 color-mix(in srgb, #fff 14%, transparent);
+
+  /* the code sits on the glass — the opaque gutter background would seam */
+  .cm-gutters {
+    background-color: transparent;
+  }
+
+  .cm-content,
+  .cm-gutters {
+    filter: blur(var(--frosted-veil));
+  }
+
+  /* glare */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, #fff 12%, transparent) 0%,
+      transparent 45%
+    );
+  }
+}
+
 a {
   @apply inline-flex;
   @apply text-current;

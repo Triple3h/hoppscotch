@@ -99,13 +99,6 @@
                 collectionSyncID: node.data.data.data.id,
               })
             "
-            @edit-properties="
-              node.data.type === 'collections' &&
-              emit('edit-properties', {
-                collectionIndex: node.id,
-                collection: node.data.data.data,
-              })
-            "
             @export-data="
               node.data.type === 'collections' &&
               emit('export-data', node.data.data.data)
@@ -194,13 +187,6 @@
               emit('duplicate-collection', {
                 pathOrID: node.id,
                 collectionSyncID: node.data.data.data.id,
-              })
-            "
-            @edit-properties="
-              node.data.type === 'folders' &&
-              emit('edit-properties', {
-                collectionIndex: node.id,
-                collection: node.data.data.data,
               })
             "
             @export-data="
@@ -571,13 +557,7 @@ const emit = defineEmits<{
       collectionSyncID?: string
     }
   ): void
-  (
-    event: "edit-properties",
-    payload: {
-      collectionIndex: string
-      collection: HoppCollection
-    }
-  ): void
+
   (
     event: "edit-request",
     payload: {

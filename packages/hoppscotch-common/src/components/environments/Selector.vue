@@ -74,11 +74,6 @@
             />
           </div>
           <div class="flex flex-col">
-            <h3
-              class="px-4 py-1 text-tiny font-semibold uppercase tracking-wide text-secondaryLight"
-            >
-              {{ t("environment.my_environments") }}
-            </h3>
             <HoppSmartItem
               v-for="{ env, index } in filteredAndAlphabetizedPersonalEnvs"
               :key="`gen-${index}`"

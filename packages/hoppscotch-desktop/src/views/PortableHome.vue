@@ -59,7 +59,7 @@
                 class="form-checkbox h-4 w-4 text-accent"
                 @change="onUpdateNotificationsChange"
               />
-              <span class="text-sm">Don't notify about updates</span>
+              <span class="text-sm">Don't check for updates automatically</span>
             </label>
 
             <label class="flex items-center space-x-2 cursor-pointer">
@@ -111,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, reactive, watch } from "vue"
+import { ref, onMounted, reactive, watch } from "vue"
 import { close } from "@hoppscotch/plugin-appload"
 import { invoke } from "@tauri-apps/api/core"
 
@@ -120,7 +120,6 @@ import {
   useAppInitialization,
   AppState,
 } from "~/composables/useAppInitialization"
-import { UpdaterClient, type UpdateEvent } from "~/services/updater.client"
 
 import AppHeader from "./shared/AppHeader.vue"
 import LoadingState from "./shared/LoadingState.vue"
@@ -137,23 +136,16 @@ const {
   initialize,
 } = useAppInitialization()
 
-const updaterClient = new UpdaterClient()
-
 const showPortableWelcome = ref(false)
 const currentDirectory = ref(".")
 
-// Fields mirrored locally for the portable welcome screen's UI and the
-// startup update gate. The welcome screen only lets the user toggle
-// `disableUpdateNotifications` and `autoSkipWelcome`, but the update gate
-// also reads `disableUpdateChecks` so a user who set that via the settings
-// page on a prior session sees the gate respected on next startup. The full
+// Fields mirrored locally for the portable welcome screen's UI. The full
 // desktop settings object is loaded and merged in
 // `handlePortableWelcomeContinue` so other fields like timeout or zoom,
 // written elsewhere, survive intact.
 const portableSettings = reactive({
   disableUpdateNotifications: false,
   autoSkipWelcome: false,
-  disableUpdateChecks: false,
 })
 
 watch(
@@ -212,34 +204,6 @@ const handlePortableWelcomeContinue = async () => {
   }
 }
 
-const checkForUpdatesPortable = async () => {
-  console.log("Checking portable updates, current settings:", portableSettings)
-
-  // Two disable flags land in this gate for backwards compatibility. The
-  // legacy `disableUpdateNotifications` was originally documented as
-  // controlling only notifications but was wired up to skip the whole check
-  // in portable mode. The new `disableUpdateChecks` is the explicit
-  // opt-out that matches the settings-page toggle. Either flag being true
-  // skips the startup check, so users upgrading from a prior version keep
-  // their original behavior and users who set the new flag see it honored.
-  if (
-    portableSettings.disableUpdateNotifications ||
-    portableSettings.disableUpdateChecks
-  ) {
-    console.log("Automatic update check disabled for portable mode")
-    return
-  }
-
-  statusMessage.value = "Checking for updates..."
-
-  try {
-    await updaterClient.checkForUpdates(true)
-    console.log("Portable update check completed")
-  } catch (err) {
-    console.error("Error checking for portable updates:", err)
-  }
-}
-
 const initializePortableMode = async () => {
   try {
     const latestDir = await invoke<string>("get_latest_dir")
@@ -258,9 +222,6 @@ const initializePortableMode = async () => {
   portableSettings.disableUpdateNotifications =
     settings.disableUpdateNotifications
   portableSettings.autoSkipWelcome = settings.autoSkipWelcome
-  portableSettings.disableUpdateChecks = settings.disableUpdateChecks
-
-  await checkForUpdatesPortable()
 
   if (!settings.autoSkipWelcome) {
     console.log("Showing portable welcome screen")
@@ -272,23 +233,10 @@ const initializePortableMode = async () => {
   await loadRecent()
 }
 
+// Portable startup no longer touches the updater: it used to wait on a GitHub
+// release check before showing anything, so an unreachable release host meant
+// the app never came up. Updates are checked on demand from the settings page.
 onMounted(async () => {
-  // Listen to update events (mainly for error handling)
-  // Checkout `updater.rs` for more info.
-  await updaterClient.listenToUpdates((event: UpdateEvent) => {
-    switch (event.type) {
-      case "Error":
-        console.error("Update error:", event.message)
-        // For portable mode, errors are already handled by native dialogs,
-        // see `updater.rs`.
-        break
-    }
-  })
-
   await initialize(initializePortableMode)
-})
-
-onUnmounted(() => {
-  updaterClient.stopListening()
 })
 </script>

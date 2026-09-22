@@ -400,12 +400,15 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      # See the Linux job. rust-cache keys by job id, so the two macOS matrix
-      # entries no longer share (and overwrite) a single cache entry.
+      # rust-cache keys by `github.job`, which is `build-macos` for both matrix
+      # entries: the two targets fought over one cache entry (the loser ends
+      # with "Unable to reserve cache ... another job may be creating this
+      # cache" and recompiles everything on the next release). Key by target.
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: packages/hoppscotch-desktop/src-tauri
+          key: ${{ matrix.target }}
           cache-on-failure: true
 
       - name: Install dependencies

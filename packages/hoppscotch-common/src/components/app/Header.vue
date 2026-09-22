@@ -132,15 +132,16 @@
           <!--
             This fork is personal-workspace-only: there are no team workspaces
             and nothing to switch to, so this is a static indicator rather than
-            a control. It used to wear a hardcoded blue chip style (a cloud CTA
-            in upstream) plus `pr-8` reserved for a chevron that no longer
-            exists, which made it the one element in the header that ignored
-            the app's colour tokens. It now matches the neighbouring buttons.
+            a control. It is filled with the accent colour (the same
+            `bg-accent text-accentContrast` pairing as `HoppButtonPrimary`) so
+            the workspace reads as a badge instead of blending into the
+            neighbouring icon buttons, and it uses the same corner radius as
+            the window's outer corner (`rounded-xl`) so the two nest visually.
           -->
           <HoppButtonSecondary
             :label="mdAndLarger ? workspaceName : ``"
             :icon="IconUser"
-            class="rounded hover:bg-primaryDark focus-visible:bg-primaryDark !text-secondaryDark"
+            class="rounded-xl bg-accent !text-accentContrast hover:bg-accentDark focus-visible:bg-accentDark"
           />
         </div>
       </div>

@@ -9,6 +9,7 @@ import {
 } from "faraday-cage/modules"
 import type { HoppFetchHook } from "~/types"
 import { customCryptoModule } from "./crypto"
+import { cryptoJsModule } from "./crypto-js"
 import { customFetchModule } from "./fetch"
 
 type DefaultModulesConfig = {
@@ -63,6 +64,7 @@ export const defaultModules = (config?: DefaultModulesConfig) => {
     customCryptoModule({
       cryptoImpl: globalThis.crypto,
     }),
+    cryptoJsModule(),
 
     esmModuleLoader,
     // Use custom fetch module with HoppFetchHook

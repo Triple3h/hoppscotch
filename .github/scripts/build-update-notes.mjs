@@ -70,14 +70,15 @@ for (const subject of raw.split("\n").map((line) => line.trim()).filter(Boolean)
 
   const match = CONVENTIONAL.exec(subject)
   const type = match ? match[1].toLowerCase() : ""
-  const scope = match?.[2]
   const description = (match ? match[3] : subject).trim()
 
   const group =
     GROUPS.find((candidate) => candidate.types.includes(type)) ??
     GROUPS[GROUPS.length - 1]
 
-  buckets.get(group.label).push(scope ? `${scope}: ${description}` : description)
+  // Scope (common/desktop/...) is internal jargon on the update screen: the
+  // reader has no idea what "common" is. Description only.
+  buckets.get(group.label).push(description)
   total += 1
 }
 

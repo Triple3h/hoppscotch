@@ -41,6 +41,58 @@
               @click="updateCheck.cancel()"
             />
           </div>
+
+          <!-- Version line. The installed version is read on mount rather than
+               taken from the check result, so it is already there before the
+               user clicks anything; the target version is appended only while
+               an update is pending, which makes the pair read as the upgrade
+               the button above is about to perform. -->
+          <p v-if="installedVersion" class="mt-3 text-xs text-secondaryLight">
+            {{
+              t("settings.update_current_version", {
+                version: installedVersion,
+              })
+            }}
+            <template v-if="pendingVersion">
+              <span class="mx-1">→</span>
+              <span class="text-accent">{{
+                t("settings.update_latest_version", { version: pendingVersion })
+              }}</span>
+            </template>
+          </p>
+
+          <!-- "What's new" for the pending version. Capped in height so a long
+               release cannot push the toggle below it out of the page. -->
+          <div
+            v-if="noteGroups.length"
+            class="mt-3 rounded border border-divider bg-primaryLight p-3"
+          >
+            <p class="text-xs font-semibold text-secondaryDark">
+              {{ t("settings.update_whats_new") }}
+            </p>
+            <div class="mt-2 max-h-40 space-y-3 overflow-y-auto pr-2">
+              <div v-for="(group, index) in noteGroups" :key="index">
+                <p
+                  v-if="group.title"
+                  class="text-xs font-medium text-secondaryDark"
+                >
+                  {{ group.title }}
+                </p>
+                <ul
+                  class="mt-1 list-disc space-y-0.5 pl-4 marker:text-secondaryLight"
+                >
+                  <li
+                    v-for="(item, itemIndex) in group.items"
+                    :key="itemIndex"
+                    class="text-xs text-secondaryLight"
+                  >
+                    {{ item }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <div class="mt-3 min-h-[1.25rem]">
             <Transition name="helper-fade" mode="out-in">
               <p :key="helperText" :class="helperTextClasses">
@@ -194,7 +246,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch, type Component } from "vue"
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+  type Component,
+} from "vue"
+import { getVersion } from "@tauri-apps/api/app"
 import {
   HoppButtonSecondary,
   HoppSmartItem,
@@ -218,6 +278,7 @@ import IconLucideAlertCircle from "~icons/lucide/alert-circle"
 
 import { useDesktopSettings } from "~/composables/desktop-settings"
 import { useUpdateCheck } from "~/composables/update-check"
+import { parseUpdateNotes } from "~/helpers/update-notes"
 
 // The shared settings page iterates `additionalSettingsSections`
 // with `:key="item.id"`. Without an explicit `id` on the component
@@ -235,6 +296,36 @@ const t = useI18n()
 
 const desktopSettings = useDesktopSettings()
 const updateCheck = useUpdateCheck()
+
+// The version actually running, straight from the shell, so the line is
+// correct before any check has happened: the updater's own `currentVersion`
+// only exists once a check has come back. A failure (a shell that predates the
+// command, a denied permission) leaves the line out rather than showing a
+// placeholder.
+const installedVersion = ref("")
+
+onMounted(async () => {
+  try {
+    installedVersion.value = await getVersion()
+  } catch (err) {
+    console.warn("Failed to read the app version:", err)
+  }
+})
+
+// The version the pending update would install, empty when there is nothing to
+// install, so the version line and the notes panel share one gate.
+const pendingVersion = computed(() => {
+  const s = updateCheck.state.value
+  return s.kind === "available" ? s.latestVersion : ""
+})
+
+// "What's new" for the version the button would install. Grouped only while an
+// update is pending: the notes belong to that pending version, and the states
+// after a download starts carry progress instead of notes.
+const noteGroups = computed(() => {
+  const s = updateCheck.state.value
+  return s.kind === "available" ? parseUpdateNotes(s.releaseNotes) : []
+})
 
 // Every field the template binds comes from the same function, so adding,
 // renaming, or deleting an update state is a single-case edit. Parallel

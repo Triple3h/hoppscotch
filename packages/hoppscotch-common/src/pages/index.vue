@@ -120,7 +120,9 @@
             <!-- END Render TabContents -->
           </HoppSmartWindow>
           <template #actions>
-            <EnvironmentsSelector class="h-full" />
+            <div class="flex h-12 w-max items-center">
+              <EnvironmentsSelector />
+            </div>
           </template>
         </HoppSmartWindows>
       </template>

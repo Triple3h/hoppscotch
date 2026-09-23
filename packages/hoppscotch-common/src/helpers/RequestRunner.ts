@@ -606,7 +606,7 @@ export function runRESTRequest$(
       finalRequest,
       {
         id: "env-id",
-        v: 2,
+        v: 3,
         name: "Env",
         variables: finalEnvsWithNonEmptyValues,
       },
@@ -792,7 +792,7 @@ export function updateEnvsAfterTestScript(
       })
       updateEnvironment(initialEnvironmentIndex.index, {
         name: env.name,
-        v: 2,
+        v: 3,
         id: "id" in env ? env.id : "",
         variables: selectedEnvVariables,
       })
@@ -957,7 +957,7 @@ export async function runTestRunnerRequest(
 
     const effectiveRequest = await getEffectiveRESTRequest(finalRequest, {
       id: "env-id",
-      v: 2,
+      v: 3,
       name: "Env",
       variables: filterNonEmptyEnvironmentVariables([
         // Data-file iteration values take precedence over every other scope

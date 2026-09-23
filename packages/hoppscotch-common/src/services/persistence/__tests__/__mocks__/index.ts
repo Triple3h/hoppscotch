@@ -97,7 +97,7 @@ export const GQL_COLLECTIONS_MOCK: HoppCollection[] = [
 
 export const ENVIRONMENTS_MOCK: Environment[] = [
   {
-    v: 2,
+    v: 3,
     id: "ENV_1",
     name: "globals",
     variables: [
@@ -110,7 +110,7 @@ export const ENVIRONMENTS_MOCK: Environment[] = [
     ],
   },
   {
-    v: 2,
+    v: 3,
     id: "ENV_2",
     name: "Test",
     variables: [

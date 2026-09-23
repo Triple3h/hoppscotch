@@ -316,6 +316,7 @@
       "heading": "Environment",
       "add_to_global": "Add to Global",
       "added": "Environment variable added",
+      "color": "Color",
       "create_new": "Create new environment",
       "created": "Environment created",
       "current_value": "Current value",

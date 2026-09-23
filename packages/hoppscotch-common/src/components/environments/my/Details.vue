@@ -17,6 +17,36 @@
           @submit="saveEnvironment"
         />
 
+        <div
+          v-if="editingEnvironmentIndex !== 'Global'"
+          class="mt-4 flex items-center space-x-2"
+        >
+          <span class="mr-2 text-tiny text-secondaryLight">
+            {{ t("environment.color") }}
+          </span>
+          <button
+            v-for="swatch in ENVIRONMENT_COLORS"
+            :key="swatch"
+            type="button"
+            class="h-5 w-5 rounded-full transition hover:scale-110"
+            :class="
+              editingColor === swatch
+                ? 'ring-2 ring-accentDark ring-offset-1 ring-offset-primary'
+                : 'ring-1 ring-inset ring-dividerDark'
+            "
+            :style="{ backgroundColor: swatch }"
+            @click="editingColor = swatch"
+          />
+          <HoppButtonSecondary
+            v-tippy="{ theme: 'tooltip' }"
+            :title="t('action.clear')"
+            :icon="IconCircleSlash"
+            class="!p-1 !rounded-full"
+            :class="editingColor ? '!text-secondary' : '!text-secondaryDark'"
+            @click="editingColor = ''"
+          />
+        </div>
+
         <div class="my-4 flex flex-col border border-divider rounded">
           <div
             v-if="evnExpandError"
@@ -257,6 +287,7 @@ import {
 import { platform } from "~/platform"
 import { CurrentValueService } from "~/services/current-environment-value.service"
 import { SecretEnvironmentService } from "~/services/secret-environment.service"
+import IconCircleSlash from "~icons/lucide/circle-slash"
 import IconDone from "~icons/lucide/check"
 import IconHelpCircle from "~icons/lucide/help-circle"
 import IconPlus from "~icons/lucide/plus"
@@ -275,6 +306,20 @@ type EnvironmentVariable = {
 const t = useI18n()
 const toast = useToast()
 const colorMode = useColorMode()
+
+// Swatches offered in the environment editor; the picked value is stored on
+// `Environment.color` and used to tint the environment selector's pill.
+const ENVIRONMENT_COLORS = [
+  "#ef4444",
+  "#f97316",
+  "#f59e0b",
+  "#22c55e",
+  "#14b8a6",
+  "#3b82f6",
+  "#6366f1",
+  "#a855f7",
+  "#ec4899",
+]
 
 const props = withDefaults(
   defineProps<{
@@ -332,6 +377,7 @@ const options = ref<TippyComponent | null>(null)
 const tippyActions = ref<HTMLDivElement | null>(null)
 
 const editingName = ref<string | null>(null)
+const editingColor = ref<string>("")
 const editingID = ref<string>("")
 const vars = ref<EnvironmentVariable[]>([
   {
@@ -386,6 +432,7 @@ const workingEnv = computed(() => {
       id: uniqueID(),
       name: "",
       variables: props.envVars(),
+      color: "",
     }
   } else if (props.editingEnvironmentIndex !== null) {
     return getEnvironment({
@@ -462,6 +509,7 @@ watch(
   (show) => {
     if (show) {
       editingName.value = workingEnv.value?.name ?? null
+      editingColor.value = workingEnv.value?.color ?? ""
       selectedEnvOption.value = props.isSecretOptionSelected
         ? "secret"
         : "variables"
@@ -595,10 +643,11 @@ const saveEnvironment = () => {
   const variables = stripClientLocalValuesForWire(filteredVariables)
 
   const environmentUpdated: Environment = {
-    v: 2,
+    v: 3,
     id: uniqueID(),
     name: editingName.value,
     variables,
+    color: editingColor.value || undefined,
   }
 
   if (props.action === "new") {
@@ -606,7 +655,8 @@ const saveEnvironment = () => {
     createEnvironment(
       editingName.value,
       environmentUpdated.variables,
-      editingID.value
+      editingID.value,
+      environmentUpdated.color
     )
     setSelectedEnvironmentIndex({
       type: "MY_ENV",

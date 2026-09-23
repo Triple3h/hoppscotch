@@ -1,5 +1,6 @@
 import {
   Environment,
+  EnvironmentSchemaVersion,
   GlobalEnvironment,
   GlobalEnvironmentVariable,
   HOPP_SUPPORTED_PREDEFINED_VARIABLES,
@@ -27,7 +28,7 @@ const defaultGlobalEnvironmentState: GlobalEnvironment = {
 const defaultEnvironmentsState = {
   environments: [
     {
-      v: 2,
+      v: EnvironmentSchemaVersion,
       id: uniqueID(),
       name: "My Environment Variables",
       variables: [],
@@ -90,7 +91,13 @@ const dispatchers = defineDispatchers({
       name,
       variables,
       envID,
-    }: { name: string; variables: Environment["variables"]; envID?: string }
+      color,
+    }: {
+      name: string
+      variables: Environment["variables"]
+      envID?: string
+      color?: string
+    }
   ) {
     return {
       environments: [
@@ -98,15 +105,17 @@ const dispatchers = defineDispatchers({
         envID
           ? {
               id: envID,
-              v: 2,
+              v: EnvironmentSchemaVersion,
               name,
               variables,
+              color,
             }
           : {
-              v: 2,
+              v: EnvironmentSchemaVersion,
               id: uniqueID(),
               name,
               variables,
+              color,
             },
       ],
     }
@@ -397,7 +406,7 @@ export const currentEnvironment$: Observable<Environment | undefined> =
       if (selectedEnvironmentIndex.type === "NO_ENV_SELECTED") {
         const env: Environment = {
           name: "No environment",
-          v: 2,
+          v: EnvironmentSchemaVersion,
           id: "",
           variables: [],
         }
@@ -701,7 +710,7 @@ export function getCurrentEnvironment(): Environment {
     environmentsStore.value.selectedEnvironmentIndex.type === "NO_ENV_SELECTED"
   ) {
     return {
-      v: 2,
+      v: EnvironmentSchemaVersion,
       id: "",
       name: "No environment",
       variables: [],
@@ -844,7 +853,8 @@ export function appendEnvironments(envs: Environment[]) {
 export function createEnvironment(
   envName: string,
   variables?: Environment["variables"],
-  envID?: string
+  envID?: string,
+  color?: string
 ) {
   environmentsStore.dispatch({
     dispatcher: "createEnvironment",
@@ -852,6 +862,7 @@ export function createEnvironment(
       name: envName,
       variables: variables ?? [],
       envID,
+      color,
     },
   })
 }

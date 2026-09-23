@@ -218,7 +218,6 @@ pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
                 tauri::async_runtime::spawn(async move {
                     let _ = app.emit("updater-event", UpdateEvent::DownloadCompleted);
                     let _ = app.emit("updater-event", UpdateEvent::InstallStarted);
-                    let _ = app.emit("updater-event", UpdateEvent::RestartRequired);
                 });
             },
         )
@@ -234,19 +233,67 @@ pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
             error_msg
         })?;
 
+    // Announced here, not from the download-finished callback: that one runs
+    // before the archive is unpacked, so a restart accepted while the install
+    // is still writing would exit mid-extract and leave a half-written app.
+    // By this point the new bundle is on disk and restarting is safe.
+    let _ = app.emit("updater-event", UpdateEvent::RestartRequired);
+
     tracing::info!("Update download and installation completed successfully");
     Ok(())
 }
 
 /// Restart the application (for standard mode)
 #[tauri::command]
-pub async fn restart_application() -> Result<(), String> {
+pub async fn restart_application(app: AppHandle) -> Result<(), String> {
     tracing::info!("Restarting application");
+
+    // `tauri::process::restart` exec's the binary inside the bundle
+    // (`Command::new(<app>.app/Contents/MacOS/<bin>)`), which skips
+    // LaunchServices: the process that comes up has a working Rust side but
+    // never loads its webview, so the user gets a blank window that only a
+    // manual relaunch clears. `open` takes the same path a user-initiated
+    // launch takes, and `-n` is what starts a second instance instead of
+    // focusing this one, which has not exited yet.
+    #[cfg(target_os = "macos")]
+    {
+        let bundle = app_bundle_path()?;
+
+        std::process::Command::new("open")
+            .arg("-n")
+            .arg(&bundle)
+            .spawn()
+            .map_err(|e| format!("Failed to relaunch {}: {e}", bundle.display()))?;
+
+        tracing::info!(bundle = %bundle.display(), "Relaunched through LaunchServices");
+
+        app.exit(0);
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "macos"))]
     tauri::process::restart(&tauri::Env::default());
-    // This function never returns because the app restarts,
-    // so it's safe to allow `unreachable_code` here.
+
+    // Only the non-macOS branch reaches this, and `restart` never returns.
     #[allow(unreachable_code)]
     Ok(())
+}
+
+/// The `.app` directory the running build was launched from.
+///
+/// Read off the executable's own location rather than from a bundle
+/// identifier, so a renamed or moved app still resolves to itself.
+#[cfg(target_os = "macos")]
+fn app_bundle_path() -> Result<std::path::PathBuf, String> {
+    let exe =
+        std::env::current_exe().map_err(|e| format!("Could not locate the running app: {e}"))?;
+
+    exe.parent()
+        .and_then(|p| p.parent())
+        .and_then(|p| p.parent())
+        .filter(|p| p.extension().is_some_and(|extension| extension == "app"))
+        .map(std::path::Path::to_path_buf)
+        .ok_or_else(|| format!("Not running from an app bundle: {}", exe.display()))
 }
 
 /// Cancel any ongoing update process

@@ -40,7 +40,7 @@
       <div class="flex h-full w-2/3 flex-col border-r border-dividerLight">
         <div
           v-if="inheritedScripts.length > 0"
-          class="frosted-pane m-2 flex min-h-0 flex-1 flex-col border-l-2 border-l-yellow-500"
+          class="frosted-pane m-2 flex max-h-1/2 flex-col border-l-2 border-l-yellow-500"
         >
           <div
             class="flex flex-shrink-0 items-center gap-2 overflow-hidden border-b border-dividerDark px-3 py-1.5"
@@ -65,7 +65,7 @@
               {{ t("script.read_only") }}
             </span>
           </div>
-          <div ref="inheritedEditor" class="min-h-0 flex-1 overflow-auto"></div>
+          <div ref="inheritedEditor" class="min-h-0 overflow-auto"></div>
         </div>
         <div class="relative min-h-0 flex-1">
           <MonacoScriptEditor

@@ -155,6 +155,16 @@ body {
     background-color: transparent;
   }
 
+  /* size to line count, not the pane's leftover height (baseTheme uses 100%) */
+  .cm-editor {
+    height: auto !important;
+    flex: none !important;
+  }
+
+  .cm-content {
+    height: auto !important;
+  }
+
   /* glare */
   &::after {
     content: "";

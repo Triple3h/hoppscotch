@@ -4,8 +4,11 @@
       <template #primary>
         <GraphqlRequest />
 
-        <!-- Fixed left rail into the full tab list (mirrors REST + env selector). -->
-        <div class="relative [&_.tabs>div:first-child]:pl-10">
+        <!-- Fixed left rail into the full tab list (mirrors REST + env selector).
+             `flex-1 min-h-0` keeps the window body full-height; see index.vue. -->
+        <div
+          class="relative flex min-h-0 flex-1 flex-col [&_.tabs>div:first-child]:pl-10"
+        >
           <div
             class="absolute left-0 top-0 z-20 flex h-12 items-center border-r border-dividerLight bg-primaryLight px-1"
           >

@@ -4,8 +4,14 @@
       <template #primary>
         <!-- Fixed left rail: always-visible entry to every open tab (request,
              folder, environment, test-runner, …). Geometry mirrors the right
-             env selector (h-12 rail, h-9 trigger) so popover spacing matches. -->
-        <div class="relative [&_.tabs>div:first-child]:pl-10">
+             env selector (h-12 rail, h-9 trigger) so popover spacing matches.
+             `flex-1 min-h-0` is load-bearing: without it this block sizes to
+             its content, so the tab body (and the request/response split
+             inside it) never fills the pane and the pane heights resolve
+             against a content-sized box. -->
+        <div
+          class="relative flex min-h-0 flex-1 flex-col [&_.tabs>div:first-child]:pl-10"
+        >
           <div
             class="absolute left-0 top-0 z-20 flex h-12 items-center border-r border-dividerLight bg-primaryLight px-1"
           >

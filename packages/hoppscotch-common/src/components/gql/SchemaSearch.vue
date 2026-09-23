@@ -41,9 +41,8 @@ import type {
 import { isInputObjectType, isInterfaceType, isObjectType } from "graphql"
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue"
 import { useI18n } from "~/composables/i18n"
-import { useService } from "dioc/vue"
-import { GQLTabConnectionService } from "~/services/gql-tab-connection.service"
 import { ExplorerNavStackItem, useExplorer } from "~/helpers/graphql/explorer"
+import { useActiveSchema } from "./useActiveSchema"
 
 // Types
 type SearchResult = {
@@ -63,10 +62,9 @@ type SearchResult = {
 // Composables
 const t = useI18n()
 const { navStack, push, pop } = useExplorer()
-const gqlTabConn = useService(GQLTabConnectionService)
 
-// Read schema from the per-tab connection service
-const schema = gqlTabConn.activeTabSchema
+// Read schema from the active GQL tab (workspace or legacy page)
+const { schema } = useActiveSchema()
 
 // Refs
 const searchText = ref("")

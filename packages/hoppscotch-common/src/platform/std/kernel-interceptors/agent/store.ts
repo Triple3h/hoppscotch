@@ -10,6 +10,13 @@ import {
   InputDomainSetting,
   convertDomainSetting,
 } from "~/helpers/functional/domain-settings"
+import {
+  GLOBAL_DOMAIN,
+  defaultDomainConfig,
+  getMergedDomainSettings,
+  buildStoredData,
+  toStoredDomainSetting,
+} from "~/helpers/functional/domain-settings-store"
 
 const STORE_NAMESPACE = "interceptors.agent.v1"
 
@@ -27,25 +34,8 @@ interface StoredData {
   lastUpdated: string
 }
 
-const defaultDomainConfig: InputDomainSetting = {
-  version: "v1",
-  security: {
-    verifyHost: true,
-    verifyPeer: true,
-  },
-  proxy: undefined,
-  options: {
-    followRedirects: true,
-  },
-}
-
 export class KernelInterceptorAgentStore extends Service {
   public static readonly ID = "AGENT_INTERCEPTOR_STORE"
-  private static readonly GLOBAL_DOMAIN = "*"
-  private static readonly DEFAULT_GLOBAL_SETTINGS: InputDomainSetting = {
-    ...defaultDomainConfig,
-    version: "v1",
-  }
 
   private domainSettings = new Map<string, InputDomainSetting>()
 
@@ -84,11 +74,8 @@ export class KernelInterceptorAgentStore extends Service {
       this.sharedSecretB16.value = store.auth.sharedSecret
     }
 
-    if (!this.domainSettings.has(KernelInterceptorAgentStore.GLOBAL_DOMAIN)) {
-      this.domainSettings.set(
-        KernelInterceptorAgentStore.GLOBAL_DOMAIN,
-        KernelInterceptorAgentStore.DEFAULT_GLOBAL_SETTINGS
-      )
+    if (!this.domainSettings.has(GLOBAL_DOMAIN)) {
+      this.domainSettings.set(GLOBAL_DOMAIN, { ...defaultDomainConfig })
       await this.persistStore()
     }
   }
@@ -107,13 +94,11 @@ export class KernelInterceptorAgentStore extends Service {
 
   private async persistStore(): Promise<void> {
     const store: StoredData = {
-      version: "v1",
+      ...buildStoredData(Object.fromEntries(this.domainSettings)),
       auth: {
         key: this.authKey.value,
         sharedSecret: this.sharedSecretB16.value,
       },
-      domains: Object.fromEntries(this.domainSettings),
-      lastUpdated: new Date().toISOString(),
     }
 
     const saveResult = await Store.set(
@@ -132,60 +117,11 @@ export class KernelInterceptorAgentStore extends Service {
     await this.persistStore()
   }
 
-  private mergeSecurity(
-    ...settings: (Required<InputDomainSetting>["security"] | undefined)[]
-  ): Required<InputDomainSetting>["security"] | undefined {
-    return settings.reduce(
-      (acc, setting) => (setting ? { ...acc, ...setting } : acc),
-      undefined as Required<InputDomainSetting>["security"] | undefined
-    )
-  }
-
-  private mergeProxy(
-    ...settings: (Required<InputDomainSetting>["proxy"] | undefined)[]
-  ): Required<InputDomainSetting>["proxy"] | undefined {
-    return settings.reduce(
-      (acc, setting) => (setting ? { ...acc, ...setting } : acc),
-      undefined as Required<InputDomainSetting>["proxy"] | undefined
-    )
-  }
-
-  private mergeOptions(
-    ...settings: (Required<InputDomainSetting>["options"] | undefined)[]
-  ): Required<InputDomainSetting>["options"] | undefined {
-    return settings.reduce(
-      (acc, setting) => (setting ? { ...acc, ...setting } : acc),
-      undefined as Required<InputDomainSetting>["options"] | undefined
-    )
-  }
-
-  private getMergedSettings(domain: string): InputDomainSetting {
-    const domainSettings = this.domainSettings.get(domain)
-    const globalSettings =
-      domain !== KernelInterceptorAgentStore.GLOBAL_DOMAIN
-        ? this.domainSettings.get(KernelInterceptorAgentStore.GLOBAL_DOMAIN)
-        : undefined
-
-    const result = {
-      security: this.mergeSecurity(
-        globalSettings?.security,
-        domainSettings?.security
-      ),
-      proxy: this.mergeProxy(globalSettings?.proxy, domainSettings?.proxy),
-      options: this.mergeOptions(
-        globalSettings?.options,
-        domainSettings?.options
-      ),
-    }
-
-    return { version: "v1", ...result }
-  }
-
   public completeRequest(
     request: Omit<PluginRequest, "proxy" | "security" | "meta">
   ): PluginRequest {
     const host = new URL(request.url).host
-    const settings = this.getMergedSettings(host)
+    const settings = getMergedDomainSettings(this.domainSettings, host)
     const effective = convertDomainSetting(settings)
 
     if (E.isLeft(effective)) {
@@ -358,24 +294,14 @@ export class KernelInterceptorAgentStore extends Service {
   }
 
   public getDomainSettings(domain: string): InputDomainSetting {
-    return (
-      this.domainSettings.get(domain) ?? {
-        ...defaultDomainConfig,
-        version: "v1",
-      }
-    )
+    return this.domainSettings.get(domain) ?? { ...defaultDomainConfig }
   }
 
   public async saveDomainSettings(
     domain: string,
     settings: Partial<InputDomainSetting>
   ): Promise<void> {
-    const updatedSettings: InputDomainSetting = {
-      ...settings,
-      version: "v1",
-    }
-
-    this.domainSettings.set(domain, updatedSettings)
+    this.domainSettings.set(domain, toStoredDomainSetting(settings))
     await this.persistStore()
   }
 

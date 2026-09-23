@@ -122,7 +122,9 @@ import { completePageProgress, startPageProgress } from "~/modules/loadingbar"
 import { platform } from "~/platform"
 import { KernelInterceptorService } from "~/services/kernel-interceptor.service"
 import { useService } from "dioc/vue"
-import { GQLOptionTabs } from "~/components/graphql/RequestOptions.vue"
+import type { GQLOptionTabs } from "~/helpers/requestOptions"
+
+export type { GQLOptionTabs } from "~/helpers/requestOptions"
 
 type GqlRequestOptionsModel = HoppGQLRequest | HoppGQLResponseOriginalRequest
 

@@ -2,7 +2,11 @@
   <div>
     <AppPaneLayout layout-id="graphql">
       <template #primary>
-        <GraphqlRequest />
+        <GqlRequest
+          v-if="currentTab"
+          :model-value="currentTab"
+          @update:model-value="onTabUpdate"
+        />
 
         <!-- Fixed left rail into the full tab list (mirrors REST + env selector).
              `flex-1 min-h-0` keeps the window body full-height; see index.vue. -->
@@ -30,7 +34,7 @@
             @sort="sortTabs"
           >
             <HoppSmartWindow
-              v-for="tab in activeTabs"
+              v-for="tab in renderTabs"
               :id="tab.id"
               :key="'removable_tab_' + tab.id"
               :label="tab.document.request.name"
@@ -38,7 +42,7 @@
               :close-visibility="'hover'"
             >
               <template #tabhead>
-                <GraphqlTabHead
+                <GqlTabHead
                   :tab="tab"
                   :is-removable="activeTabs.length > 1"
                   @open-rename-modal="openReqRenameModal(tab)"
@@ -64,7 +68,7 @@
                 </span>
               </template>
 
-              <GraphqlRequestTab
+              <GqlRequestTab
                 :model-value="tab"
                 @update:model-value="onTabUpdate"
               />
@@ -106,11 +110,12 @@ import { useI18n } from "@composables/i18n"
 import { useService } from "dioc/vue"
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import { defineActionHandler } from "~/helpers/actions"
-import { connection, disconnect } from "~/helpers/graphql/connection"
 import { getDefaultGQLRequest } from "~/helpers/graphql/default"
 import { HoppGQLDocument } from "~/helpers/graphql/document"
 import { useExplorer } from "~/helpers/graphql/explorer"
+import { HoppGQLRequestDocument } from "~/helpers/tab/document"
 import { InspectionService } from "~/services/inspection"
+import { GQLTabConnectionService } from "~/services/gql-tab-connection.service"
 import { HoppTab } from "~/services/tab"
 import { GQLTabService } from "~/services/tab/graphql"
 import WorkspaceAllTabsMenu, {
@@ -119,13 +124,38 @@ import WorkspaceAllTabsMenu, {
 
 const t = useI18n()
 const tabs = useService(GQLTabService)
+const gqlTabConn = useService(GQLTabConnectionService)
 const { reset } = useExplorer()
+
+/**
+ * Legacy GQLTabService documents predate the workspace `type` discriminator
+ * that GqlTabHead/GqlRequestTab narrow on. Stamp it as a non-enumerable
+ * runtime property so JSON persistence (strict zod schema) never sees it —
+ * re-applied from this helper on every page mount / tab creation.
+ */
+const asGqlRequestTab = (
+  tab: HoppTab<HoppGQLDocument>
+): HoppTab<HoppGQLRequestDocument> => {
+  const doc = tab.document as HoppGQLDocument & { type?: "gql-request" }
+  if (doc.type !== "gql-request") {
+    Object.defineProperty(doc, "type", {
+      value: "gql-request",
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    })
+  }
+  return tab as unknown as HoppTab<HoppGQLRequestDocument>
+}
 
 // `useExplorer`'s nav stack is a module-level singleton shared with the GraphQL
 // panes in the unified workspace, so arriving here could otherwise show a
 // breadcrumb describing that workspace's schema. Reset on entry, mirroring the
 // reset this page already does on every tab switch.
-onMounted(() => reset())
+onMounted(() => {
+  for (const tab of tabs.getTabs()) asGqlRequestTab(tab)
+  reset()
+})
 
 const currentTabID = computed(() => tabs.currentTabID.value)
 
@@ -138,6 +168,16 @@ usePageHead({
 })
 
 const activeTabs = tabs.getActiveTabs()
+
+// Tabs re-cast for the shared GqlTabHead / GqlRequestTab components
+const renderTabs = computed(() =>
+  activeTabs.value.map((tab) => asGqlRequestTab(tab))
+)
+
+const currentTab = computed(() => {
+  const tab = tabs.currentActiveTab.value
+  return tab ? asGqlRequestTab(tab) : undefined
+})
 
 const tabMenuEntries = computed<WorkspaceTabMenuEntry[]>(() =>
   activeTabs.value.map((tab) => ({
@@ -155,6 +195,7 @@ const addNewTab = () => {
     isDirty: false,
     cursorPosition: 0,
   })
+  asGqlRequestTab(tab)
 
   tabs.setActiveTab(tab.id)
 }
@@ -215,14 +256,14 @@ const onResolveConfirmCloseAllTabs = () => {
   confirmingCloseAllTabs.value = false
 }
 
-const onTabUpdate = (tab: HoppTab<HoppGQLDocument>) => {
-  tabs.updateTab(tab)
+const onTabUpdate = (tab: HoppTab<HoppGQLRequestDocument>) => {
+  tabs.updateTab(tab as unknown as HoppTab<HoppGQLDocument>)
 }
 
 onBeforeUnmount(() => {
-  if (connection.state === "CONNECTED") {
-    disconnect()
-  }
+  // Tear down this page's per-tab sockets/poll timers — the shared gql/*
+  // components connect through GQLTabConnectionService, not connection.ts.
+  gqlTabConn.disconnectAllTabs()
 })
 
 const editReqModalReqName = ref("")
@@ -261,12 +302,14 @@ const duplicateTab = (tabID: string) => {
 }
 
 defineActionHandler("gql.request.open", ({ request, saveContext }) => {
-  tabs.createNewTab({
-    saveContext,
-    request: request,
-    isDirty: false,
-    cursorPosition: 0,
-  })
+  asGqlRequestTab(
+    tabs.createNewTab({
+      saveContext,
+      request: request,
+      isDirty: false,
+      cursorPosition: 0,
+    })
+  )
 })
 
 defineActionHandler("request.rename", () => {

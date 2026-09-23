@@ -8,7 +8,7 @@ import {
 } from "./base/static.searcher"
 
 import { useRoute } from "vue-router"
-import { RESTOptionTabs } from "~/components/http/RequestOptions.vue"
+import { RESTOptionTabs } from "~/helpers/requestOptions"
 import IconWindow from "~icons/lucide/app-window"
 import IconCheckCircle from "~icons/lucide/check-circle"
 import IconCode2 from "~icons/lucide/code-2"
@@ -17,7 +17,7 @@ import IconRename from "~icons/lucide/file-edit"
 import IconPlay from "~icons/lucide/play"
 import IconRotateCCW from "~icons/lucide/rotate-ccw"
 import IconSave from "~icons/lucide/save"
-import { GQLOptionTabs } from "~/components/graphql/RequestOptions.vue"
+import { GQLOptionTabs } from "~/helpers/requestOptions"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
 import { Container } from "dioc"
 

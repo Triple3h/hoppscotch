@@ -11,7 +11,6 @@ import { platform } from "~/platform"
 import { NativeKernelInterceptorService } from "~/platform/std/kernel-interceptors/native"
 
 import { performMigrations } from "~/helpers/migrations"
-import { initBackendGQLClient } from "~/helpers/backend/GQLClient"
 import { getKernelMode } from "@hoppscotch/kernel"
 import { diag } from "~/kernel/log"
 
@@ -22,7 +21,6 @@ type InitEvent =
   | { type: "TABS_READY" }
   | { type: "NATIVE_KERNEL_NETWORKING_READY" }
   | { type: "AUTH_READY" }
-  | { type: "BACKEND_CLIENT_READY" }
   | { type: "SYNC_READY" }
   | { type: "ALL_READY" }
 
@@ -40,7 +38,6 @@ export class InitializationService extends Service<InitEvent> {
     auth: false,
     sync: false,
     persistenceLater: false,
-    backendClient: false,
   }
 
   private async initStore() {
@@ -111,13 +108,6 @@ export class InitializationService extends Service<InitEvent> {
     this.emit({ type: "AUTH_READY" })
   }
 
-  private async initBackendClient() {
-    initBackendGQLClient()
-
-    this.initState.backendClient = true
-    this.emit({ type: "BACKEND_CLIENT_READY" })
-  }
-
   private async initPersistenceLater() {
     if (!this.initState.persistenceFirst) {
       throw new Error("Cannot initialize persistence before store")
@@ -152,8 +142,6 @@ export class InitializationService extends Service<InitEvent> {
       diag("init", "initPre() nativeKernelNetworking done")
     }
 
-    await this.initBackendClient()
-    diag("init", "initPre() backendClient done")
     await this.initTabs()
     diag("init", "initPre() tabs done, initPre complete")
   }

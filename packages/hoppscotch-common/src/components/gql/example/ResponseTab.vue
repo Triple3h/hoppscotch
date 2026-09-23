@@ -21,7 +21,7 @@ import { cloneDeep, isEqual } from "lodash-es"
 import { ref, watch } from "vue"
 import { HoppTab } from "~/services/tab"
 import { HoppSavedGQLExampleDocument } from "~/helpers/tab/document"
-import type { GQLOptionTabs } from "~/components/graphql/RequestOptions.vue"
+import type { GQLOptionTabs } from "~/helpers/requestOptions"
 
 const props = defineProps<{
   modelValue: HoppTab<HoppSavedGQLExampleDocument>

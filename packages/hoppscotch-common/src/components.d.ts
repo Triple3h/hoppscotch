@@ -311,6 +311,7 @@ declare module 'vue' {
     TabSecondary: typeof import('./components/tab/Secondary.vue')['default']
     TabsNav: typeof import('./components/TabsNav.vue')['default']
     Tippy: typeof import('vue-tippy')['Tippy']
+    WorkspaceAllTabsMenu: typeof import('./components/workspace/AllTabsMenu.vue')['default']
     WorkspaceCurrent: typeof import('./components/workspace/Current.vue')['default']
     WorkspaceTabHeader: typeof import('./components/workspace/TabHeader.vue')['default']
   }

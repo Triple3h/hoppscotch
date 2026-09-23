@@ -594,7 +594,7 @@
       "current_instance_error": "追踪当前实例失败",
       "not_available": "实例切换不可用",
       "cleanup_completed": "实例切换器清理已完成",
-      "self_hosted": "自托管实例"
+      "self_hosted": "个人工作区"
    },
    "inspections": {
       "description": "检查可能存在的错误",

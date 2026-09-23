@@ -128,22 +128,6 @@
             @click="invokeAction('modals.support.toggle')"
           />
         </div>
-        <div class="flex items-center space-x-2">
-          <!--
-            This fork is personal-workspace-only: there are no team workspaces
-            and nothing to switch to, so this is a static indicator rather than
-            a control. It is filled with the accent colour (the same
-            `bg-accent text-accentContrast` pairing as `HoppButtonPrimary`) so
-            the workspace reads as a badge instead of blending into the
-            neighbouring icon buttons, and it uses the same corner radius as
-            the window's outer corner (`rounded-xl`) so the two nest visually.
-          -->
-          <HoppButtonSecondary
-            :label="mdAndLarger ? workspaceName : ``"
-            :icon="IconUser"
-            class="rounded-xl bg-accent !text-accentContrast hover:bg-accentDark focus-visible:bg-accentDark"
-          />
-        </div>
       </div>
     </header>
     <AppBanner
@@ -174,7 +158,6 @@ import {
 import IconChevronDown from "~icons/lucide/chevron-down"
 import IconDownload from "~icons/lucide/download"
 import IconLifeBuoy from "~icons/lucide/life-buoy"
-import IconUser from "~icons/lucide/user"
 
 const t = useI18n()
 const kernelMode = getKernelMode()
@@ -248,6 +231,4 @@ const dismissBanner = () => {
     offlineBannerID = null
   }
 }
-
-const workspaceName = computed(() => t("workspace.personal"))
 </script>

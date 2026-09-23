@@ -612,7 +612,7 @@
       "current_instance_error": "Failed to track current instance",
       "not_available": "Instance switching is not available",
       "cleanup_completed": "Instance switcher cleanup completed",
-      "self_hosted": "Self-hosted instances"
+      "self_hosted": "Personal workspace"
    },
    "inspections": {
       "description": "Inspect possible errors",

@@ -1,5 +1,9 @@
 <template>
-  <div class="relative flex flex-1 flex-col overflow-auto">
+  <!-- min-h-0 lets this flex item shrink to the pane height; without it the
+       tall response body grows past the pane and the outer container (Pane /
+       window) steals the scrollbar. overflow-auto keeps scrolling here, under
+       the sticky meta + tab bars. -->
+  <div class="relative min-h-0 flex flex-1 flex-col overflow-auto">
     <HttpResponseMeta
       :response="doc.response"
       :is-embed="isEmbed"
@@ -52,12 +56,6 @@ const emit = defineEmits<{
 
 const doc = useVModel(props, "document", emit)
 
-const hasResponse = computed(
-  () =>
-    doc.value.response?.type === "success" ||
-    doc.value.response?.type === "fail"
-)
-
 const responseName = ref("")
 const showSaveResponseName = ref(false)
 
@@ -76,17 +74,15 @@ const loading = computed(
 // SSE responses stream headers + body chunks into a `loading` response
 // before they finish; that payload is already renderable (the events
 // timeline), so the lens renderers must not wait for completion.
-const hasStreamingResponse = computed(() => {
-  const response = doc.value.response
-  return response?.type === "loading" && Boolean(response.streaming)
-})
-
-// Render as soon as a response (streaming or final) exists and keep
-// rendering while tests execute — unmounting here would wipe the lens
-// renderers' internal state (e.g. the SSE events/merged view choice)
-// in the gap between the response arriving and `testResults` being set.
+// Any `loading` counts (streaming payload may lag a tick) — unmounting
+// here would wipe the SSE renderer, including the outer 事件 tab and its
+// 分条展示/自动合并 sub-tabs, mid-stream. Keep rendering while tests run
+// too: unmounting would drop the events/merged view choice.
 const showLenses = computed(
-  () => hasStreamingResponse.value || hasResponse.value
+  () =>
+    doc.value.response?.type === "loading" ||
+    doc.value.response?.type === "success" ||
+    doc.value.response?.type === "fail"
 )
 
 const saveAsExample = () => {

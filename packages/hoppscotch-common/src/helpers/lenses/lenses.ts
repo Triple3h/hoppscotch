@@ -33,9 +33,12 @@ export const lenses: Lens[] = [
 
 export function getSuitableLenses(response: HoppRESTResponse): Lens[] {
   // While the body is still streaming in, only the SSE timeline can
-  // render something meaningful (and only when the already-received
-  // headers identify an event stream). Everything else keeps the
-  // plain loading state with no lens tabs.
+  // render something meaningful. Prefer the already-received headers,
+  // but keep offering the events lens when only partial header state
+  // is available (empty array, content-type not yet seen) — an empty
+  // list here unmounts the outer 事件 tab together with its
+  // 分条展示/自动合并 sub-tabs mid-stream. Non-SSE content-types still
+  // stay empty: those responses have no incremental timeline.
   if (response.type === "loading") {
     const streamingHeaders = response.streaming?.headers
     if (!streamingHeaders) return []
@@ -44,9 +47,11 @@ export function getSuitableLenses(response: HoppRESTResponse): Lens[] {
       (h) => h.key.toLowerCase() === "content-type"
     )?.value
 
-    return streamingContentType && isSSEContentType(streamingContentType)
-      ? [sseLens]
-      : []
+    // Headers present but not yet identifying the type: assume SSE —
+    // the relay only arms this channel for event-stream responses.
+    if (!streamingContentType) return [sseLens]
+
+    return isSSEContentType(streamingContentType) ? [sseLens] : []
   }
 
   if (
@@ -95,10 +100,7 @@ export function getSuitableLenses(response: HoppRESTResponse): Lens[] {
       // (`text/plain` etc.) — sniff the body for SSE fields and offer
       // the events timeline as an extra option when it looks like a
       // server-sent stream
-      if (
-        !matchingLenses.includes(sseLens) &&
-        looksLikeSSE(response.body)
-      ) {
+      if (!matchingLenses.includes(sseLens) && looksLikeSSE(response.body)) {
         matchingLenses.push(sseLens)
       }
 

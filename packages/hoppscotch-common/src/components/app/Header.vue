@@ -141,7 +141,7 @@
           <HoppButtonSecondary
             :label="mdAndLarger ? workspaceName : ``"
             :icon="IconUser"
-            class="rounded border border-divider bg-primaryLight !text-secondaryDark hover:bg-primaryDark focus-visible:bg-primaryDark"
+            class="rounded-xl bg-accent !text-accentContrast hover:bg-accentDark focus-visible:bg-accentDark"
           />
         </div>
       </div>

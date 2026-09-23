@@ -42,6 +42,7 @@ import {
 import { stripRefIdReplacer } from "~/helpers/import-export/export"
 import { hoppCollectionToOpenAPI } from "~/helpers/import-export/export/openapi"
 import { HoppTabDocument } from "~/helpers/tab/document"
+import type { Picked } from "~/helpers/types/HoppPicked"
 import {
   addRESTCollection,
   addRESTFolder,
@@ -87,6 +88,126 @@ export type ResponseConfigPayload = {
   responseName: string
   responseID: string
 }
+
+/**
+ * Single command channel out of the collection tree (`MyCollections`).
+ * Parent (`collections/index.vue`) dispatches these to the actions composable
+ * or its own modal UI state — no more 20+ named emits.
+ */
+export type CollectionCommand =
+  | { type: "display-modal-add" }
+  | { type: "display-modal-import-export" }
+  | {
+      type: "add-request"
+      payload: { path: string; folder: HoppCollection }
+    }
+  | {
+      type: "add-gql-request"
+      payload: { path: string; folder: HoppCollection }
+    }
+  | {
+      type: "add-folder"
+      payload: { path: string; folder: HoppCollection }
+    }
+  | {
+      type: "run-collection"
+      payload: { collectionIndex: string; collection: HoppCollection }
+    }
+  | {
+      type: "edit-collection"
+      payload: { collectionIndex: string; collection: HoppCollection }
+    }
+  | {
+      type: "edit-folder"
+      payload: { folderPath: string; folder: HoppCollection }
+    }
+  | {
+      type: "duplicate-collection"
+      payload: { pathOrID: string; collectionSyncID?: string }
+    }
+  | {
+      type: "edit-request"
+      payload: {
+        folderPath: string
+        requestIndex: string
+        request: HoppRESTRequest | HoppGQLRequest
+      }
+    }
+  | { type: "edit-response"; payload: ResponseConfigPayload }
+  | {
+      type: "duplicate-request"
+      payload: { folderPath: string; request: HoppRESTRequest | HoppGQLRequest }
+    }
+  | { type: "duplicate-response"; payload: ResponseConfigPayload }
+  | { type: "export-data"; payload: HoppCollection }
+  | { type: "remove-collection"; payload: string }
+  | { type: "remove-folder"; payload: string }
+  | {
+      type: "remove-request"
+      payload: { folderPath: string | null; requestIndex: string }
+    }
+  | { type: "remove-response"; payload: ResponseConfigPayload }
+  | {
+      type: "select-request"
+      payload: {
+        request: HoppRESTRequest | HoppGQLRequest
+        folderPath: string
+        requestIndex: string
+        isActive: boolean
+      }
+    }
+  | { type: "select-response"; payload: ResponseConfigPayload }
+  | {
+      type: "sort-collections"
+      payload: {
+        collectionID: string | null
+        sortOrder: "asc" | "desc"
+        collectionRefID: string
+      }
+    }
+  | {
+      type: "add-example"
+      payload: {
+        folderPath: string
+        request: HoppRESTRequest | HoppGQLRequest
+        requestIndex: number
+      }
+    }
+  | {
+      type: "drop-request"
+      payload: {
+        folderPath: string
+        requestIndex: string
+        destinationCollectionIndex: string
+        requestRefID?: string
+      }
+    }
+  | {
+      type: "drop-collection"
+      payload: {
+        collectionIndexDragged: string
+        destinationCollectionIndex: string
+      }
+    }
+  | {
+      type: "update-request-order"
+      payload: {
+        dragedRequestIndex: string
+        destinationRequestIndex: string | null
+        destinationCollectionIndex: string
+      }
+    }
+  | {
+      type: "update-collection-order"
+      payload: {
+        dragedCollectionIndex: string
+        destinationCollection: {
+          destinationCollectionIndex: string | null
+          destinationCollectionParentIndex: string | null
+        }
+      }
+    }
+  | { type: "select"; payload: Picked | null }
 
 /**
  * Side effects / store commands for the REST collections panel.

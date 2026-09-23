@@ -92,7 +92,7 @@
             <IconLucideLock
               v-else-if="instance.kind === 'vendored'"
               v-tippy="{
-                content: 'Built-in instance cannot be removed',
+                content: t('instances.built_in_not_removable'),
                 theme: 'tooltip',
               }"
               class="!p-0 ml-4 opacity-50 text-secondaryLight"
@@ -229,9 +229,9 @@
 
   <!-- Fallback when instance switching is disabled -->
   <div v-else class="flex items-center justify-center px-4 py-3">
-    <span class="text-secondaryLight text-sm"
-      >Instance switching not available</span
-    >
+    <span class="text-secondaryLight text-sm">{{
+      t("instances.not_available")
+    }}</span>
   </div>
 </template>
 
@@ -389,7 +389,7 @@ const closeRemoveModal = () => {
 
 const validateConnectionSupport = (): boolean => {
   if (!platform.instance?.connectToInstance) {
-    toast.error("Instance connection not supported")
+    toast.error(t("instances.connection_not_supported"))
     return false
   }
   return true
@@ -419,7 +419,9 @@ const executeBeforeConnectHook = async (
     return result
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Pre-connect validation failed"
+      error instanceof Error
+        ? error.message
+        : t("instances.pre_connect_validation_failed")
     toast.error(errorMessage)
     return false
   }
@@ -435,21 +437,23 @@ const executeAfterConnectHook = async (): Promise<void> => {
       )
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Post-connection setup failed"
+        error instanceof Error
+          ? error.message
+          : t("instances.post_connect_failed")
       toast.info(errorMessage)
     }
   }
 }
 
 const handleConnectionSuccess = async (message: string): Promise<void> => {
-  toast.success(message || "Connected successfully")
+  toast.success(message || t("instances.connected_success"))
   emit("close-dropdown")
   await executeAfterConnectHook()
 }
 
 const handleConnectionError = (message: string, serverUrl: string): void => {
-  connectionError.value = message || "Connection failed"
-  toast.error(message || "Connection failed")
+  connectionError.value = message || t("instances.connection_failed")
+  toast.error(message || t("instances.connection_failed"))
 
   if (platform.instance?.onConnectionError) {
     platform.instance.onConnectionError(message, serverUrl)
@@ -501,7 +505,7 @@ const handleConnectToInstance = async (
     await performConnection(serverUrl, instanceKind, displayName)
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error occurred"
+      error instanceof Error ? error.message : t("instances.unknown_error")
     handleConnectionError(errorMessage, serverUrl)
   } finally {
     isConnecting.value = false
@@ -535,7 +539,7 @@ const confirmRemove = (instance: Instance) => {
 
 const validateRemovalSupport = (): boolean => {
   if (!platform.instance?.removeInstance) {
-    toast.error("Instance removal not supported")
+    toast.error(t("instances.removal_not_supported"))
     return false
   }
   return true
@@ -559,7 +563,9 @@ const executeBeforeRemoveHook = async (
     return result
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Pre-removal validation failed"
+      error instanceof Error
+        ? error.message
+        : t("instances.pre_removal_validation_failed")
     toast.error(errorMessage)
     return false
   }
@@ -574,7 +580,9 @@ const executeAfterRemoveHook = async (instance: Instance): Promise<void> => {
       )
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Post-removal cleanup failed"
+        error instanceof Error
+          ? error.message
+          : t("instances.post_removal_cleanup_failed")
       toast.info(errorMessage)
     }
   }
@@ -584,12 +592,12 @@ const handleRemovalSuccess = async (
   message: string,
   instance: Instance
 ): Promise<void> => {
-  toast.success(message || "Instance removed successfully")
+  toast.success(message || t("instances.instance_removed"))
   await executeAfterRemoveHook(instance)
 }
 
 const handleRemovalError = (message: string, instance: Instance): void => {
-  toast.error(message || "Failed to remove instance")
+  toast.error(message || t("instances.remove_failed"))
 
   if (platform.instance?.onRemoveError) {
     platform.instance.onRemoveError(message, instance)
@@ -625,7 +633,7 @@ const handleRemoveInstance = async () => {
     await performRemoval(instance)
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error occurred"
+      error instanceof Error ? error.message : t("instances.unknown_error")
     handleRemovalError(errorMessage, instance)
   } finally {
     closeRemoveModal()
@@ -634,7 +642,7 @@ const handleRemoveInstance = async () => {
 
 const validateCacheClearSupport = (): boolean => {
   if (!platform.instance?.clearCache) {
-    toast.error("Cache clearing not supported")
+    toast.error(t("instances.cache_clear_not_supported"))
     return false
   }
   return true
@@ -643,14 +651,14 @@ const validateCacheClearSupport = (): boolean => {
 const performCacheClear = async (): Promise<void> => {
   if (!platform.instance?.clearCache) return
 
-  toast.info(t("instances.clearing_cache") || "Clearing cache...")
+  toast.info(t("instances.clearing_cache"))
 
   const result = await platform.instance.clearCache()
 
   if (result.success) {
-    toast.success(result.message || "Cache cleared successfully")
+    toast.success(result.message || t("instances.cache_cleared"))
   } else {
-    toast.error(result.message || "Failed to clear cache")
+    toast.error(result.message || t("instances.clear_cache_failed"))
   }
 }
 
@@ -663,7 +671,7 @@ const handleClearCache = async () => {
     await performCacheClear()
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error occurred"
+      error instanceof Error ? error.message : t("instances.unknown_error")
     toast.error(errorMessage)
   } finally {
     isClearingCache.value = false
@@ -696,7 +704,7 @@ const handleConnectionStateChange = (state: ConnectionState): void => {
   if (isErrorState(state)) {
     connectionError.value = state.message
     if (previousState !== "error") {
-      toast.error(state.message || "Connection error occurred")
+      toast.error(state.message || t("instances.connection_error"))
     }
   } else if (state.status === "connecting") {
     connectionError.value = ""

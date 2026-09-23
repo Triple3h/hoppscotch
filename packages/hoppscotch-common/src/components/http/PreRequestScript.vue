@@ -123,7 +123,6 @@ import { useCodemirror } from "@composables/codemirror"
 import { useI18n } from "@composables/i18n"
 import snippets from "@helpers/preRequestScriptSnippets"
 import { useVModel } from "@vueuse/core"
-import { useService } from "dioc/vue"
 import { computed, reactive, ref } from "vue"
 
 import { useAIExperiments } from "~/composables/ai-experiments"
@@ -136,7 +135,7 @@ import {
 } from "@hoppscotch/js-sandbox/scripting"
 import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
 import { toggleNestedSetting } from "~/newstore/settings"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import IconHelpCircle from "~icons/lucide/help-circle"
 import IconSparkles from "~icons/lucide/sparkles"
 import IconTrash2 from "~icons/lucide/trash-2"
@@ -229,11 +228,11 @@ const useSnippet = (script: string) => {
 const clearContent = () => {
   preRequestScript.value = ""
 }
-const tabService = useService(WorkspaceTabsService)
+const { document: activeDocument } = useRequestTab()
 
 const currentRequest = computed(() =>
-  tabService.currentActiveTab.value?.document.type === "request"
-    ? tabService.currentActiveTab.value?.document.request
+  activeDocument.value?.type === "request"
+    ? activeDocument.value.request
     : null
 )
 

@@ -249,7 +249,7 @@ import {
   getSelectedEnvironmentType,
 } from "~/newstore/environments"
 import { HoppTab } from "~/services/tab"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import {
   TestRunnerRequest,
   TestRunnerService,
@@ -274,7 +274,7 @@ const emit = defineEmits<{
   (e: "update:modelValue", val: HoppTab<HoppTestRunnerDocument>): void
 }>()
 
-const tabs = useService(WorkspaceTabsService)
+const { close } = useRequestTab()
 const tab = useVModel(props, "modelValue", emit)
 
 // The sticky run header spans two rows of variable-height content (long
@@ -441,7 +441,7 @@ const runAgain = async () => {
 
   if (updatedCollection) {
     if (checkIfCollectionIsEmpty(updatedCollection)) {
-      tabs.closeTab(tab.value.id)
+      close(tab.value.id)
       toast.error(t("collection_runner.empty_collection"))
       return
     }
@@ -451,7 +451,7 @@ const runAgain = async () => {
     await nextTick()
     runTests()
   } else {
-    tabs.closeTab(tab.value.id)
+    close(tab.value.id)
     toast.error(t("collection_runner.collection_not_found"))
   }
 }

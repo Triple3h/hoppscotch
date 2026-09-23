@@ -17,7 +17,7 @@
     <input
       v-model="auth.password"
       name="password"
-      placeholder="Enter password"
+      :placeholder="t('authorization.enter_password')"
       class="flex flex-1 bg-transparent px-4 py-2"
       type="password"
     />

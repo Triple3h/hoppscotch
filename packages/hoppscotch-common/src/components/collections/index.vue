@@ -26,50 +26,13 @@
         :placeholder="t('action.search')"
       />
     </div>
-    <!-- ponytail: MyCollections' 20+ emits are intentionally NOT narrowed yet —
-         side effects already live in useCollectionActions; command-event merge
-         is the next cut. -->
     <CollectionsMyCollections
       :collections-type="collectionsType"
       :filtered-collections="filteredCollections"
       :filter-text="filterTexts"
       :save-request="saveRequest"
       :picked="picked"
-      @run-collection="
-        runCollectionHandler({
-          type: 'my-collections',
-          collectionID: $event.collection._ref_id,
-          collectionIndex: $event.collectionIndex,
-        })
-      "
-      @add-folder="addFolder"
-      @add-request="addRequest"
-      @add-gql-request="addGqlRequest"
-      @edit-request="editRequest"
-      @edit-collection="editCollection"
-      @edit-folder="editFolder"
-      @edit-response="editResponse"
-      @drop-request="dropRequest"
-      @drop-collection="dropCollection"
-      @display-modal-add="displayModalAdd(true)"
-      @display-modal-import-export="
-        displayModalImportExport(true, 'my-collections')
-      "
-      @duplicate-collection="duplicateCollection"
-      @duplicate-request="duplicateRequest"
-      @duplicate-response="duplicateResponse"
-      @export-data="exportData"
-      @remove-collection="removeCollection"
-      @remove-folder="removeFolder"
-      @remove-request="removeRequest"
-      @remove-response="removeResponse"
-      @add-example="addExample"
-      @select="selectPicked"
-      @select-response="selectResponse"
-      @select-request="selectRequest"
-      @sort-collections="sortCollections"
-      @update-request-order="updateRequestOrder"
-      @update-collection-order="updateCollectionOrder"
+      @command="handleCollectionCommand"
     />
     <div
       class="py-15 hidden flex-1 flex-col items-center justify-center bg-primaryDark px-4 text-secondaryLight"
@@ -200,6 +163,7 @@ import {
 import { computed, onMounted, ref, type PropType } from "vue"
 import { useReadonlyStream } from "~/composables/stream"
 import { useCollectionActions } from "~/composables/useCollectionActions"
+import type { CollectionCommand } from "~/composables/useCollectionActions"
 import { defineActionHandler } from "~/helpers/actions"
 import { handleTokenValidation } from "~/helpers/handleTokenValidation"
 import { currentReorderingStatus$ } from "~/newstore/reordering"
@@ -709,6 +673,98 @@ const resolveConfirmModal = async (title: string | null) => {
 // The request is picked in the save request as modal
 const selectPicked = (payload: Picked | null) => {
   emit("select", payload)
+}
+
+// ── Single command channel from MyCollections ──
+// Pure commands → actions composable; modal/confirm opens → local UI state.
+const handleCollectionCommand = (cmd: CollectionCommand) => {
+  switch (cmd.type) {
+    case "display-modal-add":
+      displayModalAdd(true)
+      break
+    case "display-modal-import-export":
+      displayModalImportExport(true, "my-collections")
+      break
+    case "add-request":
+      addRequest(cmd.payload)
+      break
+    case "add-gql-request":
+      addGqlRequest(cmd.payload)
+      break
+    case "add-folder":
+      addFolder(cmd.payload)
+      break
+    case "edit-request":
+      editRequest(cmd.payload)
+      break
+    case "edit-collection":
+      editCollection(cmd.payload)
+      break
+    case "edit-folder":
+      editFolder(cmd.payload)
+      break
+    case "edit-response":
+      editResponse(cmd.payload)
+      break
+    case "drop-request":
+      dropRequest(cmd.payload)
+      break
+    case "drop-collection":
+      dropCollection(cmd.payload)
+      break
+    case "duplicate-collection":
+      duplicateCollection(cmd.payload)
+      break
+    case "duplicate-request":
+      duplicateRequest(cmd.payload)
+      break
+    case "duplicate-response":
+      duplicateResponse(cmd.payload)
+      break
+    case "export-data":
+      exportData(cmd.payload)
+      break
+    case "remove-collection":
+      removeCollection(cmd.payload)
+      break
+    case "remove-folder":
+      removeFolder(cmd.payload)
+      break
+    case "remove-request":
+      removeRequest(cmd.payload)
+      break
+    case "remove-response":
+      removeResponse(cmd.payload)
+      break
+    case "add-example":
+      addExample(cmd.payload)
+      break
+    case "select":
+      selectPicked(cmd.payload)
+      break
+    case "select-response":
+      selectResponse(cmd.payload)
+      break
+    case "select-request":
+      selectRequest(cmd.payload)
+      break
+    case "sort-collections":
+      sortCollections(cmd.payload)
+      break
+    case "update-request-order":
+      updateRequestOrder(cmd.payload)
+      break
+    case "update-collection-order":
+      updateCollectionOrder(cmd.payload)
+      break
+    case "run-collection":
+      runCollectionHandler({
+        type: "my-collections",
+        collectionID: cmd.payload.collection._ref_id,
+        collectionIndex: cmd.payload.collectionIndex,
+      })
+      break
+  }
 }
 
 // ── Drag / reorder: wire draggingToRoot UI flag into actions ──

@@ -137,13 +137,12 @@ import {
   filterNonEmptyEnvironmentVariables,
 } from "~/helpers/utils/environments"
 
-import { useService } from "dioc/vue"
 import cloneDeep from "lodash-es/cloneDeep"
 import { onMounted } from "vue"
 import { useNestedSetting } from "~/composables/settings"
 import { toggleNestedSetting } from "~/newstore/settings"
 import { platform } from "~/platform"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import IconCheck from "~icons/lucide/check"
 import IconWrapText from "~icons/lucide/wrap-text"
 import { asyncComputed } from "@vueuse/core"
@@ -151,7 +150,7 @@ import { getDefaultRESTRequest } from "~/helpers/rest/default"
 
 const t = useI18n()
 
-const tabs = useService(WorkspaceTabsService)
+const { document: activeDocument } = useRequestTab()
 
 // Get the current active request if the current active tab is a request else get the original request from the response tab
 const currentActiveRequest = computed(() => {
@@ -173,7 +172,7 @@ const currentActiveRequest = computed(() => {
 
 // Retrieve the document
 const currentActiveTabDocument = computed(() =>
-  cloneDeep(tabs.currentActiveTab.value.document)
+  cloneDeep(activeDocument.value)
 )
 
 const codegenType = ref<CodegenName>("shell-curl")

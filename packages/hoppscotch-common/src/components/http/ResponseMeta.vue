@@ -176,12 +176,12 @@ import { useColorMode } from "@composables/theming"
 import { getStatusCodeReasonPhrase } from "~/helpers/utils/statusCodes"
 import { useService } from "dioc/vue"
 import { InspectionService } from "~/services/inspection"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import IconExternalLink from "~icons/lucide/external-link"
 
 const t = useI18n()
 const colorMode = useColorMode()
-const tabs = useService(WorkspaceTabsService)
+const { tabID } = useRequestTab()
 
 const props = withDefaults(
   defineProps<{
@@ -264,7 +264,7 @@ const streamingStatusClassName = computed(() => {
 const inspectionService = useService(InspectionService)
 
 const tabResults = inspectionService.getResultViewFor(
-  tabs.currentTabID.value,
+  tabID.value,
   (result) => result.locations.type === "response"
 )
 </script>

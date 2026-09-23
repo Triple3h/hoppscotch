@@ -84,18 +84,18 @@ import { useI18n } from "@composables/i18n"
 import { useService } from "dioc/vue"
 import { useGqlWorkspaceVisibility } from "~/composables/gqlWorkspaceVisibility"
 import { GQLTabConnectionService } from "~/services/gql-tab-connection.service"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 
 const t = useI18n()
 
-const tabs = useService(WorkspaceTabsService)
+const { document: activeDocument } = useRequestTab()
 const gqlTabConn = useService(GQLTabConnectionService)
 
 const activeGQLTabId = gqlTabConn.activeGQLTabId
 
 const { isGqlWorkspaceEnabled } = useGqlWorkspaceVisibility()
 
-const activeDocType = computed(() => tabs.currentActiveTab.value?.document.type)
+const activeDocType = computed(() => activeDocument.value?.type)
 
 const isGQLTab = computed(() => activeDocType.value === "gql-request")
 

@@ -40,10 +40,10 @@
       <div class="flex h-full w-2/3 flex-col border-r border-dividerLight">
         <div
           v-if="inheritedScripts.length > 0"
-          class="frosted-pane m-2 flex min-h-0 flex-1 flex-col"
+          class="frosted-pane m-2 flex min-h-0 flex-1 flex-col border-l-2 border-l-yellow-500"
         >
           <div
-            class="flex flex-shrink-0 items-center gap-2 overflow-hidden border-b border-dividerLight px-3 py-1.5"
+            class="flex flex-shrink-0 items-center gap-2 overflow-hidden border-b border-dividerDark px-3 py-1.5"
           >
             <icon-lucide-file-symlink
               class="svg-icons flex-shrink-0 !h-3.5 !w-3.5 text-yellow-500"

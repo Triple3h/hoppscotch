@@ -5,8 +5,8 @@ import {
   HoppRESTRequest,
   HoppRESTRequestResponse,
 } from "@hoppscotch/data"
-import { RESTOptionTabs } from "~/components/http/RequestOptions.vue"
-import { GQLOptionTabs } from "~/components/graphql/RequestOptions.vue"
+import { RESTOptionTabs } from "~/helpers/requestOptions"
+import { GQLOptionTabs } from "~/helpers/requestOptions"
 import { type GQLResponseEvent } from "~/services/gql-tab-connection.service"
 import { HoppInheritedProperty } from "../types/HoppInheritedProperties"
 import { HoppRESTResponse } from "../types/HoppRESTResponse"

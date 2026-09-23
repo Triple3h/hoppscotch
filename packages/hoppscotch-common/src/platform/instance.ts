@@ -18,7 +18,9 @@ export const VENDORED_INSTANCE_CONFIG: Instance = {
   kind: "vendored" as const,
   serverUrl: "app://hoppscotch",
   displayName: "Hoppscotch Desktop",
-  version: "26.8.0",
+  // Fallback only — desktop callers overwrite with `getVersion()` (the
+  // shell version set from the release tag, e.g. 1.1.6).
+  version: "1.1.6",
   lastUsed: new Date().toISOString(),
   bundleName: "Hoppscotch",
 }

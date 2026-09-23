@@ -426,12 +426,11 @@ import { computed, onMounted, ref } from "vue"
 import { useI18n } from "~/composables/i18n"
 
 import { HoppCollection } from "@hoppscotch/data"
-import { useService } from "dioc/vue"
 import { useToast } from "~/composables/toast"
 import { TestRunnerConfig } from "~/helpers/tab/document"
 import { parseDatasetFile } from "~/helpers/runner/dataset"
 import { collectRequestIDs } from "~/helpers/runner/selection"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import IconEye from "~icons/lucide/eye"
 import IconHelpCircle from "~icons/lucide/help-circle"
 import IconPlay from "~icons/lucide/play"
@@ -442,7 +441,7 @@ import { getRESTCollectionByRefId } from "~/newstore/collections"
 
 const t = useI18n()
 const toast = useToast()
-const tabs = useService(WorkspaceTabsService)
+const { tabID, create, close } = useRequestTab()
 
 const loadingCollection = ref(false)
 
@@ -719,8 +718,8 @@ const runTests = async () => {
       : orderedRequestIDs.value.filter((id) => selectedRequestIDs.value.has(id))
 
   let tabIdToClose = null
-  if (props.sameTab) tabIdToClose = cloneDeep(tabs.currentTabID.value)
-  tabs.createNewTab({
+  if (props.sameTab) tabIdToClose = cloneDeep(tabID.value)
+  create({
     type: "test-runner",
     collectionType: props.collectionRunnerData.type,
     collectionID: props.collectionRunnerData.collectionID,
@@ -744,7 +743,7 @@ const runTests = async () => {
     },
   })
 
-  if (tabIdToClose) tabs.closeTab(tabIdToClose)
+  if (tabIdToClose) close(tabIdToClose)
 
   emit("hide-modal")
 }

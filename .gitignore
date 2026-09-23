@@ -189,3 +189,6 @@ devenv.local.nix
 .aider*
 .windsurfrules
 .codebuddy/
+
+# Code graph index (local tooling)
+.codegraph/

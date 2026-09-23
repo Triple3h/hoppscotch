@@ -48,14 +48,14 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue"
+import { reactive, ref, computed } from "vue"
 import { refAutoReset } from "@vueuse/core"
+import { printSchema } from "graphql"
 import { useCodemirror } from "@composables/codemirror"
 import { useI18n } from "@composables/i18n"
 import { useColorMode } from "@composables/theming"
 import { useToast } from "@composables/toast"
 import { copyToClipboard } from "@helpers/utils/clipboard"
-import { useService } from "dioc/vue"
 import IconCheck from "~icons/lucide/check"
 import IconCopy from "~icons/lucide/copy"
 import IconDownload from "~icons/lucide/download"
@@ -64,15 +64,17 @@ import IconWrapText from "~icons/lucide/wrap-text"
 import { useNestedSetting } from "~/composables/settings"
 import { toggleNestedSetting } from "~/newstore/settings"
 import { platform } from "~/platform"
-import { GQLTabConnectionService } from "~/services/gql-tab-connection.service"
+import { useActiveSchema } from "./useActiveSchema"
 
 const t = useI18n()
 const toast = useToast()
 const colorMode = useColorMode()
 
-const gqlTabConn = useService(GQLTabConnectionService)
-
-const schemaString = gqlTabConn.activeTabSchemaString
+const { schema } = useActiveSchema()
+const schemaString = computed(() => {
+  const s = schema.value
+  return s ? printSchema(s) : ""
+})
 
 const downloadSchemaIcon = refAutoReset<typeof IconDownload | typeof IconCheck>(
   IconDownload,

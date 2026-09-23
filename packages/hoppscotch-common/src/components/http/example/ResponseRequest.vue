@@ -94,7 +94,7 @@ import { useService } from "dioc/vue"
 import { InspectionService } from "~/services/inspection"
 import { HoppTab } from "~/services/tab"
 import { HoppSavedExampleDocument } from "~/helpers/tab/document"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import { getMethodLabelColor } from "~/helpers/rest/labelColoring"
 import IconSave from "~icons/lucide/save"
 import { editRESTRequest, restCollections$ } from "~/newstore/collections"
@@ -125,7 +125,7 @@ const toast = useToast()
 const props = defineProps<{ modelValue: HoppTab<HoppSavedExampleDocument> }>()
 const emit = defineEmits(["update:modelValue"])
 
-const tabs = useService(WorkspaceTabsService)
+const { create, tabID } = useRequestTab()
 
 const tab = useVModel(props, "modelValue", emit)
 
@@ -145,7 +145,7 @@ const tryExampleResponse = () => {
     requestVariables,
   } = tab.value.document.response.originalRequest
 
-  tabs.createNewTab({
+  create({
     isDirty: false,
     type: "request",
     request: {
@@ -218,7 +218,7 @@ const isCustomMethod = computed(() => {
   )
 })
 
-const tabResults = inspectionService.getResultViewFor(tabs.currentTabID.value)
+const tabResults = inspectionService.getResultViewFor(tabID.value)
 
 defineActionHandler("request-response.save", saveExample)
 </script>

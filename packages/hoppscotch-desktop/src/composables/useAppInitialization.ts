@@ -96,9 +96,18 @@ export function useAppInitialization() {
     try {
       statusMessage.value = "Loading Hoppscotch Desktop..."
 
+      // Shell version from tauri.conf.json (set from the release tag),
+      // not the web package.json scheme.
+      let shellVersion = VENDORED_INSTANCE_CONFIG.version
+      try {
+        shellVersion = await getVersion()
+      } catch {
+        // keep fallback
+      }
+
       await saveConnectionState({
         status: "connected",
-        instance: VENDORED_INSTANCE_CONFIG,
+        instance: { ...VENDORED_INSTANCE_CONFIG, version: shellVersion },
       })
 
       mainDiag("loadVendoredInstance: calling load(bundleName=Hoppscotch)")

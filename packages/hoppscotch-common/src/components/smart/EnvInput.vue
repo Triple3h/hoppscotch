@@ -97,8 +97,7 @@ import { useI18n } from "~/composables/i18n"
 import IconEye from "~icons/lucide/eye"
 import IconEyeoff from "~icons/lucide/eye-off"
 import { CompletionContext, autocompletion } from "@codemirror/autocomplete"
-import { useService } from "dioc/vue"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import { syntaxTree } from "@codemirror/language"
 import { uniqueID } from "~/helpers/utils/uniqueID"
 import { getEffectiveVariablesForRequest } from "~/helpers/utils/environments"
@@ -390,7 +389,8 @@ const aggregateEnvs = useReadonlyStream(
   []
 ) as Ref<AggregateEnvironment[]>
 
-const tabs = useService(WorkspaceTabsService)
+// Aliased: top-level `document` would shadow the DOM global (`document.body` below).
+const { document: activeDocument } = useRequestTab()
 
 const envVars = computed(() => {
   // If envs are passed directly as props, mask secrets and return them.
@@ -418,8 +418,7 @@ const envVars = computed(() => {
     )
   }
 
-  const currentTab = tabs.currentActiveTab.value
-  const { document } = currentTab
+  const document = activeDocument.value
   const isRequest = document.type === "request"
   const isRESTExample = document.type === "example-response"
   const isGQLExample = document.type === "gql-example-response"

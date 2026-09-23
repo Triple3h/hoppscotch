@@ -1,5 +1,5 @@
+import { invoke } from "@tauri-apps/api/core"
 import { check, type DownloadEvent } from "@tauri-apps/plugin-updater"
-import { relaunch } from "@tauri-apps/plugin-process"
 import { type LazyStore } from "@tauri-apps/plugin-store"
 import { UpdateStatus, CheckResult, UpdateState } from "~/types"
 
@@ -147,7 +147,11 @@ export class UpdaterService {
 
   async restartApp(): Promise<void> {
     try {
-      await relaunch()
+      // The Rust command, not `relaunch()` from `plugin-process`: both end up
+      // in `tauri::process::restart`, but the command takes the LaunchServices
+      // path on macOS, which is the only relaunch that comes back with a
+      // working webview. See `restart_application` in `src-tauri/src/updater.rs`.
+      await invoke("restart_application")
     } catch (error) {
       console.error("Failed to restart app:", error)
       throw error

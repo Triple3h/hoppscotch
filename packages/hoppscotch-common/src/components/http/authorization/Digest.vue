@@ -16,7 +16,7 @@
     </label>
     <SmartEnvInput
       v-model="auth.password"
-      placeholder="Enter password"
+      :placeholder="t('authorization.enter_password')"
       :auto-complete-env="true"
       :envs="envs"
     />

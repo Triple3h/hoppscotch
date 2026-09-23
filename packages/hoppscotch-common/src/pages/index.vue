@@ -4,8 +4,14 @@
       <template #primary>
         <!-- Fixed left rail: always-visible entry to every open tab (request,
              folder, environment, test-runner, …). Geometry mirrors the right
-             env selector (h-12 rail, h-9 trigger) so popover spacing matches. -->
-        <div class="relative [&_.tabs>div:first-child]:pl-10">
+             env selector (h-12 rail, h-9 trigger) so popover spacing matches.
+             `flex-1 min-h-0` is load-bearing: without it this block sizes to
+             its content, so the tab body (and the request/response split
+             inside it) never fills the pane and the pane heights resolve
+             against a content-sized box. -->
+        <div
+          class="relative flex min-h-0 flex-1 flex-col [&_.tabs>div:first-child]:pl-10"
+        >
           <div
             class="absolute left-0 top-0 z-20 flex h-12 items-center border-r border-dividerLight bg-primaryLight px-1"
           >
@@ -13,7 +19,7 @@
               :entries="tabMenuEntries"
               :active-id="currentTabID"
               :removable="activeTabs.length > 1"
-              @select="tabs.setActiveTab"
+              @select="setActiveTab"
               @close="removeTab"
             />
           </div>
@@ -217,35 +223,27 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, onBeforeUnmount, computed, nextTick } from "vue"
-import { generateUniqueRefId, safelyExtractRESTRequest } from "@hoppscotch/data"
+import { ref, onMounted, onBeforeUnmount } from "vue"
+import { safelyExtractRESTRequest } from "@hoppscotch/data"
 import { translateExtURLParams } from "~/helpers/RESTExtURLParams"
 import { useRoute } from "vue-router"
 import { useI18n } from "@composables/i18n"
 import { getDefaultRESTRequest } from "~/helpers/rest/default"
-import { defineActionHandler, invokeAction } from "~/helpers/actions"
+import { defineActionHandler } from "~/helpers/actions"
 import { platform } from "~/platform"
 import { useService } from "dioc/vue"
-import { InspectionService } from "~/services/inspection"
 import { RequestInspectorService } from "~/services/inspection/inspectors/request.inspector"
 import { EnvironmentInspectorService } from "~/services/inspection/inspectors/environment.inspector"
 import { ResponseInspectorService } from "~/services/inspection/inspectors/response.inspector"
 import { ScriptingInterceptorInspectorService } from "~/services/inspection/inspectors/scripting-interceptor.inspector"
-import { cloneDeep } from "lodash-es"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
-import { HoppTab } from "~/services/tab"
-import { HoppTabDocument } from "~/helpers/tab/document"
-import { ScrollService } from "~/services/scroll.service"
 import { GQLTabConnectionService } from "~/services/gql-tab-connection.service"
+import { useTabBar } from "@composables/useTabBar"
 // Explicit import: unplugin-vue-components did not rewrite this tag to a
 // static import on a running dev server, so runtime _resolveComponent left
 // the environment tab body blank.
 import EnvironmentsEnvironmentTab from "~/components/environments/EnvironmentTab.vue"
-import WorkspaceAllTabsMenu, {
-  type WorkspaceTabMenuEntry,
-} from "~/components/workspace/AllTabsMenu.vue"
+import WorkspaceAllTabsMenu from "~/components/workspace/AllTabsMenu.vue"
 
-const scrollService = useService(ScrollService)
 const gqlTabConn = useService(GQLTabConnectionService)
 
 // Tear down every GQL tab's poll timer and subscription socket when the user
@@ -258,20 +256,44 @@ onBeforeUnmount(() => {
   gqlTabConn.disconnectAllTabs()
 })
 
-const savingRequest = ref(false)
-const confirmingCloseForTabID = ref<string | null>(null)
-const confirmingCloseAllTabs = ref(false)
-const showRenamingReqNameModal = ref(false)
-const reqName = ref<string>("")
-const unsavedTabsCount = ref(0)
-const exceptedTabID = ref<string | null>(null)
-const renameTabID = ref<string | null>(null)
-
 const t = useI18n()
 
-const tabs = useService(WorkspaceTabsService)
-
-const currentTabID = tabs.currentTabID
+const {
+  currentTabID,
+  activeTabs,
+  getTabName,
+  tabMenuEntries,
+  requestToRename,
+  reqName,
+  showRenamingReqNameModal,
+  openReqRenameModal,
+  renameReqName,
+  confirmingCloseForTabID,
+  confirmingCloseAllTabs,
+  unsavedTabsCount,
+  savingRequest,
+  saveRequestMode,
+  setActiveTab,
+  addNewTab,
+  sortTabs,
+  removeTab,
+  closeOtherTabsAction,
+  duplicateTab,
+  onTabUpdate,
+  onCloseConfirmSaveTab,
+  onResolveConfirmSaveTab,
+  onSaveModalClose,
+  onResolveConfirmCloseAllTabs,
+  openDocument,
+  patchActiveRestRequest,
+  goToNextTab,
+  goToPreviousTab,
+  goToFirstTab,
+  goToLastTab,
+  reopenClosedTab,
+  goToMRUTab,
+  goToPreviousMRUTab,
+} = useTabBar()
 
 type PopupDetails = {
   show: boolean
@@ -291,8 +313,6 @@ const contextMenu = ref<PopupDetails>({
   text: null,
 })
 
-const activeTabs = tabs.getActiveTabs()
-
 function bindRequestToURLParams() {
   const route = useRoute()
   // Get URL parameters and set that as the request
@@ -302,325 +322,13 @@ function bindRequestToURLParams() {
     // We skip URL params parsing
     if (Object.keys(query).length === 0 || query.code || query.error) return
 
-    if (tabs.currentActiveTab.value.document.type !== "request") return
-
-    const request = tabs.currentActiveTab.value.document.request
-
-    tabs.currentActiveTab.value.document.request = safelyExtractRESTRequest(
-      translateExtURLParams(query, request),
-      getDefaultRESTRequest()
+    patchActiveRestRequest((request) =>
+      safelyExtractRESTRequest(
+        translateExtURLParams(query, request),
+        getDefaultRESTRequest()
+      )
     )
   })
-}
-
-const onTabUpdate = (tab: HoppTab<HoppTabDocument>) => {
-  tabs.updateTab(tab)
-}
-
-// Always "workspace" — on the unified page every save goes through
-// WorkspaceTabsService, for both REST and GQL documents.
-const saveRequestMode = computed(() => "workspace" as const)
-
-const addNewTab = () => {
-  const tab = tabs.createNewTab({
-    type: "request",
-    request: getDefaultRESTRequest(),
-    isDirty: false,
-  })
-
-  tabs.setActiveTab(tab.id)
-}
-const sortTabs = (e: { oldIndex: number; newIndex: number }) => {
-  tabs.updateTabOrdering(e.oldIndex, e.newIndex)
-}
-
-const getTabName = (tab: HoppTab<HoppTabDocument>) => {
-  if (tab.document.type === "request") {
-    return tab.document.request?.name ?? "Untitled"
-  } else if (tab.document.type === "gql-request") {
-    return tab.document.request?.name ?? "Untitled"
-  } else if (tab.document.type === "test-runner") {
-    return tab.document.collection?.name ?? "Untitled"
-  } else if (tab.document.type === "example-response") {
-    return tab.document.response?.name ?? "Untitled"
-  } else if (tab.document.type === "gql-example-response") {
-    return tab.document.response?.name ?? "Untitled"
-  } else if (tab.document.type === "collection") {
-    return tab.document.collection?.name ?? "Untitled"
-  } else if (tab.document.type === "environment") {
-    return tab.document.name || "Untitled"
-  }
-
-  return "Unnamed tab"
-}
-
-/** Flatten every workspace tab (incl. folder/env/test-runner) for the left menu. */
-const tabMenuEntries = computed<WorkspaceTabMenuEntry[]>(() =>
-  activeTabs.value.map((tab) => {
-    const base = {
-      id: tab.id,
-      name: getTabName(tab),
-      isDirty: "isDirty" in tab.document ? tab.document.isDirty : false,
-    }
-
-    switch (tab.document.type) {
-      case "request":
-        return {
-          ...base,
-          kind: "request" as const,
-          method: tab.document.request.method,
-          detail: tab.document.request.endpoint,
-        }
-      case "example-response":
-        return {
-          ...base,
-          kind: "example" as const,
-          method: tab.document.response.originalRequest.method,
-          detail: tab.document.response.originalRequest.endpoint,
-        }
-      case "gql-request":
-        return {
-          ...base,
-          kind: "gql" as const,
-          detail: tab.document.request.url,
-        }
-      case "gql-example-response":
-        return {
-          ...base,
-          kind: "gql-example" as const,
-          detail: tab.document.response.originalRequest.url,
-        }
-      case "collection":
-        return { ...base, kind: "collection" as const }
-      case "environment":
-        return { ...base, kind: "environment" as const }
-      case "test-runner":
-        return {
-          ...base,
-          kind: "test-runner" as const,
-          detail: tab.document.collection.name,
-        }
-      default:
-        return { ...base, kind: "other" as const }
-    }
-  })
-)
-
-const inspectionService = useService(InspectionService)
-
-const removeTab = (tabID: string) => {
-  const tabState = tabs.getTabRef(tabID).value
-
-  if (tabState.document.isDirty) {
-    confirmingCloseForTabID.value = tabID
-  } else {
-    // closeTab refuses to close the last open tab — only tear down when it
-    // actually closed, or a live connection dies under a still-open tab
-    if (tabs.closeTab(tabState.id)) {
-      scrollService.cleanupScrollForTab(tabState.id)
-      if (tabState.document.type === "gql-request") {
-        gqlTabConn.cleanupTab(tabState.id)
-      }
-      inspectionService.deleteTabInspectorResult(tabState.id)
-    }
-  }
-}
-
-// Tear down GQL connections (the 7s schema-poll timer, any open subscription
-// socket, and the per-tab context maps) for every tab `closeOtherTabs` is
-// about to discard — it only removes them from the tab map, so without this
-// each dropped gql-request tab leaks its poll loop and socket. Mirrors the
-// single-tab cleanup in `removeTab`; `cleanupTab` is idempotent.
-const cleanupDiscardedTabs = (keepTabID: string) => {
-  for (const tab of tabs.getTabs()) {
-    if (tab.id === keepTabID) continue
-    if (tab.document.type === "gql-request") {
-      gqlTabConn.cleanupTab(tab.id)
-    }
-    inspectionService.deleteTabInspectorResult(tab.id)
-  }
-}
-
-const closeOtherTabsAction = (tabID: string) => {
-  const isTabDirty = tabs.getTabRef(tabID).value?.document.isDirty
-  const dirtyTabCount = tabs.getDirtyTabsCount()
-  // If current tab is dirty, so we need to subtract 1 from the dirty tab count
-  const balanceDirtyTabCount = isTabDirty ? dirtyTabCount - 1 : dirtyTabCount
-
-  // If there are dirty tabs, show the confirm modal
-  if (balanceDirtyTabCount > 0) {
-    confirmingCloseAllTabs.value = true
-    unsavedTabsCount.value = balanceDirtyTabCount
-    exceptedTabID.value = tabID
-  } else {
-    scrollService.cleanupAllScroll(tabID)
-    cleanupDiscardedTabs(tabID)
-    tabs.closeOtherTabs(tabID)
-  }
-}
-
-const duplicateTab = (tabID: string) => {
-  const tab = tabs.getTabRef(tabID)
-  if (tab.value && tab.value.document.type === "request") {
-    const newTab = tabs.createNewTab({
-      type: "request",
-      request: {
-        ...cloneDeep(tab.value.document.request),
-        _ref_id: generateUniqueRefId("req"),
-      },
-      isDirty: true,
-    })
-    tabs.setActiveTab(newTab.id)
-  } else if (tab.value && tab.value.document.type === "gql-request") {
-    const doc = tab.value.document
-    const newTab = tabs.createNewTab({
-      type: "gql-request",
-      request: {
-        ...cloneDeep(doc.request),
-        _ref_id: generateUniqueRefId("req"),
-      },
-      isDirty: true,
-      cursorPosition: doc.cursorPosition ?? 0,
-      // Like REST duplicates: no inheritedProperties (the copy is detached
-      // from the source collection, `inherit` resolves to none until saved)
-      // and no response/sub-tab preference
-    })
-    tabs.setActiveTab(newTab.id)
-  }
-}
-
-const onResolveConfirmCloseAllTabs = () => {
-  if (exceptedTabID.value) {
-    scrollService.cleanupAllScroll(exceptedTabID.value)
-    cleanupDiscardedTabs(exceptedTabID.value)
-    tabs.closeOtherTabs(exceptedTabID.value)
-  }
-  confirmingCloseAllTabs.value = false
-}
-
-const requestToRename = computed(() => {
-  if (!renameTabID.value) return null
-  const tab = tabs.getTabRef(renameTabID.value)
-
-  if (tab.value.document.type === "request") {
-    return tab.value.document.request
-  } else if (tab.value.document.type === "gql-request") {
-    return tab.value.document.request
-  }
-  return null
-})
-
-const openReqRenameModal = (tabID?: string) => {
-  if (tabID) {
-    const tab = tabs.getTabRef(tabID)
-    const docType = tab.value.document.type
-
-    if (docType !== "request" && docType !== "gql-request") return
-
-    reqName.value = tab.value.document.request.name
-    renameTabID.value = tabID
-  } else {
-    const { id, document } = tabs.currentActiveTab.value
-
-    if (document.type !== "request" && document.type !== "gql-request") return
-
-    reqName.value = document.request.name
-    renameTabID.value = id
-  }
-  showRenamingReqNameModal.value = true
-}
-
-const renameReqName = () => {
-  const tab = tabs.getTabRef(renameTabID.value ?? currentTabID.value)
-  if (
-    tab.value &&
-    (tab.value.document.type === "request" ||
-      tab.value.document.type === "gql-request")
-  ) {
-    tab.value.document.request.name = reqName.value
-    tabs.updateTab(tab.value)
-  }
-  showRenamingReqNameModal.value = false
-}
-
-/**
- * This function is closed when the confirm tab is closed by some means (even saving triggers close)
- */
-const onCloseConfirmSaveTab = () => {
-  if (!savingRequest.value && confirmingCloseForTabID.value) {
-    const tabState = tabs.getTabRef(confirmingCloseForTabID.value).value
-    // Only tear down when the tab actually closed (see removeTab)
-    if (tabs.closeTab(confirmingCloseForTabID.value)) {
-      scrollService.cleanupScrollForTab(confirmingCloseForTabID.value)
-      if (tabState?.document.type === "gql-request") {
-        gqlTabConn.cleanupTab(confirmingCloseForTabID.value)
-      }
-      inspectionService.deleteTabInspectorResult(confirmingCloseForTabID.value)
-    }
-    confirmingCloseForTabID.value = null
-  }
-}
-
-/**
- * Called when the user confirms they want to save the tab
- */
-const onResolveConfirmSaveTab = async () => {
-  const closingTabID = confirmingCloseForTabID.value
-  if (!closingTabID) return
-
-  const tabState = tabs.getTabRef(closingTabID).value
-
-  // Both save paths (the `request-response.save` handler and the Save As
-  // modal) act on the active tab, so the tab being closed has to be focused
-  // first — closing a dirty background tab would otherwise save the active
-  // one. `nextTick` lets the newly active tab mount and bind its handler.
-  if (currentTabID.value !== closingTabID) {
-    tabs.setActiveTab(closingTabID)
-    await nextTick()
-  }
-
-  // `HoppTabDocument` is a union — test-runner documents carry no
-  // `saveContext`, so probe for the key instead of assuming it exists.
-  const saveContext =
-    "saveContext" in tabState.document
-      ? tabState.document.saveContext
-      : undefined
-
-  if (!saveContext) {
-    savingRequest.value = true
-    return
-  }
-
-  invokeAction("request-response.save")
-
-  // Only tear down when the tab actually closed (see removeTab)
-  if (tabs.closeTab(closingTabID)) {
-    scrollService.cleanupScrollForTab(closingTabID)
-    if (tabState.document.type === "gql-request") {
-      gqlTabConn.cleanupTab(closingTabID)
-    }
-    inspectionService.deleteTabInspectorResult(closingTabID)
-  }
-  confirmingCloseForTabID.value = null
-}
-
-/**
- * Called when the Save Request modal is done and is closed
- */
-const onSaveModalClose = () => {
-  savingRequest.value = false
-  if (confirmingCloseForTabID.value) {
-    const tabState = tabs.getTabRef(confirmingCloseForTabID.value).value
-    // Only tear down when the tab actually closed (see removeTab)
-    if (tabs.closeTab(confirmingCloseForTabID.value)) {
-      scrollService.cleanupScrollForTab(confirmingCloseForTabID.value)
-      if (tabState?.document.type === "gql-request") {
-        gqlTabConn.cleanupTab(confirmingCloseForTabID.value)
-      }
-      inspectionService.deleteTabInspectorResult(confirmingCloseForTabID.value)
-    }
-    confirmingCloseForTabID.value = null
-  }
 }
 
 defineActionHandler("contextmenu.open", ({ position, text }) => {
@@ -642,17 +350,15 @@ defineActionHandler("contextmenu.open", ({ position, text }) => {
 bindRequestToURLParams()
 
 defineActionHandler("rest.request.open", ({ doc }) => {
-  tabs.createNewTab(doc)
+  openDocument(doc)
 })
 
 defineActionHandler("rest.gql-request.open", ({ doc }) => {
-  tabs.createNewTab(doc)
+  openDocument(doc)
 })
 
 defineActionHandler("request.rename", () => {
-  const docType = tabs.currentActiveTab.value.document.type
-  if (docType === "request" || docType === "gql-request")
-    openReqRenameModal(tabs.currentActiveTab.value.id)
+  openReqRenameModal()
 })
 
 defineActionHandler("tab.duplicate-tab", ({ tabID }) => {
@@ -672,33 +378,19 @@ defineActionHandler("tab.close-other", () => {
 
 defineActionHandler("tab.open-new", addNewTab)
 
-defineActionHandler("tab.next", () => {
-  tabs.goToNextTab()
-})
+defineActionHandler("tab.next", goToNextTab)
 
-defineActionHandler("tab.prev", () => {
-  tabs.goToPreviousTab()
-})
+defineActionHandler("tab.prev", goToPreviousTab)
 
-defineActionHandler("tab.switch-to-first", () => {
-  tabs.goToFirstTab()
-})
+defineActionHandler("tab.switch-to-first", goToFirstTab)
 
-defineActionHandler("tab.switch-to-last", () => {
-  tabs.goToLastTab()
-})
+defineActionHandler("tab.switch-to-last", goToLastTab)
 
-defineActionHandler("tab.reopen-closed", () => {
-  tabs.reopenClosedTab()
-})
+defineActionHandler("tab.reopen-closed", reopenClosedTab)
 
-defineActionHandler("tab.mru-switch", () => {
-  tabs.goToMRUTab()
-})
+defineActionHandler("tab.mru-switch", goToMRUTab)
 
-defineActionHandler("tab.mru-switch-reverse", () => {
-  tabs.goToPreviousMRUTab()
-})
+defineActionHandler("tab.mru-switch-reverse", goToPreviousMRUTab)
 
 useService(RequestInspectorService)
 useService(EnvironmentInspectorService)

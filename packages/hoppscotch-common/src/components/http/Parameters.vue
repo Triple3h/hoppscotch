@@ -134,7 +134,7 @@ import { objRemoveKey } from "@functional/object"
 import { useVModel } from "@vueuse/core"
 import { useService } from "dioc/vue"
 import { InspectionService, InspectorResult } from "~/services/inspection"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import { useNestedSetting } from "~/composables/settings"
 import { toggleNestedSetting } from "~/newstore/settings"
 import { AggregateEnvironment } from "~/newstore/environments"
@@ -143,7 +143,7 @@ const colorMode = useColorMode()
 
 const t = useI18n()
 const toast = useToast()
-const tabs = useService(WorkspaceTabsService)
+const { tabID } = useRequestTab()
 
 const idTicker = ref(0)
 
@@ -371,13 +371,13 @@ const clearContent = () => {
 const inspectionService = useService(InspectionService)
 
 const parameterKeyResults = inspectionService.getResultViewFor(
-  tabs.currentTabID.value,
+  tabID.value,
   (result) =>
     result.locations.type === "parameter" && result.locations.position === "key"
 )
 
 const parameterValueResults = inspectionService.getResultViewFor(
-  tabs.currentTabID.value,
+  tabID.value,
   (result) =>
     result.locations.type === "parameter" &&
     result.locations.position === "value"

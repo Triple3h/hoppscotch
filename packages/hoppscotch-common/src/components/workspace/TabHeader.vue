@@ -54,30 +54,33 @@
           @click="emit('save')"
         />
         <!-- Optional Save As menu (request tabs) -->
-        <tippy
-          v-if="showSaveMenu"
-          interactive
-          trigger="click"
-          theme="popover"
-          placement="bottom-end"
-        >
-          <HoppButtonSecondary
-            v-tippy="{ theme: 'tooltip' }"
-            :title="t('app.options')"
-            :icon="IconChevronDown"
-            filled
-            class="rounded rounded-l-none"
-          />
-          <template #content="{ hide }">
-            <div
-              class="flex flex-col focus:outline-none"
-              tabindex="0"
-              @keyup.escape="hide()"
-            >
-              <slot name="save-menu" :hide="hide" />
-            </div>
-          </template>
-        </tippy>
+        <!-- Wrapper keeps the tippy trigger (`[data-v-tippy]` is `flex-1`)
+             from stretching and leaving a gap before the right edge. -->
+        <span v-if="showSaveMenu" class="flex">
+          <tippy
+            interactive
+            trigger="click"
+            theme="popover"
+            placement="bottom-end"
+          >
+            <HoppButtonSecondary
+              v-tippy="{ theme: 'tooltip' }"
+              :title="t('app.options')"
+              :icon="IconChevronDown"
+              filled
+              class="rounded rounded-l-none"
+            />
+            <template #content="{ hide }">
+              <div
+                class="flex flex-col focus:outline-none"
+                tabindex="0"
+                @keyup.escape="hide()"
+              >
+                <slot name="save-menu" :hide="hide" />
+              </div>
+            </template>
+          </tippy>
+        </span>
       </span>
     </div>
   </div>

@@ -134,6 +134,7 @@ import { LazyStore } from "@tauri-apps/plugin-store"
 import { load, close } from "@hoppscotch/plugin-appload"
 import { getVersion } from "@tauri-apps/api/app"
 import { useDesktopSettings } from "@hoppscotch/common/composables/desktop-settings"
+import { VENDORED_INSTANCE_CONFIG } from "@hoppscotch/common/platform/instance"
 
 import { UpdateStatus, CheckResult, UpdateState } from "~/types"
 import { UpdaterService } from "~/utils/updater"
@@ -304,10 +305,11 @@ const loadVendored = async () => {
     // Standardized vendored instance data.
     // NOTE: This should be removed eventually,
     // right now this is part 1/5 of HFE-864
+    // Prefer the live shell version (tag → tauri.conf.json → getVersion).
     const vendoredInstance: VendoredInstance = {
       type: "vendored",
       displayName: "Hoppscotch",
-      version: "26.8.0",
+      version: appVersion.value || VENDORED_INSTANCE_CONFIG.version,
     }
 
     const connectionState: ConnectionState = {

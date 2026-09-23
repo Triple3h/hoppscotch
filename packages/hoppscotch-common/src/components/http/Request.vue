@@ -1,6 +1,6 @@
 <template>
   <div
-    class="workspace-request-bar sticky top-0 z-20 flex-none flex-shrink-0 bg-primary p-4 sm:flex sm:flex-shrink-0 sm:space-x-2"
+    class="workspace-request-bar sticky top-0 z-20 flex-none flex-shrink-0 bg-primary px-4 py-3.5 sm:flex sm:flex-shrink-0 sm:space-x-2"
   >
     <div
       class="min-w-[12rem] flex flex-1 whitespace-nowrap rounded border border-divider"
@@ -187,7 +187,7 @@ import { useService } from "dioc/vue"
 import { InspectionService } from "~/services/inspection"
 import { HoppTab } from "~/services/tab"
 import { HoppRequestDocument } from "~/helpers/tab/document"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import { getMethodLabelColor } from "~/helpers/rest/labelColoring"
 import { WorkspaceService } from "~/services/workspace.service"
 import { KernelInterceptorService } from "~/services/kernel-interceptor.service"
@@ -252,7 +252,7 @@ const userHistories = computed(() => {
 
 const inspectionService = useService(InspectionService)
 
-const tabs = useService(WorkspaceTabsService)
+const { tabID, activeTabs } = useRequestTab()
 
 const workspaceService = useService(WorkspaceService)
 
@@ -386,7 +386,7 @@ function isCURL(curl: string) {
   return curl.includes("curl ")
 }
 
-const currentTabID = tabs.currentTabID.value
+const currentTabID = tabID.value
 
 // Clear loading state when test results are set
 watch(
@@ -400,9 +400,9 @@ watch(
 
 onUnmounted(() => {
   //check if current tab id exist in the current tab id lists
-  const isCurrentTabRemoved = !tabs
-    .getActiveTabs()
-    .value.some((tab) => tab.id === currentTabID)
+  const isCurrentTabRemoved = !activeTabs.value.some(
+    (tab) => tab.id === currentTabID
+  )
 
   if (isCurrentTabRemoved) cancelRequest()
 })
@@ -553,5 +553,5 @@ const isCustomMethod = computed(() => {
   )
 })
 
-const tabResults = inspectionService.getResultViewFor(tabs.currentTabID.value)
+const tabResults = inspectionService.getResultViewFor(tabID.value)
 </script>

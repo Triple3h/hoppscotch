@@ -40,7 +40,7 @@
       <div class="flex h-full w-2/3 flex-col border-r border-dividerLight">
         <div
           v-if="inheritedScripts.length > 0"
-          class="frosted-pane m-2 flex min-h-0 flex-1 flex-col border-l-2 border-l-yellow-500"
+          class="frosted-pane m-2 flex max-h-[50%] flex-col border-l-2 border-l-yellow-500"
         >
           <div
             class="flex flex-shrink-0 items-center gap-2 overflow-hidden border-b border-dividerDark px-3 py-1.5"
@@ -65,7 +65,7 @@
               {{ t("script.read_only") }}
             </span>
           </div>
-          <div ref="inheritedEditor" class="min-h-0 flex-1 overflow-auto"></div>
+          <div ref="inheritedEditor" class="min-h-0 overflow-auto"></div>
         </div>
         <div class="relative min-h-0 flex-1">
           <MonacoScriptEditor
@@ -123,7 +123,6 @@ import { useCodemirror } from "@composables/codemirror"
 import { useI18n } from "@composables/i18n"
 import snippets from "@helpers/preRequestScriptSnippets"
 import { useVModel } from "@vueuse/core"
-import { useService } from "dioc/vue"
 import { computed, reactive, ref } from "vue"
 
 import { useAIExperiments } from "~/composables/ai-experiments"
@@ -136,7 +135,7 @@ import {
 } from "@hoppscotch/js-sandbox/scripting"
 import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
 import { toggleNestedSetting } from "~/newstore/settings"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import IconHelpCircle from "~icons/lucide/help-circle"
 import IconSparkles from "~icons/lucide/sparkles"
 import IconTrash2 from "~icons/lucide/trash-2"
@@ -229,11 +228,11 @@ const useSnippet = (script: string) => {
 const clearContent = () => {
   preRequestScript.value = ""
 }
-const tabService = useService(WorkspaceTabsService)
+const { document: activeDocument } = useRequestTab()
 
 const currentRequest = computed(() =>
-  tabService.currentActiveTab.value?.document.type === "request"
-    ? tabService.currentActiveTab.value?.document.request
+  activeDocument.value?.type === "request"
+    ? activeDocument.value.request
     : null
 )
 

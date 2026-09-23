@@ -57,7 +57,7 @@ input::placeholder,
 textarea::placeholder,
 .cm-placeholder {
   @apply text-secondary;
-  @apply opacity-50 #{!important};
+  @apply opacity-50;
 }
 
 input,
@@ -76,7 +76,7 @@ body {
   @apply font-medium;
   @apply select-none;
   @apply overflow-x-hidden;
-  @apply leading-body #{!important};
+  @apply leading-body;
   animation: fade 300ms forwards;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
@@ -155,6 +155,17 @@ body {
     background-color: transparent;
   }
 
+  /* size to line count, not the pane's leftover height (baseTheme uses 100%);
+     the .frosted-pane nesting outranks baseTheme's bare .cm-editor / .cm-content */
+  .cm-editor {
+    height: auto;
+    flex: none;
+  }
+
+  .cm-content {
+    height: auto;
+  }
+
   /* glare */
   &::after {
     content: "";
@@ -192,7 +203,7 @@ a {
 
 hr {
   @apply border-b border-dividerLight;
-  @apply my-2 #{!important};
+  @apply my-2;
 }
 
 .heading {
@@ -445,6 +456,8 @@ pre.ace_editor {
 
 .cm-focused {
   @apply select-auto;
+  /* CM baseTheme's focus ring is injected at runtime (after this file) at
+     equal-or-higher specificity (.cm-editor.cm-focused) — !important required */
   @apply outline-none #{!important};
 
   .cm-activeLine {
@@ -462,13 +475,13 @@ pre.ace_editor {
 
 .cm-editor {
   .cm-line::selection {
-    @apply bg-accentDark #{!important};
-    @apply text-accentContrast #{!important};
+    @apply bg-accentDark;
+    @apply text-accentContrast;
   }
 
   .cm-line ::selection {
-    @apply bg-accentDark #{!important};
-    @apply text-accentContrast #{!important};
+    @apply bg-accentDark;
+    @apply text-accentContrast;
   }
 }
 
@@ -520,6 +533,7 @@ details[open] summary .indicator {
 .env-highlight,
 .predefined-variable-highlight {
   // forcing the text colour to be white inside a highlighted environment variable and predefined variable
+  // (kept !important: overrides CodeMirror token/theme colours that are injected at runtime)
   @apply text-accentContrast #{!important};
   span {
     @apply text-accentContrast #{!important};
@@ -573,8 +587,9 @@ details[open] summary .indicator {
   }
 }
 
+/* styles.scss is imported after nprogress.css — no !important needed */
 #nprogress .bar {
-  @apply bg-accent #{!important};
+  @apply bg-accent;
 }
 
 .color-picker[type="color"] {
@@ -634,6 +649,12 @@ details[open] summary .indicator {
 
   .workspace-request-bar {
     @apply border-b border-dividerLight;
+
+    // Slightly larger text than the app default (12px). Only the size variable
+    // is overridden: the method/URL fields and the send button all read it
+    // (element styles + the CodeMirror theme), while `--line-height-body`
+    // stays untouched so the row keeps its height.
+    --font-size-body: 0.875rem;
   }
 
   .tabs.group-tabs {

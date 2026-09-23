@@ -114,18 +114,9 @@ import { defineActionHandler } from "~/helpers/actions"
 import { hasActualScript } from "@hoppscotch/js-sandbox/scripting"
 import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
 import { AggregateEnvironment } from "~/newstore/environments"
+import type { RESTOptionTabs } from "~/helpers/requestOptions"
 
-const _VALID_OPTION_TABS = [
-  "params",
-  "bodyParams",
-  "headers",
-  "authorization",
-  "preRequestScript",
-  "tests",
-  "requestVariables",
-] as const
-
-export type RESTOptionTabs = (typeof _VALID_OPTION_TABS)[number]
+export type { RESTOptionTabs } from "~/helpers/requestOptions"
 
 const t = useI18n()
 

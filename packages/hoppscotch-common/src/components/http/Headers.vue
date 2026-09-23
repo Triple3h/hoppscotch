@@ -248,30 +248,12 @@ import { useCodemirror } from "@composables/codemirror"
 import { useI18n } from "@composables/i18n"
 import { useReadonlyStream } from "@composables/stream"
 import { useColorMode } from "@composables/theming"
-import { useToast } from "@composables/toast"
-import {
-  HoppRESTAuth,
-  HoppRESTHeader,
-  HoppRESTRequest,
-  parseRawKeyValueEntriesE,
-  rawKeyValueEntriesToString,
-  RawKeyValueEntry,
-} from "@hoppscotch/data"
-import * as A from "fp-ts/Array"
-import * as E from "fp-ts/Either"
-import { flow, pipe } from "fp-ts/function"
-import * as O from "fp-ts/Option"
-import * as RA from "fp-ts/ReadonlyArray"
-import { cloneDeep, isEqual } from "lodash-es"
-import { computed, reactive, Ref, ref, toRef, watch } from "vue"
+import { HoppRESTAuth, HoppRESTHeader, HoppRESTRequest } from "@hoppscotch/data"
+import { computed, reactive, Ref, ref, watch } from "vue"
 import draggable from "vuedraggable-es"
 
 import { useVModel } from "@vueuse/core"
-import { useService } from "dioc/vue"
-import { useNestedSetting } from "~/composables/settings"
 import linter from "~/helpers/editor/linting/rawKeyValue"
-import { throwError } from "~/helpers/functional/error"
-import { objRemoveKey } from "~/helpers/functional/object"
 import { commonHeaders } from "~/helpers/headers"
 import {
   ComputedHeader,
@@ -290,8 +272,6 @@ import {
   getCurrentEnvironment,
 } from "~/newstore/environments"
 import { toggleNestedSetting } from "~/newstore/settings"
-import { InspectionService, InspectorResult } from "~/services/inspection"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
 import IconArrowUpRight from "~icons/lucide/arrow-up-right"
 import IconEdit from "~icons/lucide/edit"
 import IconEye from "~icons/lucide/eye"
@@ -305,22 +285,12 @@ import IconWrapText from "~icons/lucide/wrap-text"
 import { RESTOptionTabs } from "./RequestOptions.vue"
 import { CurrentValueService } from "~/services/current-environment-value.service"
 import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
+import { useService } from "dioc/vue"
+import { useKeyValueTable, KeyValueRow } from "~/composables/useKeyValueTable"
 
 const t = useI18n()
-const toast = useToast()
-
-const tabs = useService(WorkspaceTabsService)
 
 const colorMode = useColorMode()
-
-const idTicker = ref(0)
-
-const bulkMode = ref(false)
-const bulkHeaders = ref("")
-const bulkEditor = ref<any | null>(null)
-const WRAP_LINES = useNestedSetting("WRAP_LINES", "httpHeaders")
-
-const deletionToast = ref<{ goAway: (delay: number) => void } | null>(null)
 
 const currentEnvironmentValueService = useService(CurrentValueService)
 
@@ -346,6 +316,29 @@ const emit = defineEmits<{
 
 const request = useVModel(props, "modelValue", emit)
 
+const {
+  bulkMode,
+  bulkHeaders,
+  bulkEditor,
+  WRAP_LINES,
+  workingHeaders,
+  addHeader,
+  updateHeader,
+  deleteHeader,
+  clearContent,
+  headerKeyResults,
+  headerValueResults,
+  getInspectorResult,
+  masking,
+  toggleMask,
+  mask,
+} = useKeyValueTable(
+  request as Ref<{ headers: (HoppRESTHeader & KeyValueRow)[] }>,
+  { wrapSetting: "httpHeaders" }
+)
+
+type WorkingHeader = HoppRESTHeader & { id: number }
+
 useCodemirror(
   bulkEditor,
   bulkHeaders,
@@ -362,201 +355,6 @@ useCodemirror(
     predefinedVariablesHighlights: true,
   })
 )
-
-type WorkingHeader = HoppRESTHeader & { id: number }
-
-// The UI representation of the headers list (has the empty end headers)
-const workingHeaders = ref<Array<WorkingHeader>>([
-  {
-    id: idTicker.value++,
-    key: "",
-    value: "",
-    active: true,
-    description: "",
-  },
-])
-
-// Rule: Working Headers always have last element is always an empty header
-watch(workingHeaders, (headersList) => {
-  if (
-    headersList.length > 0 &&
-    headersList[headersList.length - 1].key !== ""
-  ) {
-    workingHeaders.value.push({
-      id: idTicker.value++,
-      key: "",
-      value: "",
-      active: true,
-      description: "",
-    })
-  }
-})
-
-// Sync logic between headers and working/bulk headers
-watch(
-  () => request.value.headers,
-  (newHeadersList) => {
-    // Sync should overwrite working headers
-    const filteredWorkingHeaders = pipe(
-      workingHeaders.value,
-      A.filterMap(
-        flow(
-          O.fromPredicate((e) => e.key !== ""),
-          O.map(objRemoveKey("id"))
-        )
-      )
-    )
-
-    const filteredBulkHeaders = pipe(
-      parseRawKeyValueEntriesE(bulkHeaders.value),
-      E.map(
-        flow(
-          RA.filter((e) => e.key !== ""),
-          RA.toArray
-        )
-      ),
-      E.getOrElse(() => [] as RawKeyValueEntry[])
-    )
-
-    if (!isEqual(newHeadersList, filteredWorkingHeaders)) {
-      workingHeaders.value = pipe(
-        newHeadersList,
-        A.map((x) => ({ id: idTicker.value++, ...x }))
-      )
-    }
-
-    const newHeadersListKeyValuePairs = newHeadersList.map(
-      ({ key, value, active }) => ({
-        key,
-        value,
-        active,
-      })
-    )
-
-    if (!isEqual(newHeadersListKeyValuePairs, filteredBulkHeaders)) {
-      bulkHeaders.value = rawKeyValueEntriesToString(
-        newHeadersListKeyValuePairs
-      )
-    }
-  },
-  { immediate: true }
-)
-
-watch(workingHeaders, (newWorkingHeaders) => {
-  const fixedHeaders = pipe(
-    newWorkingHeaders,
-    A.filterMap(
-      flow(
-        O.fromPredicate((e) => e.key !== ""),
-        O.map(objRemoveKey("id"))
-      )
-    )
-  )
-
-  if (!isEqual(request.value.headers, fixedHeaders)) {
-    request.value.headers = cloneDeep(fixedHeaders)
-  }
-})
-
-watch(bulkHeaders, (newBulkHeaders) => {
-  const filteredBulkHeaders = pipe(
-    parseRawKeyValueEntriesE(newBulkHeaders),
-    E.map(
-      flow(
-        RA.filter((e) => e.key !== ""),
-        RA.toArray
-      )
-    ),
-    E.getOrElse(() => [] as RawKeyValueEntry[])
-  )
-
-  const headers = toRef(request.value, "headers")
-
-  const paramKeyValuePairs = headers.value.map(({ key, value, active }) => ({
-    key,
-    value,
-    active,
-  }))
-
-  if (!isEqual(paramKeyValuePairs, filteredBulkHeaders)) {
-    headers.value = filteredBulkHeaders.map((param, idx) => ({
-      ...param,
-      // Adding a new key-value pair in the bulk edit context won't have a corresponding entry under `headers.value`, hence the fallback
-      description: headers.value[idx]?.description ?? "",
-    }))
-  }
-})
-
-const addHeader = () => {
-  workingHeaders.value.push({
-    id: idTicker.value++,
-    key: "",
-    value: "",
-    active: true,
-    description: "",
-  })
-}
-
-const updateHeader = (
-  index: number,
-  header: HoppRESTHeader & { id: number }
-) => {
-  workingHeaders.value = workingHeaders.value.map((h, i) =>
-    i === index ? header : h
-  )
-}
-
-const deleteHeader = (index: number) => {
-  const headersBeforeDeletion = cloneDeep(workingHeaders.value)
-
-  if (!(
-    headersBeforeDeletion.length > 0 &&
-    index === headersBeforeDeletion.length - 1
-  )) {
-    if (deletionToast.value) {
-      deletionToast.value.goAway(0)
-      deletionToast.value = null
-    }
-
-    deletionToast.value = toast.success(`${t("state.deleted")}`, {
-      action: [
-        {
-          text: `${t("action.undo")}`,
-          onClick: (_, toastObject) => {
-            workingHeaders.value = headersBeforeDeletion
-            toastObject.goAway(0)
-            deletionToast.value = null
-          },
-        },
-      ],
-
-      onComplete: () => {
-        deletionToast.value = null
-      },
-    })
-  }
-
-  workingHeaders.value = pipe(
-    workingHeaders.value,
-    A.deleteAt(index),
-    O.getOrElseW(() => throwError("Working Headers Deletion Out of Bounds"))
-  )
-}
-
-const clearContent = () => {
-  // set params list to the initial state
-  workingHeaders.value = [
-    {
-      id: idTicker.value++,
-      key: "",
-      value: "",
-      active: true,
-      description: "",
-    },
-  ]
-
-  bulkHeaders.value = ""
-}
 
 const aggregateEnvs = useReadonlyStream(
   aggregateEnvsWithCurrentValue$,
@@ -685,18 +483,6 @@ watch(
   { immediate: true, deep: true }
 )
 
-const masking = ref(true)
-
-const toggleMask = () => {
-  masking.value = !masking.value
-}
-
-const mask = (header: ComputedHeader) => {
-  if (header.source === "auth" && masking.value)
-    return header.header.value.replace(/\S/gi, "*")
-  return header.header.value
-}
-
 const changeTabTooltip = (tab: ComputedHeader["source"]) => {
   switch (tab) {
     case "auth":
@@ -709,32 +495,6 @@ const changeTabTooltip = (tab: ComputedHeader["source"]) => {
 const changeTab = (tab: ComputedHeader["source"]) => {
   if (tab === "auth") emit("change-tab", "authorization")
   else emit("change-tab", "bodyParams")
-}
-
-const inspectionService = useService(InspectionService)
-
-const headerKeyResults = inspectionService.getResultViewFor(
-  tabs.currentTabID.value,
-  (result) =>
-    result.locations.type === "header" && result.locations.position === "key"
-)
-
-const headerValueResults = inspectionService.getResultViewFor(
-  tabs.currentTabID.value,
-  (result) =>
-    result.locations.type === "header" && result.locations.position === "value"
-)
-
-const getInspectorResult = (results: InspectorResult[], index: number) => {
-  return results.filter((result) => {
-    if (
-      result.locations.type === "url" ||
-      result.locations.type === "response" ||
-      result.locations.type === "body-content-type-header"
-    )
-      return
-    return result.locations.index === index
-  })
 }
 </script>
 

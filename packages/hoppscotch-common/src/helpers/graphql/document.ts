@@ -1,6 +1,6 @@
 import { HoppGQLRequest } from "@hoppscotch/data"
 import { GQLResponseEvent } from "./connection"
-import { GQLOptionTabs } from "~/components/graphql/RequestOptions.vue"
+import { GQLOptionTabs } from "~/helpers/requestOptions"
 import { HoppInheritedProperty } from "../types/HoppInheritedProperties"
 
 export type HoppGQLSaveContext = {

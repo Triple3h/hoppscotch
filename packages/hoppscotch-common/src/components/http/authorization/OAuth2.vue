@@ -563,7 +563,7 @@ import {
 import * as E from "fp-ts/Either"
 import { PersistenceService } from "~/services/persistence"
 import { GQLTabService } from "~/services/tab/graphql"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import IconChevronDown from "~icons/lucide/chevron-down"
 import IconChevronUp from "~icons/lucide/chevron-up"
 import IconCircle from "~icons/lucide/circle"
@@ -670,7 +670,7 @@ const passBy = computed(() => {
 })
 
 const gqlTabsService = useService(GQLTabService)
-const workspaceTabsService = useService(WorkspaceTabsService)
+const { document: activeDocument } = useRequestTab()
 const persistenceService = useService(PersistenceService)
 
 const setAccessTokenInActiveContext = (
@@ -699,24 +699,24 @@ const setAccessTokenInActiveContext = (
   }
 
   if (props.source === "REST") {
-    const workspaceTab = workspaceTabsService.currentActiveTab.value
+    const workspaceTabDocument = activeDocument.value
     if (
-      "request" in workspaceTab.document &&
-      workspaceTab.document.request &&
-      workspaceTab.document.request.auth.authType === "oauth-2" &&
+      "request" in workspaceTabDocument &&
+      workspaceTabDocument.request &&
+      workspaceTabDocument.request.auth.authType === "oauth-2" &&
       accessToken
     ) {
-      workspaceTab.document.request.auth.grantTypeInfo.token = accessToken
+      workspaceTabDocument.request.auth.grantTypeInfo.token = accessToken
     }
 
     if (
       refreshToken &&
-      "request" in workspaceTab.document &&
-      workspaceTab.document.request &&
-      workspaceTab.document.request.auth.authType === "oauth-2"
+      "request" in workspaceTabDocument &&
+      workspaceTabDocument.request &&
+      workspaceTabDocument.request.auth.authType === "oauth-2"
     ) {
       // @ts-expect-error - TODO: narrow the grantType to only supporting refresh tokens
-      workspaceTab.document.request.auth.grantTypeInfo.refreshToken =
+      workspaceTabDocument.request.auth.grantTypeInfo.refreshToken =
         refreshToken
     }
   } else {

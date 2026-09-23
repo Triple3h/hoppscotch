@@ -32,11 +32,10 @@
 
 <script setup lang="ts">
 import { computed } from "vue"
-import { useService } from "dioc/vue"
 import { useI18n } from "@composables/i18n"
 import { useReadonlyStream } from "@composables/stream"
 import { invokeAction } from "~/helpers/actions"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import { restCollections$ } from "~/newstore/collections"
 import type { TabPathSegment } from "~/components/workspace/TabHeader.vue"
 // Explicit import — unplugin-vue-components may not rewrite this on a live
@@ -47,11 +46,9 @@ import IconGlobe from "~icons/lucide/globe"
 import IconGraphql from "~icons/hopp/graphql"
 
 const t = useI18n()
-const tabs = useService(WorkspaceTabsService)
+const { document: currentDoc } = useRequestTab()
 
 const collections = useReadonlyStream(restCollections$, [])
-
-const currentDoc = computed(() => tabs.currentActiveTab.value?.document)
 
 const isGQL = computed(() => currentDoc.value?.type === "gql-request")
 

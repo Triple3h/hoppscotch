@@ -238,30 +238,17 @@
 import { useCodemirror } from "@composables/codemirror"
 import { useI18n } from "@composables/i18n"
 import { useColorMode } from "@composables/theming"
-import { useToast } from "@composables/toast"
 import { useReadonlyStream } from "@composables/stream"
 import {
   Environment,
   GQLHeader,
   HoppGQLAuth,
   HoppGQLRequest,
-  parseRawKeyValueEntriesE,
-  rawKeyValueEntriesToString,
-  RawKeyValueEntry,
 } from "@hoppscotch/data"
 import { useVModel } from "@vueuse/core"
-import * as A from "fp-ts/Array"
-import * as E from "fp-ts/Either"
-import * as O from "fp-ts/Option"
-import * as RA from "fp-ts/ReadonlyArray"
-import { flow, pipe } from "fp-ts/function"
-import { clone, cloneDeep, isEqual } from "lodash-es"
-import { computed, reactive, Ref, ref, toRef, watch } from "vue"
+import { computed, reactive, Ref, ref, watch } from "vue"
 import draggable from "vuedraggable-es"
 
-import { useNestedSetting } from "~/composables/settings"
-import { throwError } from "~/helpers/functional/error"
-import { objRemoveKey } from "~/helpers/functional/object"
 import { commonHeaders } from "~/helpers/headers"
 import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
 import { isDragDropAllowed, DragDropEvent } from "~/helpers/dragDropValidation"
@@ -286,16 +273,11 @@ import IconLock from "~icons/lucide/lock"
 import IconPlus from "~icons/lucide/plus"
 import IconTrash2 from "~icons/lucide/trash-2"
 import IconWrapText from "~icons/lucide/wrap-text"
-// `./RequestOptions.vue` only re-imports this type, it doesn't re-export it —
-// pull it from the module that actually declares it (same as gql/RequestOptions.vue does).
-import { GQLOptionTabs } from "~/components/graphql/RequestOptions.vue"
-import { InspectionService, InspectorResult } from "~/services/inspection"
-import { useService } from "dioc/vue"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import type { GQLOptionTabs } from "~/helpers/requestOptions"
+import { useKeyValueTable, KeyValueRow } from "~/composables/useKeyValueTable"
 
 const colorMode = useColorMode()
 const t = useI18n()
-const toast = useToast()
 
 type GqlHeadersModel =
   HoppGQLRequest | { headers: GQLHeader[]; auth: HoppGQLAuth }
@@ -314,15 +296,25 @@ const emit = defineEmits<{
 
 const request = useVModel(props, "modelValue", emit)
 
-const idTicker = ref(0)
-
-const WRAP_LINES = useNestedSetting("WRAP_LINES", "graphqlHeaders")
-const bulkMode = ref(false)
-const bulkHeaders = ref("")
-
-const deletionToast = ref<{ goAway: (delay: number) => void } | null>(null)
-
-const bulkEditor = ref<any | null>(null)
+const {
+  bulkMode,
+  bulkHeaders,
+  bulkEditor,
+  WRAP_LINES,
+  workingHeaders,
+  addHeader,
+  updateHeader,
+  deleteHeader,
+  clearContent,
+  headerKeyResults,
+  headerValueResults,
+  getInspectorResult,
+  masking,
+  toggleMask,
+  mask,
+} = useKeyValueTable(request as Ref<{ headers: (GQLHeader & KeyValueRow)[] }>, {
+  wrapSetting: "graphqlHeaders",
+})
 
 useCodemirror(
   bulkEditor,
@@ -340,211 +332,6 @@ useCodemirror(
     predefinedVariablesHighlights: true,
   })
 )
-
-const workingHeaders = ref<Array<GQLHeader & { id: number }>>([
-  {
-    id: idTicker.value++,
-    key: "",
-    value: "",
-    active: true,
-    description: "",
-  },
-])
-
-watch(workingHeaders, (headersList) => {
-  if (
-    headersList.length > 0 &&
-    headersList[headersList.length - 1].key !== ""
-  ) {
-    workingHeaders.value.push({
-      id: idTicker.value++,
-      key: "",
-      value: "",
-      active: true,
-      description: "",
-    })
-  }
-})
-
-watch(
-  () => request.value.headers,
-  (newHeadersList) => {
-    const filteredWorkingHeaders = pipe(
-      workingHeaders.value,
-      A.filterMap(
-        flow(
-          O.fromPredicate((e) => e.key !== ""),
-          O.map(objRemoveKey("id"))
-        )
-      )
-    )
-
-    const filteredBulkHeaders = pipe(
-      parseRawKeyValueEntriesE(bulkHeaders.value),
-      E.map(
-        flow(
-          RA.filter((e) => e.key !== ""),
-          RA.toArray
-        )
-      ),
-      E.getOrElse(() => [] as RawKeyValueEntry[])
-    )
-
-    if (!isEqual(newHeadersList, filteredWorkingHeaders)) {
-      workingHeaders.value = pipe(
-        newHeadersList,
-        A.map((x) => ({ id: idTicker.value++, ...x }))
-      )
-    }
-
-    const newHeadersListKeyValuePairs = newHeadersList.map(
-      ({ key, value, active }) => ({
-        key,
-        value,
-        active,
-      })
-    )
-
-    if (!isEqual(newHeadersListKeyValuePairs, filteredBulkHeaders)) {
-      bulkHeaders.value = rawKeyValueEntriesToString(
-        newHeadersListKeyValuePairs
-      )
-    }
-  },
-  { immediate: true }
-)
-
-watch(workingHeaders, (newWorkingHeaders) => {
-  const fixedHeaders = pipe(
-    newWorkingHeaders,
-    A.filterMap(
-      flow(
-        O.fromPredicate((e) => e.key !== ""),
-        O.map(objRemoveKey("id"))
-      )
-    )
-  )
-
-  if (!isEqual(request.value.headers, fixedHeaders)) {
-    request.value.headers = cloneDeep(fixedHeaders)
-  }
-})
-
-watch(bulkHeaders, (newBulkHeaders) => {
-  const filteredBulkHeaders = pipe(
-    parseRawKeyValueEntriesE(newBulkHeaders),
-    E.map(
-      flow(
-        RA.filter((e) => e.key !== ""),
-        RA.toArray
-      )
-    ),
-    E.getOrElse(() => [] as RawKeyValueEntry[])
-  )
-
-  const headers = toRef(request.value, "headers")
-
-  const paramKeyValuePairs = headers.value.map(({ key, value, active }) => ({
-    key,
-    value,
-    active,
-  }))
-
-  if (!isEqual(paramKeyValuePairs, filteredBulkHeaders)) {
-    headers.value = filteredBulkHeaders.map((param, idx) => ({
-      ...param,
-      description: headers.value[idx]?.description ?? "",
-    }))
-  }
-})
-
-watch(workingHeaders, (newHeadersList) => {
-  if (bulkMode.value) return
-
-  try {
-    const currentBulkHeaders = bulkHeaders.value.split("\n").map((item) => ({
-      key: item.substring(0, item.indexOf(":")).trimStart().replace(/^#/, ""),
-      value: item.substring(item.indexOf(":") + 1).trimStart(),
-      active: !item.trim().startsWith("#"),
-    }))
-
-    const filteredHeaders = newHeadersList.filter((x) => x.key !== "")
-
-    if (!isEqual(currentBulkHeaders, filteredHeaders)) {
-      bulkHeaders.value = rawKeyValueEntriesToString(filteredHeaders)
-    }
-  } catch (e) {
-    toast.error(`${t("error.something_went_wrong")}`)
-    console.error(e)
-  }
-})
-
-const addHeader = () => {
-  workingHeaders.value.push({
-    id: idTicker.value++,
-    key: "",
-    value: "",
-    active: true,
-    description: "",
-  })
-}
-
-const updateHeader = (index: number, header: GQLHeader & { id: number }) => {
-  workingHeaders.value = workingHeaders.value.map((h, i) =>
-    i === index ? header : h
-  )
-}
-
-const deleteHeader = (index: number) => {
-  const headersBeforeDeletion = clone(workingHeaders.value)
-
-  if (!(
-    headersBeforeDeletion.length > 0 &&
-    index === headersBeforeDeletion.length - 1
-  )) {
-    if (deletionToast.value) {
-      deletionToast.value.goAway(0)
-      deletionToast.value = null
-    }
-
-    deletionToast.value = toast.success(`${t("state.deleted")}`, {
-      action: [
-        {
-          text: `${t("action.undo")}`,
-          onClick: (_: any, toastObject: any) => {
-            workingHeaders.value = headersBeforeDeletion
-            toastObject.goAway(0)
-            deletionToast.value = null
-          },
-        },
-      ],
-
-      onComplete: () => {
-        deletionToast.value = null
-      },
-    })
-  }
-
-  workingHeaders.value = pipe(
-    workingHeaders.value,
-    A.deleteAt(index),
-    O.getOrElseW(() => throwError("Working Headers Deletion Out of Bounds"))
-  )
-}
-
-const clearContent = () => {
-  workingHeaders.value = [
-    {
-      id: idTicker.value++,
-      key: "",
-      value: "",
-      active: true,
-      description: "",
-    },
-  ]
-
-  bulkHeaders.value = ""
-}
 
 const aggregateEnvs = useReadonlyStream(
   aggregateEnvsWithCurrentValue$,
@@ -675,44 +462,5 @@ watch(
   { immediate: true, deep: true }
 )
 
-const masking = ref(true)
-
-const toggleMask = () => {
-  masking.value = !masking.value
-}
-
-const mask = (header: any) => {
-  if (header.source === "auth" && masking.value)
-    return header.header.value.replace(/\S/gi, "*")
-  return header.header.value
-}
-
 const changeTab = () => emit("change-tab", "authorization")
-
-const inspectionService = useService(InspectionService)
-const tabs = useService(WorkspaceTabsService)
-
-const headerKeyResults = inspectionService.getResultViewFor(
-  tabs.currentTabID.value,
-  (result) =>
-    result.locations.type === "header" && result.locations.position === "key"
-)
-
-const headerValueResults = inspectionService.getResultViewFor(
-  tabs.currentTabID.value,
-  (result) =>
-    result.locations.type === "header" && result.locations.position === "value"
-)
-
-const getInspectorResult = (results: InspectorResult[], index: number) => {
-  return results.filter((result) => {
-    if (
-      result.locations.type === "url" ||
-      result.locations.type === "response" ||
-      result.locations.type === "body-content-type-header"
-    )
-      return
-    return result.locations.index === index
-  })
-}
 </script>

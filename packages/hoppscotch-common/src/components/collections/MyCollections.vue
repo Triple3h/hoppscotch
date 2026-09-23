@@ -12,7 +12,7 @@
         :icon="IconPlus"
         :label="t('action.new')"
         class="!rounded-none"
-        @click="emit('display-modal-add')"
+        @click="emit('command', { type: 'display-modal-add' })"
       />
       <span class="flex">
         <HoppButtonSecondary
@@ -35,7 +35,7 @@
           v-tippy="{ theme: 'tooltip' }"
           :icon="IconImport"
           :title="t('modal.import_export')"
-          @click="emit('display-modal-import-export')"
+          @click="emit('command', { type: 'display-modal-import-export' })"
         />
       </span>
     </div>
@@ -60,51 +60,76 @@
             folder-type="collection"
             @add-request="
               node.data.type === 'collections' &&
-              emit('add-request', {
-                path: node.id,
-                folder: node.data.data.data,
+              emit('command', {
+                type: 'add-request',
+                payload: {
+                  path: node.id,
+                  folder: node.data.data.data,
+                },
               })
             "
             @add-gql-request="
               node.data.type === 'collections' &&
-              emit('add-gql-request', {
-                path: node.id,
-                folder: node.data.data.data,
+              emit('command', {
+                type: 'add-gql-request',
+                payload: {
+                  path: node.id,
+                  folder: node.data.data.data,
+                },
               })
             "
             @add-folder="
               node.data.type === 'collections' &&
-              emit('add-folder', {
-                path: node.id,
-                folder: node.data.data.data,
+              emit('command', {
+                type: 'add-folder',
+                payload: {
+                  path: node.id,
+                  folder: node.data.data.data,
+                },
               })
             "
             @run-collection="
-              emit('run-collection', {
-                collectionIndex: node.id,
-                collection: node.data.data.data,
+              emit('command', {
+                type: 'run-collection',
+                payload: {
+                  collectionIndex: node.id,
+                  collection: node.data.data.data,
+                },
               })
             "
             @edit-collection="
               node.data.type === 'collections' &&
-              emit('edit-collection', {
-                collectionIndex: node.id,
-                collection: node.data.data.data,
+              emit('command', {
+                type: 'edit-collection',
+                payload: {
+                  collectionIndex: node.id,
+                  collection: node.data.data.data,
+                },
               })
             "
             @duplicate-collection="
               node.data.type === 'collections' &&
-              emit('duplicate-collection', {
-                pathOrID: node.id,
-                collectionSyncID: node.data.data.data.id,
+              emit('command', {
+                type: 'duplicate-collection',
+                payload: {
+                  pathOrID: node.id,
+                  collectionSyncID: node.data.data.data.id,
+                },
               })
             "
             @export-data="
               node.data.type === 'collections' &&
-              emit('export-data', node.data.data.data)
+              emit('command', {
+                type: 'export-data',
+                payload: node.data.data.data,
+              })
             "
-            @remove-collection="emit('remove-collection', node.id)"
-            @sort-collections="emit('sort-collections', $event)"
+            @remove-collection="
+              emit('command', { type: 'remove-collection', payload: node.id })
+            "
+            @sort-collections="
+              emit('command', { type: 'sort-collections', payload: $event })
+            "
             @drop-event="dropEvent($event, node.id)"
             @drag-event="dragEvent($event, node.id)"
             @update-collection-order="
@@ -127,9 +152,12 @@
               () => {
                 ;(toggleChildren(),
                   saveRequest &&
-                    emit('select', {
-                      pickedType: 'my-collection',
-                      collectionIndex: parseInt(node.id),
+                    emit('command', {
+                      type: 'select',
+                      payload: {
+                        pickedType: 'my-collection',
+                        collectionIndex: parseInt(node.id),
+                      },
                     }))
               }
             "
@@ -149,55 +177,78 @@
             "
             folder-type="folder"
             @run-collection="
-              emit('run-collection', {
-                collectionIndex: node.id,
-                collection: node.data.data.data,
+              emit('command', {
+                type: 'run-collection',
+                payload: {
+                  collectionIndex: node.id,
+                  collection: node.data.data.data,
+                },
               })
             "
             @add-request="
               node.data.type === 'folders' &&
-              emit('add-request', {
-                path: node.id,
-                folder: node.data.data.data,
+              emit('command', {
+                type: 'add-request',
+                payload: {
+                  path: node.id,
+                  folder: node.data.data.data,
+                },
               })
             "
             @add-gql-request="
               node.data.type === 'folders' &&
-              emit('add-gql-request', {
-                path: node.id,
-                folder: node.data.data.data,
+              emit('command', {
+                type: 'add-gql-request',
+                payload: {
+                  path: node.id,
+                  folder: node.data.data.data,
+                },
               })
             "
             @add-folder="
               node.data.type === 'folders' &&
-              emit('add-folder', {
-                path: node.id,
-                folder: node.data.data.data,
+              emit('command', {
+                type: 'add-folder',
+                payload: {
+                  path: node.id,
+                  folder: node.data.data.data,
+                },
               })
             "
             @edit-collection="
               node.data.type === 'folders' &&
-              emit('edit-folder', {
-                folderPath: node.id,
-                folder: node.data.data.data,
+              emit('command', {
+                type: 'edit-folder',
+                payload: {
+                  folderPath: node.id,
+                  folder: node.data.data.data,
+                },
               })
             "
             @duplicate-collection="
               node.data.type === 'folders' &&
-              emit('duplicate-collection', {
-                pathOrID: node.id,
-                collectionSyncID: node.data.data.data.id,
+              emit('command', {
+                type: 'duplicate-collection',
+                payload: {
+                  pathOrID: node.id,
+                  collectionSyncID: node.data.data.data.id,
+                },
               })
             "
             @export-data="
               node.data.type === 'folders' &&
-              emit('export-data', node.data.data.data)
+              emit('command', {
+                type: 'export-data',
+                payload: node.data.data.data,
+              })
             "
             @remove-collection="
-              node.data.type === 'folders' && emit('remove-folder', node.id)
+              node.data.type === 'folders' &&
+              emit('command', { type: 'remove-folder', payload: node.id })
             "
             @sort-collections="
-              node.data.type === 'folders' && emit('sort-collections', $event)
+              node.data.type === 'folders' &&
+              emit('command', { type: 'sort-collections', payload: $event })
             "
             @drop-event="dropEvent($event, node.id)"
             @drag-event="dragEvent($event, node.id)"
@@ -221,9 +272,12 @@
               () => {
                 ;(toggleChildren(),
                   saveRequest &&
-                    emit('select', {
-                      pickedType: 'my-folder',
-                      folderPath: node.id,
+                    emit('command', {
+                      type: 'select',
+                      payload: {
+                        pickedType: 'my-folder',
+                        folderPath: node.id,
+                      },
                     }))
               }
             "
@@ -250,51 +304,69 @@
             "
             @edit-request="
               node.data.type === 'requests' &&
-              emit('edit-request', {
-                folderPath: node.data.data.parentIndex,
-                requestIndex: pathToIndex(node.id),
-                request: node.data.data.data,
+              emit('command', {
+                type: 'edit-request',
+                payload: {
+                  folderPath: node.data.data.parentIndex,
+                  requestIndex: pathToIndex(node.id),
+                  request: node.data.data.data,
+                },
               })
             "
             @edit-response="
-              emit('edit-response', {
-                folderPath: node.data.data.parentIndex,
-                requestIndex: pathToIndex(node.id),
-                request: node.data.data.data,
-                responseName: $event.responseName,
-                responseID: $event.responseID,
+              emit('command', {
+                type: 'edit-response',
+                payload: {
+                  folderPath: node.data.data.parentIndex,
+                  requestIndex: pathToIndex(node.id),
+                  request: node.data.data.data,
+                  responseName: $event.responseName,
+                  responseID: $event.responseID,
+                },
               })
             "
             @duplicate-request="
               node.data.type === 'requests' &&
-              emit('duplicate-request', {
-                folderPath: node.data.data.parentIndex,
-                request: node.data.data.data,
+              emit('command', {
+                type: 'duplicate-request',
+                payload: {
+                  folderPath: node.data.data.parentIndex,
+                  request: node.data.data.data,
+                },
               })
             "
             @duplicate-response="
-              emit('duplicate-response', {
-                folderPath: node.data.data.parentIndex,
-                requestIndex: pathToIndex(node.id),
-                request: node.data.data.data,
-                responseName: $event.responseName,
-                responseID: $event.responseID,
+              emit('command', {
+                type: 'duplicate-response',
+                payload: {
+                  folderPath: node.data.data.parentIndex,
+                  requestIndex: pathToIndex(node.id),
+                  request: node.data.data.data,
+                  responseName: $event.responseName,
+                  responseID: $event.responseID,
+                },
               })
             "
             @remove-request="
               node.data.type === 'requests' &&
-              emit('remove-request', {
-                folderPath: node.data.data.parentIndex,
-                requestIndex: pathToIndex(node.id),
+              emit('command', {
+                type: 'remove-request',
+                payload: {
+                  folderPath: node.data.data.parentIndex,
+                  requestIndex: pathToIndex(node.id),
+                },
               })
             "
             @remove-response="
-              emit('remove-response', {
-                folderPath: node.data.data.parentIndex,
-                requestIndex: pathToIndex(node.id),
-                request: node.data.data.data,
-                responseName: $event.responseName,
-                responseID: $event.responseID,
+              emit('command', {
+                type: 'remove-response',
+                payload: {
+                  folderPath: node.data.data.parentIndex,
+                  requestIndex: pathToIndex(node.id),
+                  request: node.data.data.data,
+                  responseName: $event.responseName,
+                  responseID: $event.responseID,
+                },
               })
             "
             @select-request="
@@ -306,20 +378,26 @@
               })
             "
             @select-response="
-              emit('select-response', {
-                responseName: $event.responseName,
-                responseID: $event.responseID,
-                request: node.data.data.data,
-                folderPath: node.data.data.parentIndex,
-                requestIndex: pathToIndex(node.id),
+              emit('command', {
+                type: 'select-response',
+                payload: {
+                  responseName: $event.responseName,
+                  responseID: $event.responseID,
+                  request: node.data.data.data,
+                  folderPath: node.data.data.parentIndex,
+                  requestIndex: pathToIndex(node.id),
+                },
               })
             "
             @add-example="
               node.data.type === 'requests' &&
-              emit('add-example', {
-                folderPath: node.data.data.parentIndex,
-                request: node.data.data.data,
-                requestIndex: pathToIndex(node.id),
+              emit('command', {
+                type: 'add-example',
+                payload: {
+                  folderPath: node.data.data.parentIndex,
+                  request: node.data.data.data,
+                  requestIndex: pathToIndex(node.id),
+                },
               })
             "
             @drag-request="
@@ -370,14 +448,16 @@
                     :label="t('import.title')"
                     filled
                     outline
-                    @click="emit('display-modal-import-export')"
+                    @click="
+                      emit('command', { type: 'display-modal-import-export' })
+                    "
                   />
                   <HoppButtonSecondary
                     :icon="IconPlus"
                     :label="t('add.new')"
                     filled
                     outline
-                    @click="emit('display-modal-add')"
+                    @click="emit('command', { type: 'display-modal-add' })"
                   />
                 </div>
               </div>
@@ -396,9 +476,12 @@
                 outline
                 @click="
                   node.data.type === 'collections' &&
-                  emit('add-folder', {
-                    path: node.id,
-                    folder: node.data.data.data,
+                  emit('command', {
+                    type: 'add-folder',
+                    payload: {
+                      path: node.id,
+                      folder: node.data.data.data,
+                    },
                   })
                 "
               />
@@ -437,6 +520,7 @@ import { useService } from "dioc/vue"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
 import { useDebounceFn } from "@vueuse/core"
 import { CurrentSortValuesService } from "~/services/current-sort.service"
+import type { CollectionCommand } from "~/composables/useCollectionActions"
 
 export type Collection = {
   type: "collections"
@@ -498,156 +582,8 @@ const props = defineProps({
   },
 })
 
-type ResponsePayload = {
-  folderPath: string
-  requestIndex: string
-  request: HoppRESTRequest | HoppGQLRequest
-  responseName: string
-  responseID: string
-}
-
 const emit = defineEmits<{
-  (event: "display-modal-add"): void
-  (
-    event: "add-request",
-    payload: {
-      path: string
-      folder: HoppCollection
-    }
-  ): void
-  (
-    event: "add-gql-request",
-    payload: {
-      path: string
-      folder: HoppCollection
-    }
-  ): void
-  (
-    event: "add-folder",
-    payload: {
-      path: string
-      folder: HoppCollection
-    }
-  ): void
-  (
-    event: "run-collection",
-    payload: {
-      collectionIndex: string
-      collection: HoppCollection
-    }
-  ): void
-  (
-    event: "edit-collection",
-    payload: {
-      collectionIndex: string
-      collection: HoppCollection
-    }
-  ): void
-  (
-    event: "edit-folder",
-    payload: {
-      folderPath: string
-      folder: HoppCollection
-    }
-  ): void
-  (
-    event: "duplicate-collection",
-    payload: {
-      pathOrID: string
-      collectionSyncID?: string
-    }
-  ): void
-
-  (
-    event: "edit-request",
-    payload: {
-      folderPath: string
-      requestIndex: string
-      request: HoppRESTRequest | HoppGQLRequest
-    }
-  ): void
-  (event: "edit-response", payload: ResponsePayload): void
-  (
-    event: "duplicate-request",
-    payload: {
-      folderPath: string
-      request: HoppRESTRequest | HoppGQLRequest
-    }
-  ): void
-  (event: "duplicate-response", payload: ResponsePayload): void
-  (event: "export-data", payload: HoppCollection): void
-  (event: "remove-collection", payload: string): void
-  (event: "remove-folder", payload: string): void
-  (
-    event: "remove-request",
-    payload: {
-      folderPath: string | null
-      requestIndex: string
-    }
-  ): void
-  (event: "remove-response", payload: ResponsePayload): void
-  (
-    event: "select-request",
-    payload: {
-      request: HoppRESTRequest | HoppGQLRequest
-      folderPath: string
-      requestIndex: string
-      isActive: boolean
-    }
-  ): void
-  (
-    event: "sort-collections",
-    payload: {
-      collectionID: string | null
-      sortOrder: "asc" | "desc"
-      collectionRefID: string
-    }
-  ): void
-  (
-    event: "add-example",
-    payload: {
-      folderPath: string
-      request: HoppRESTRequest | HoppGQLRequest
-      requestIndex: number
-    }
-  ): void
-  (
-    event: "drop-request",
-    payload: {
-      folderPath: string
-      requestIndex: string
-      destinationCollectionIndex: string
-      requestRefID?: string
-    }
-  ): void
-  (
-    event: "drop-collection",
-    payload: {
-      collectionIndexDragged: string
-      destinationCollectionIndex: string
-    }
-  ): void
-  (
-    event: "update-request-order",
-    payload: {
-      dragedRequestIndex: string
-      destinationRequestIndex: string | null
-      destinationCollectionIndex: string
-    }
-  ): void
-  (
-    event: "update-collection-order",
-    payload: {
-      dragedCollectionIndex: string
-      destinationCollection: {
-        destinationCollectionIndex: string | null
-        destinationCollectionParentIndex: string | null
-      }
-    }
-  ): void
-  (event: "select", payload: Picked | null): void
-  (event: "display-modal-import-export"): void
-  (event: "select-response", payload: ResponsePayload): void
+  (event: "command", command: CollectionCommand): void
 }>()
 
 const refFilterCollection = toRef(props, "filteredCollections")
@@ -725,20 +661,26 @@ const selectRequest = (data: {
   const { request, folderPath, requestIndex } = data
 
   if (props.saveRequest) {
-    emit("select", {
-      pickedType: "my-request",
-      folderPath: folderPath,
-      requestIndex: parseInt(requestIndex),
+    emit("command", {
+      type: "select",
+      payload: {
+        pickedType: "my-request",
+        folderPath: folderPath,
+        requestIndex: parseInt(requestIndex),
+      },
     })
   } else {
-    emit("select-request", {
-      request,
-      folderPath,
-      requestIndex,
-      isActive: isActiveRequest(
+    emit("command", {
+      type: "select-request",
+      payload: {
+        request,
         folderPath,
-        request._ref_id ?? request.id ?? ""
-      ),
+        requestIndex,
+        isActive: isActiveRequest(
+          folderPath,
+          request._ref_id ?? request.id ?? ""
+        ),
+      },
     })
   }
 }
@@ -771,16 +713,22 @@ const dropEvent = (
   const requestRefID = dataTransfer.getData("requestRefID")
 
   if (folderPath && requestIndex) {
-    emit("drop-request", {
-      folderPath,
-      requestIndex,
-      destinationCollectionIndex,
-      requestRefID,
+    emit("command", {
+      type: "drop-request",
+      payload: {
+        folderPath,
+        requestIndex,
+        destinationCollectionIndex,
+        requestRefID,
+      },
     })
   } else {
-    emit("drop-collection", {
-      collectionIndexDragged,
-      destinationCollectionIndex,
+    emit("command", {
+      type: "drop-collection",
+      payload: {
+        collectionIndexDragged,
+        destinationCollectionIndex,
+      },
     })
   }
 }
@@ -797,10 +745,13 @@ const updateRequestOrder = (
   const destinationRequestIndex = requestIndex
   const destinationCollectionIndex = folderPath
 
-  emit("update-request-order", {
-    dragedRequestIndex,
-    destinationRequestIndex,
-    destinationCollectionIndex,
+  emit("command", {
+    type: "update-request-order",
+    payload: {
+      dragedRequestIndex,
+      destinationRequestIndex,
+      destinationCollectionIndex,
+    },
   })
 }
 
@@ -813,18 +764,24 @@ const updateCollectionOrder = (
 ) => {
   const dragedCollectionIndex = dataTransfer.getData("collectionIndex")
 
-  emit("update-collection-order", {
-    dragedCollectionIndex,
-    destinationCollection,
+  emit("command", {
+    type: "update-collection-order",
+    payload: {
+      dragedCollectionIndex,
+      destinationCollection,
+    },
   })
 }
 
 const debouncedSorting = useDebounceFn(() => {
   currentSortOrder.value = currentSortOrder.value === "asc" ? "desc" : "asc"
-  emit("sort-collections", {
-    collectionID: null,
-    sortOrder: currentSortOrder.value,
-    collectionRefID: "personal",
+  emit("command", {
+    type: "sort-collections",
+    payload: {
+      collectionID: null,
+      sortOrder: currentSortOrder.value,
+      collectionRefID: "personal",
+    },
   })
 }, 250)
 

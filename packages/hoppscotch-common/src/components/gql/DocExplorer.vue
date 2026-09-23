@@ -73,21 +73,12 @@ import { isType } from "graphql"
 import { useExplorer } from "~/helpers/graphql/explorer"
 import { useColorMode } from "~/composables/theming"
 import { useI18n } from "~/composables/i18n"
-import { useService } from "dioc/vue"
-import { GQLTabConnectionService } from "~/services/gql-tab-connection.service"
+import { useActiveSchema } from "./useActiveSchema"
 
 const colorMode = useColorMode()
 const t = useI18n()
 
-const gqlTabConn = useService(GQLTabConnectionService)
-
-const schema = gqlTabConn.activeTabSchema
-
-// Key the section on the active tab ID so the entire subtree
-// (SchemaDocumentation, SchemaSearch, etc.) is recreated on tab switch.
-// This is necessary because child components store schema-derived values
-// in non-reactive local variables at setup time.
-const activeTabId = gqlTabConn.activeGQLTabId
+const { schema, activeTabId } = useActiveSchema()
 
 const { navStack, currentNavItem, navigateToIndex } = useExplorer()
 </script>

@@ -85,8 +85,7 @@ import IconClipboard from "~icons/lucide/clipboard"
 import IconCheck from "~icons/lucide/check"
 import IconTrash2 from "~icons/lucide/trash-2"
 import { platform } from "~/platform"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
-import { useService } from "dioc/vue"
+import { useRequestTab } from "~/composables/useRequestTab"
 import { useNestedSetting } from "~/composables/settings"
 import { toggleNestedSetting } from "~/newstore/settings"
 import { EditorView } from "@codemirror/view"
@@ -95,7 +94,7 @@ const t = useI18n()
 
 const toast = useToast()
 
-const tabs = useService(WorkspaceTabsService)
+const { document: activeDocument } = useRequestTab()
 
 const curl = ref("")
 
@@ -147,13 +146,13 @@ const handleImport = () => {
       type: "HOPP_REST_IMPORT_CURL",
     })
 
-    if (tabs.currentActiveTab.value.document.type === "example-response") return
+    if (activeDocument.value.type === "example-response") return
 
     // Preserve the existing request name when importing cURL
-    const currentRequest = tabs.currentActiveTab.value.document.request
+    const currentRequest = activeDocument.value.request
     const reqName = currentRequest?.name ?? req.name
 
-    tabs.currentActiveTab.value.document.request = { ...req, name: reqName }
+    activeDocument.value.request = { ...req, name: reqName }
   } catch (e) {
     console.error(e)
     toast.error(`${t("error.curl_invalid_format")}`)

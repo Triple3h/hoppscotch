@@ -46,7 +46,6 @@
 <script setup lang="ts">
 import { useI18n } from "@composables/i18n"
 import { useVModel } from "@vueuse/core"
-import { useService } from "dioc/vue"
 import { cloneDeep } from "lodash-es"
 import IconGraphql from "~icons/hopp/graphql"
 import IconSave from "~icons/lucide/save"
@@ -59,7 +58,7 @@ import {
 
 import { HoppTab } from "~/services/tab"
 import { HoppSavedGQLExampleDocument } from "~/helpers/tab/document"
-import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
+import { useRequestTab } from "~/composables/useRequestTab"
 import { getPlatformSpecialKey as getSpecialKey } from "~/helpers/platformutils"
 import { editRESTRequest, restCollections$ } from "~/newstore/collections"
 import { useReadonlyStream } from "~/composables/stream"
@@ -69,7 +68,7 @@ import { defineActionHandler } from "~/helpers/actions"
 
 const t = useI18n()
 const toast = useToast()
-const tabs = useService(WorkspaceTabsService)
+const { create } = useRequestTab()
 const myCollections = useReadonlyStream(restCollections$, [], "deep")
 
 const props = defineProps<{
@@ -82,7 +81,7 @@ const tab = useVModel(props, "modelValue", emit)
 // can run it again without mutating the example. Mirrors the REST flow.
 const tryExampleResponse = () => {
   const orig = tab.value.document.response.originalRequest
-  tabs.createNewTab({
+  create({
     isDirty: false,
     type: "gql-request",
     request: {

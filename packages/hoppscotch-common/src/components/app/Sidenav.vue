@@ -1,6 +1,8 @@
 <template>
   <aside class="flex h-full justify-between md:flex-col">
-    <nav class="flex flex-1 flex-nowrap bg-primary md:flex-none md:flex-col">
+    <nav
+      class="flex flex-1 flex-nowrap bg-primary md:flex-none md:flex-col md:gap-1 md:px-1 md:py-2"
+    >
       <HoppSmartLink
         v-for="(navigation, index) in primaryNavigation"
         :key="`navigation-${index}`"
@@ -73,11 +75,11 @@ const primaryNavigation = [
 <style lang="scss" scoped>
 .nav-link {
   @apply relative;
-  @apply p-4;
+  @apply p-3;
   @apply flex flex-1 flex-col;
   @apply items-center;
   @apply justify-center;
-  @apply hover:bg-primaryDark hover:text-secondaryDark;
+  @apply rounded-md hover:bg-primaryDark hover:text-secondaryDark;
   @apply focus-visible:text-secondaryDark;
   @apply after:absolute;
   @apply after:inset-x-0;
@@ -105,9 +107,9 @@ const primaryNavigation = [
 
   &.router-link-active {
     @apply text-secondaryDark;
-    @apply bg-primaryLight;
+    @apply bg-primaryDark;
     @apply hover:text-secondaryDark;
-    @apply after:bg-accent;
+    @apply after:bg-transparent;
 
     .svg-icons {
       @apply opacity-100;
@@ -116,9 +118,9 @@ const primaryNavigation = [
 
   &.exact-active-link {
     @apply text-secondaryDark;
-    @apply bg-primaryLight;
+    @apply bg-primaryDark;
     @apply hover:text-secondaryDark;
-    @apply after:bg-accent;
+    @apply after:bg-transparent;
 
     .svg-icons {
       @apply opacity-100;

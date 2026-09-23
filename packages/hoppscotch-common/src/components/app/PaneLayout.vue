@@ -12,7 +12,7 @@
     <Pane
       :size="SIDEBAR && hasSidebar ? PANE_MAIN_SIZE : 100"
       min-size="65"
-      class="flex flex-col overflow-hidden"
+      class="flex flex-col overflow-hidden bg-primary"
     >
       <Splitpanes
         class="smart-splitter"
@@ -39,7 +39,7 @@
     <Pane
       :size="SIDEBAR && hasSidebar ? PANE_SIDEBAR_SIZE : 0"
       :min-size="5"
-      class="flex flex-col !overflow-auto bg-primaryContrast"
+      class="workspace-sidebar flex flex-col !overflow-auto bg-primaryContrast"
     >
       <slot name="sidebar" />
     </Pane>
@@ -94,10 +94,10 @@ type PaneEvent = {
   size: number
 }
 
-const PANE_MAIN_SIZE = ref(70)
-const PANE_SIDEBAR_SIZE = ref(30)
-const PANE_MAIN_TOP_SIZE = ref(35)
-const PANE_MAIN_BOTTOM_SIZE = ref(65)
+const PANE_MAIN_SIZE = ref(76)
+const PANE_SIDEBAR_SIZE = ref(24)
+const PANE_MAIN_TOP_SIZE = ref(58)
+const PANE_MAIN_BOTTOM_SIZE = ref(42)
 
 if (!COLUMN_LAYOUT.value) {
   PANE_MAIN_TOP_SIZE.value = 50

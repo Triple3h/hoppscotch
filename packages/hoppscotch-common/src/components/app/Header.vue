@@ -3,7 +3,7 @@
     <header
       ref="headerRef"
       data-tauri-drag-region
-      class="grid grid-cols-5 grid-rows-1 gap-2 overflow-x-auto overflow-y-hidden p-2"
+      class="workspace-header grid grid-cols-5 grid-rows-1 gap-2 overflow-x-auto overflow-y-hidden px-3 py-2"
     >
       <div
         data-tauri-drag-region
@@ -141,7 +141,7 @@
           <HoppButtonSecondary
             :label="mdAndLarger ? workspaceName : ``"
             :icon="IconUser"
-            class="rounded-xl bg-accent !text-accentContrast hover:bg-accentDark focus-visible:bg-accentDark"
+            class="rounded border border-divider bg-primaryLight !text-secondaryDark hover:bg-primaryDark focus-visible:bg-primaryDark"
           />
         </div>
       </div>

@@ -24,17 +24,17 @@
 
 @mixin light-theme {
   --primary-color: theme("colors.white");
-  --primary-light-color: theme("colors.gray.50");
-  --primary-dark-color: theme("colors.gray.100");
-  --primary-contrast-color: #fdfdfd;
+  --primary-light-color: #f8f9fb;
+  --primary-dark-color: #eef1f5;
+  --primary-contrast-color: #fbfcfe;
 
   --secondary-color: theme("colors.gray.500");
   --secondary-light-color: theme("colors.gray.400");
   --secondary-dark-color: theme("colors.gray.900");
 
-  --divider-color: theme("colors.gray.100");
-  --divider-light-color: theme("colors.gray.100");
-  --divider-dark-color: theme("colors.gray.300");
+  --divider-color: #e4e7eb;
+  --divider-light-color: #eef0f3;
+  --divider-dark-color: #cbd1d9;
 
   --banner-info-color: theme("colors.stone.100");
   --banner-warning-color: theme("colors.yellow.100");

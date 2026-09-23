@@ -1,6 +1,6 @@
 <template>
   <div
-    class="sticky top-0 z-20 flex-none flex-shrink-0 bg-primary p-4 sm:flex sm:flex-shrink-0 sm:space-x-2"
+    class="workspace-request-bar sticky top-0 z-20 flex-none flex-shrink-0 bg-primary p-4 sm:flex sm:flex-shrink-0 sm:space-x-2"
   >
     <div
       class="min-w-[12rem] flex flex-1 whitespace-nowrap rounded border border-divider"

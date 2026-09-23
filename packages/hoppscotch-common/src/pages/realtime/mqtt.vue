@@ -2,7 +2,7 @@
   <AppPaneLayout layout-id="mqtt">
     <template #primary>
       <div
-        class="sticky top-0 z-10 flex flex-shrink-0 space-x-2 overflow-x-auto bg-primary p-4"
+        class="workspace-request-bar sticky top-0 z-10 flex flex-shrink-0 space-x-2 overflow-x-auto bg-primary p-4"
       >
         <div class="sm:inline-flex flex-1 sm:space-x-2 sm:space-y-0 space-y-2">
           <div class="flex flex-1 sm:flex-row flex-col sm:space-y-0 space-y-2">

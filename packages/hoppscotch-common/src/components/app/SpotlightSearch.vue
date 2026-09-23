@@ -1,6 +1,6 @@
 <template>
   <button
-    class="relative flex flex-1 cursor-text items-center justify-between self-stretch rounded bg-primaryDark px-2 text-secondaryLight transition hover:border-dividerDark hover:bg-primaryLight hover:text-secondary focus-visible:border-dividerDark focus-visible:bg-primaryLight focus-visible:text-secondary overflow-hidden"
+    class="relative flex flex-1 cursor-text items-center justify-between self-stretch overflow-hidden rounded border border-divider bg-primary px-3 text-secondaryLight transition hover:border-dividerDark hover:bg-primaryLight hover:text-secondary focus-visible:border-accent focus-visible:bg-primaryLight focus-visible:text-secondary"
     @click="invokeAction('modals.search.toggle', undefined, 'mouseclick')"
   >
     <span class="inline-flex flex-1 items-center">

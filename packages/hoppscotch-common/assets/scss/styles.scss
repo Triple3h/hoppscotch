@@ -614,3 +614,50 @@ details[open] summary .indicator {
     @apply pointer-events-auto;
   }
 }
+
+.workspace-shell {
+  .workspace-header {
+    @apply border-b border-divider bg-primaryLight;
+  }
+
+  .workspace-sidebar {
+    @apply bg-primaryContrast;
+
+    .tabs {
+      @apply border-b border-dividerLight bg-primaryContrast;
+    }
+
+    .tabs .tab.vertical.active {
+      @apply bg-primaryDark text-secondaryDark;
+    }
+  }
+
+  .workspace-request-bar {
+    @apply border-b border-dividerLight;
+  }
+
+  .tabs.group-tabs {
+    @apply border-b border-divider bg-primaryLight;
+
+    .tab.active {
+      @apply bg-primary text-secondaryDark;
+
+      &::before {
+        @apply bg-transparent;
+      }
+    }
+  }
+
+  #rest_windows > .tabs.group-tabs > :is(.w-64, .w-28) {
+    width: max-content;
+    border-inline: 0;
+  }
+
+  .smart-splitter.splitpanes--vertical > .splitpanes__splitter {
+    width: 1px;
+  }
+
+  .smart-splitter.splitpanes--horizontal > .splitpanes__splitter {
+    height: 1px;
+  }
+}

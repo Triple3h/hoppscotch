@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-1 flex-col overflow-auto whitespace-nowrap">
+  <div class="min-h-0 flex flex-1 flex-col overflow-auto whitespace-nowrap">
     <GqlResponseMeta
       v-if="!isSubscriptionView"
       :response="response"

@@ -10,14 +10,20 @@
       placement="bottom"
       :on-shown="() => tippyActions.focus()"
     >
-      <HoppSmartSelectWrapper>
-        <HoppButtonSecondary
-          :label="
+      <HoppSmartSelectWrapper class="min-w-40">
+        <button
+          type="button"
+          class="flex-1 rounded border border-divider bg-primaryLight py-1.5 pl-3 pr-8 text-left text-tiny font-semibold text-secondaryDark transition hover:border-dividerDark hover:bg-primaryDark focus-visible:border-dividerDark focus-visible:outline-none"
+          :title="
             CodegenDefinitions.find((x) => x.name === codegenType)!.caption
           "
-          outline
-          class="flex-1 pr-8"
-        />
+        >
+          <span class="block truncate">
+            {{
+              CodegenDefinitions.find((x) => x.name === codegenType)!.caption
+            }}
+          </span>
+        </button>
       </HoppSmartSelectWrapper>
       <template #content="{ hide }">
         <div class="flex flex-col space-y-2">
@@ -171,9 +177,7 @@ const currentActiveRequest = computed(() => {
 })
 
 // Retrieve the document
-const currentActiveTabDocument = computed(() =>
-  cloneDeep(activeDocument.value)
-)
+const currentActiveTabDocument = computed(() => cloneDeep(activeDocument.value))
 
 const codegenType = ref<CodegenName>("shell-curl")
 const codegenMode = ref<CodegenLang>("shell")

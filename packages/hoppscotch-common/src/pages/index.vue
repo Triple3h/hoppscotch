@@ -2,139 +2,155 @@
   <div>
     <AppPaneLayout layout-id="http">
       <template #primary>
-        <HoppSmartWindows
-          v-if="currentTabID"
-          :id="'rest_windows'"
-          v-model="currentTabID"
-          @remove-tab="removeTab"
-          @add-tab="addNewTab"
-          @sort="sortTabs"
-        >
-          <HoppSmartWindow
-            v-for="tab in activeTabs"
-            :id="tab.id"
-            :key="tab.id"
-            :label="getTabName(tab)"
-            :is-removable="activeTabs.length > 1"
-            :close-visibility="'hover'"
+        <!-- Fixed left rail: always-visible entry to every open tab (request,
+             folder, environment, test-runner, …). Geometry mirrors the right
+             env selector (h-12 rail, h-9 trigger) so popover spacing matches. -->
+        <div class="relative [&_.tabs>div:first-child]:pl-10">
+          <div
+            class="absolute left-0 top-0 z-20 flex h-12 items-center border-r border-dividerLight bg-primaryLight px-1"
           >
-            <template #tabhead>
-              <HttpTabHead
-                v-if="
-                  tab.document.type === 'request' ||
-                  tab.document.type === 'example-response'
-                "
-                :tab="tab"
-                :is-removable="activeTabs.length > 1"
-                @open-rename-modal="openReqRenameModal(tab.id)"
-                @close-tab="removeTab(tab.id)"
-                @close-other-tabs="closeOtherTabsAction(tab.id)"
-                @duplicate-tab="duplicateTab(tab.id)"
-              />
-              <GqlTabHead
-                v-else-if="
-                  tab.document.type === 'gql-request' ||
-                  tab.document.type === 'gql-example-response'
-                "
-                :tab="tab"
-                :is-removable="activeTabs.length > 1"
-                @open-rename-modal="openReqRenameModal(tab.id)"
-                @close-tab="removeTab(tab.id)"
-                @close-other-tabs="closeOtherTabsAction(tab.id)"
-                @duplicate-tab="duplicateTab(tab.id)"
-              />
-              <!-- Fallback for document types without a dedicated head
+            <WorkspaceAllTabsMenu
+              :entries="tabMenuEntries"
+              :active-id="currentTabID"
+              :removable="activeTabs.length > 1"
+              @select="tabs.setActiveTab"
+              @close="removeTab"
+            />
+          </div>
+          <HoppSmartWindows
+            v-if="currentTabID"
+            :id="'rest_windows'"
+            v-model="currentTabID"
+            @remove-tab="removeTab"
+            @add-tab="addNewTab"
+            @sort="sortTabs"
+          >
+            <HoppSmartWindow
+              v-for="tab in activeTabs"
+              :id="tab.id"
+              :key="tab.id"
+              :label="getTabName(tab)"
+              :is-removable="activeTabs.length > 1"
+              :close-visibility="'hover'"
+            >
+              <template #tabhead>
+                <HttpTabHead
+                  v-if="
+                    tab.document.type === 'request' ||
+                    tab.document.type === 'example-response'
+                  "
+                  :tab="tab"
+                  :is-removable="activeTabs.length > 1"
+                  @open-rename-modal="openReqRenameModal(tab.id)"
+                  @close-tab="removeTab(tab.id)"
+                  @close-other-tabs="closeOtherTabsAction(tab.id)"
+                  @duplicate-tab="duplicateTab(tab.id)"
+                />
+                <GqlTabHead
+                  v-else-if="
+                    tab.document.type === 'gql-request' ||
+                    tab.document.type === 'gql-example-response'
+                  "
+                  :tab="tab"
+                  :is-removable="activeTabs.length > 1"
+                  @open-rename-modal="openReqRenameModal(tab.id)"
+                  @close-tab="removeTab(tab.id)"
+                  @close-other-tabs="closeOtherTabsAction(tab.id)"
+                  @duplicate-tab="duplicateTab(tab.id)"
+                />
+                <!-- Fallback for document types without a dedicated head
                    (test-runner, collection, environment) — providing the
                    #tabhead slot suppresses the Window's own `label`, so an
                    unmatched type would otherwise render a blank tab head. -->
-              <span v-else class="flex items-center gap-1 truncate px-2">
-                <icon-lucide-folder
-                  v-if="tab.document.type === 'collection'"
-                  class="svg-icons flex-shrink-0"
-                  aria-hidden="true"
-                />
-                <icon-lucide-layers
-                  v-else-if="tab.document.type === 'environment'"
-                  class="svg-icons flex-shrink-0"
-                  aria-hidden="true"
-                />
-                <span class="truncate">{{ getTabName(tab) }}</span>
-              </span>
-            </template>
-            <template #suffix>
-              <span
-                v-if="tab.document.isDirty"
-                class="flex w-4 items-center justify-center text-secondary group-hover:hidden"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="1.2em"
-                  height="1.2em"
-                  class="h-1.5 w-1.5"
+                <span v-else class="flex items-center gap-1 truncate px-2">
+                  <icon-lucide-folder
+                    v-if="tab.document.type === 'collection'"
+                    class="svg-icons flex-shrink-0"
+                    aria-hidden="true"
+                  />
+                  <icon-lucide-layers
+                    v-else-if="tab.document.type === 'environment'"
+                    class="svg-icons flex-shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span class="truncate">{{ getTabName(tab) }}</span>
+                </span>
+              </template>
+              <template #suffix>
+                <span
+                  v-if="tab.document.isDirty"
+                  class="flex w-4 items-center justify-center text-secondary group-hover:hidden"
                 >
-                  <circle cx="12" cy="12" r="12" fill="currentColor"></circle>
-                </svg>
-              </span>
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="1.2em"
+                    height="1.2em"
+                    class="h-1.5 w-1.5"
+                  >
+                    <circle cx="12" cy="12" r="12" fill="currentColor"></circle>
+                  </svg>
+                </span>
+              </template>
+              <!-- Always show the shared top bar (REST badge + path + save) -->
+              <HttpProtocolSwitcher
+                v-if="
+                  tab.document.type === 'request' ||
+                  tab.document.type === 'gql-request'
+                "
+              />
+              <HttpExampleResponseTab
+                v-if="
+                  tab.document.type === 'example-response' &&
+                  tab.document.response
+                "
+                :model-value="tab"
+                @update:model-value="onTabUpdate"
+              />
+              <GqlExampleResponseTab
+                v-if="
+                  tab.document.type === 'gql-example-response' &&
+                  tab.document.response
+                "
+                :model-value="tab"
+                @update:model-value="onTabUpdate"
+              />
+              <!-- Render TabContents -->
+              <HttpTestRunner
+                v-if="tab.document.type === 'test-runner'"
+                :model-value="tab"
+                @update:model-value="onTabUpdate"
+              />
+              <!-- When document.type === 'request' the tab type is HoppTab<HoppRequestDocument>-->
+              <HttpRequestTab
+                v-if="tab.document.type === 'request'"
+                :model-value="tab"
+                @update:model-value="onTabUpdate"
+              />
+              <!-- Collection/folder properties tab -->
+              <CollectionsCollectionTab
+                v-if="tab.document.type === 'collection'"
+                :model-value="tab"
+              />
+              <!-- Environment editor tab -->
+              <EnvironmentsEnvironmentTab
+                v-if="tab.document.type === 'environment'"
+                :model-value="tab"
+              />
+              <!-- When document.type === 'gql-request' render GQL tab -->
+              <GqlRequestTab
+                v-if="tab.document.type === 'gql-request'"
+                :model-value="tab"
+                @update:model-value="onTabUpdate"
+              />
+              <!-- END Render TabContents -->
+            </HoppSmartWindow>
+            <template #actions>
+              <div class="flex h-12 w-max items-center">
+                <EnvironmentsSelector />
+              </div>
             </template>
-            <!-- Always show the shared top bar (REST badge + path + save) -->
-            <HttpProtocolSwitcher
-              v-if="
-                tab.document.type === 'request' ||
-                tab.document.type === 'gql-request'
-              "
-            />
-            <HttpExampleResponseTab
-              v-if="
-                tab.document.type === 'example-response' &&
-                tab.document.response
-              "
-              :model-value="tab"
-              @update:model-value="onTabUpdate"
-            />
-            <GqlExampleResponseTab
-              v-if="
-                tab.document.type === 'gql-example-response' &&
-                tab.document.response
-              "
-              :model-value="tab"
-              @update:model-value="onTabUpdate"
-            />
-            <!-- Render TabContents -->
-            <HttpTestRunner
-              v-if="tab.document.type === 'test-runner'"
-              :model-value="tab"
-              @update:model-value="onTabUpdate"
-            />
-            <!-- When document.type === 'request' the tab type is HoppTab<HoppRequestDocument>-->
-            <HttpRequestTab
-              v-if="tab.document.type === 'request'"
-              :model-value="tab"
-              @update:model-value="onTabUpdate"
-            />
-            <!-- Collection/folder properties tab -->
-            <CollectionsCollectionTab
-              v-if="tab.document.type === 'collection'"
-              :model-value="tab"
-            />
-            <!-- Environment editor tab -->
-            <EnvironmentsEnvironmentTab
-              v-if="tab.document.type === 'environment'"
-              :model-value="tab"
-            />
-            <!-- When document.type === 'gql-request' render GQL tab -->
-            <GqlRequestTab
-              v-if="tab.document.type === 'gql-request'"
-              :model-value="tab"
-              @update:model-value="onTabUpdate"
-            />
-            <!-- END Render TabContents -->
-          </HoppSmartWindow>
-          <template #actions>
-            <div class="flex h-12 w-max items-center">
-              <EnvironmentsSelector />
-            </div>
-          </template>
-        </HoppSmartWindows>
+          </HoppSmartWindows>
+        </div>
       </template>
       <template #sidebar>
         <HttpSidebar />
@@ -225,6 +241,9 @@ import { GQLTabConnectionService } from "~/services/gql-tab-connection.service"
 // static import on a running dev server, so runtime _resolveComponent left
 // the environment tab body blank.
 import EnvironmentsEnvironmentTab from "~/components/environments/EnvironmentTab.vue"
+import WorkspaceAllTabsMenu, {
+  type WorkspaceTabMenuEntry,
+} from "~/components/workspace/AllTabsMenu.vue"
 
 const scrollService = useService(ScrollService)
 const gqlTabConn = useService(GQLTabConnectionService)
@@ -334,6 +353,58 @@ const getTabName = (tab: HoppTab<HoppTabDocument>) => {
 
   return "Unnamed tab"
 }
+
+/** Flatten every workspace tab (incl. folder/env/test-runner) for the left menu. */
+const tabMenuEntries = computed<WorkspaceTabMenuEntry[]>(() =>
+  activeTabs.value.map((tab) => {
+    const base = {
+      id: tab.id,
+      name: getTabName(tab),
+      isDirty: "isDirty" in tab.document ? tab.document.isDirty : false,
+    }
+
+    switch (tab.document.type) {
+      case "request":
+        return {
+          ...base,
+          kind: "request" as const,
+          method: tab.document.request.method,
+          detail: tab.document.request.endpoint,
+        }
+      case "example-response":
+        return {
+          ...base,
+          kind: "example" as const,
+          method: tab.document.response.originalRequest.method,
+          detail: tab.document.response.originalRequest.endpoint,
+        }
+      case "gql-request":
+        return {
+          ...base,
+          kind: "gql" as const,
+          detail: tab.document.request.url,
+        }
+      case "gql-example-response":
+        return {
+          ...base,
+          kind: "gql-example" as const,
+          detail: tab.document.response.originalRequest.url,
+        }
+      case "collection":
+        return { ...base, kind: "collection" as const }
+      case "environment":
+        return { ...base, kind: "environment" as const }
+      case "test-runner":
+        return {
+          ...base,
+          kind: "test-runner" as const,
+          detail: tab.document.collection.name,
+        }
+      default:
+        return { ...base, kind: "other" as const }
+    }
+  })
+)
 
 const inspectionService = useService(InspectionService)
 

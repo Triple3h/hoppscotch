@@ -4,56 +4,70 @@
       <template #primary>
         <GraphqlRequest />
 
-        <HoppSmartWindows
-          v-if="currentTabID"
-          :id="'gql_windows'"
-          :model-value="currentTabID"
-          @update:model-value="changeTab"
-          @remove-tab="removeTab"
-          @add-tab="addNewTab"
-          @sort="sortTabs"
-        >
-          <HoppSmartWindow
-            v-for="tab in activeTabs"
-            :id="tab.id"
-            :key="'removable_tab_' + tab.id"
-            :label="tab.document.request.name"
-            :is-removable="activeTabs.length > 1"
-            :close-visibility="'hover'"
+        <!-- Fixed left rail into the full tab list (mirrors REST + env selector). -->
+        <div class="relative [&_.tabs>div:first-child]:pl-10">
+          <div
+            class="absolute left-0 top-0 z-20 flex h-12 items-center border-r border-dividerLight bg-primaryLight px-1"
           >
-            <template #tabhead>
-              <GraphqlTabHead
-                :tab="tab"
-                :is-removable="activeTabs.length > 1"
-                @open-rename-modal="openReqRenameModal(tab)"
-                @close-tab="removeTab(tab.id)"
-                @close-other-tabs="closeOtherTabsAction(tab.id)"
-                @duplicate-tab="duplicateTab(tab.id)"
-              />
-            </template>
-
-            <template #suffix>
-              <span
-                v-if="tab.document.isDirty"
-                class="flex w-4 items-center justify-center text-secondary group-hover:hidden"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="1.2em"
-                  height="1.2em"
-                  class="h-1.5 w-1.5"
-                >
-                  <circle cx="12" cy="12" r="12" fill="currentColor"></circle>
-                </svg>
-              </span>
-            </template>
-
-            <GraphqlRequestTab
-              :model-value="tab"
-              @update:model-value="onTabUpdate"
+            <WorkspaceAllTabsMenu
+              :entries="tabMenuEntries"
+              :active-id="currentTabID"
+              :removable="activeTabs.length > 1"
+              @select="changeTab"
+              @close="removeTab"
             />
-          </HoppSmartWindow>
-        </HoppSmartWindows>
+          </div>
+          <HoppSmartWindows
+            v-if="currentTabID"
+            :id="'gql_windows'"
+            :model-value="currentTabID"
+            @update:model-value="changeTab"
+            @remove-tab="removeTab"
+            @add-tab="addNewTab"
+            @sort="sortTabs"
+          >
+            <HoppSmartWindow
+              v-for="tab in activeTabs"
+              :id="tab.id"
+              :key="'removable_tab_' + tab.id"
+              :label="tab.document.request.name"
+              :is-removable="activeTabs.length > 1"
+              :close-visibility="'hover'"
+            >
+              <template #tabhead>
+                <GraphqlTabHead
+                  :tab="tab"
+                  :is-removable="activeTabs.length > 1"
+                  @open-rename-modal="openReqRenameModal(tab)"
+                  @close-tab="removeTab(tab.id)"
+                  @close-other-tabs="closeOtherTabsAction(tab.id)"
+                  @duplicate-tab="duplicateTab(tab.id)"
+                />
+              </template>
+
+              <template #suffix>
+                <span
+                  v-if="tab.document.isDirty"
+                  class="flex w-4 items-center justify-center text-secondary group-hover:hidden"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="1.2em"
+                    height="1.2em"
+                    class="h-1.5 w-1.5"
+                  >
+                    <circle cx="12" cy="12" r="12" fill="currentColor"></circle>
+                  </svg>
+                </span>
+              </template>
+
+              <GraphqlRequestTab
+                :model-value="tab"
+                @update:model-value="onTabUpdate"
+              />
+            </HoppSmartWindow>
+          </HoppSmartWindows>
+        </div>
       </template>
       <template #sidebar>
         <GraphqlSidebar />
@@ -96,6 +110,9 @@ import { useExplorer } from "~/helpers/graphql/explorer"
 import { InspectionService } from "~/services/inspection"
 import { HoppTab } from "~/services/tab"
 import { GQLTabService } from "~/services/tab/graphql"
+import WorkspaceAllTabsMenu, {
+  type WorkspaceTabMenuEntry,
+} from "~/components/workspace/AllTabsMenu.vue"
 
 const t = useI18n()
 const tabs = useService(GQLTabService)
@@ -118,6 +135,16 @@ usePageHead({
 })
 
 const activeTabs = tabs.getActiveTabs()
+
+const tabMenuEntries = computed<WorkspaceTabMenuEntry[]>(() =>
+  activeTabs.value.map((tab) => ({
+    id: tab.id,
+    name: tab.document.request.name || "Untitled",
+    kind: "gql" as const,
+    detail: tab.document.request.url,
+    isDirty: tab.document.isDirty,
+  }))
+)
 
 const addNewTab = () => {
   const tab = tabs.createNewTab({

@@ -1150,6 +1150,12 @@
       "twitter": "Follow us on Twitter"
    },
    "tab": {
+      "all_tabs": "All tabs",
+      "group_requests": "Requests",
+      "group_environments": "Environments",
+      "group_folders": "Folders",
+      "group_test_runner": "Test runner",
+      "group_other": "Other",
       "authorization": "Authorization",
       "body": "Body",
       "close": "Close Tab",

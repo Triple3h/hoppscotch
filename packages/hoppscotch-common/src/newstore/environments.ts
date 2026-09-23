@@ -426,6 +426,8 @@ export type AggregateEnvironment = {
   secret: boolean
   sourceEnv: string
   sourceEnvID?: string
+  /** Friendly display name for the source (e.g. parent collection name). */
+  sourceEnvName?: string
 }
 
 /**

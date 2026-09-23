@@ -644,6 +644,12 @@ details[open] summary .indicator {
 
   .workspace-request-bar {
     @apply border-b border-dividerLight;
+
+    // Slightly larger text than the app default (12px). Only the size variable
+    // is overridden: the method/URL fields and the send button all read it
+    // (element styles + the CodeMirror theme), while `--line-height-body`
+    // stays untouched so the row keeps its height.
+    --font-size-body: 0.875rem;
   }
 
   .tabs.group-tabs {

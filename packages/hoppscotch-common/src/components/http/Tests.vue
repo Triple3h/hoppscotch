@@ -40,7 +40,7 @@
       <div class="flex h-full w-2/3 flex-col border-r border-dividerLight">
         <div
           v-if="inheritedScripts.length > 0"
-          class="frosted-pane m-2 flex max-h-1/2 flex-col border-l-2 border-l-yellow-500"
+          class="frosted-pane m-2 flex max-h-[50%] flex-col border-l-2 border-l-yellow-500"
         >
           <div
             class="flex flex-shrink-0 items-center gap-2 overflow-hidden border-b border-dividerDark px-3 py-1.5"

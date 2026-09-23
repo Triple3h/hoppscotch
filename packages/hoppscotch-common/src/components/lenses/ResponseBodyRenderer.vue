@@ -78,11 +78,7 @@ import { useI18n } from "@composables/i18n"
 import { useVModel } from "@vueuse/core"
 import { computed, ref, watch } from "vue"
 import { useSetting } from "~/composables/settings"
-import {
-  getLensRenderers,
-  getSuitableLenses,
-  Lens,
-} from "~/helpers/lenses/lenses"
+import { getLensRenderers, getSuitableLenses } from "~/helpers/lenses/lenses"
 import { HoppRequestDocument } from "~/helpers/tab/document"
 import { ConsoleEntry } from "../console/Panel.vue"
 
@@ -172,6 +168,20 @@ const validLenses = computed(() => {
   return getSuitableLenses(doc.value.response)
 })
 
+// Interactive tabs that can actually render in this component (lenses plus
+// the always-present side panes). Used so a transient empty lens list never
+// parks the selection on a tab that does not exist for this document.
+const presentTabIds = computed(() => {
+  const ids = validLenses.value.map((x) => x.renderer)
+  if (maybeHeaders.value) ids.push("headers")
+  if (actualRequest.value) ids.push("actual-request")
+  if (doc.value.response?.type !== "network_fail" && !isEditable)
+    ids.push("results")
+  if (requestHeaders.value) ids.push("req-headers")
+  if (showConsoleTab.value) ids.push("console")
+  return ids
+})
+
 const showConsoleTab = computed(() => {
   if (!doc.value.testResults?.consoleEntries) {
     return false
@@ -194,36 +204,28 @@ const consoleEntries = computed(() => {
 })
 
 watch(
-  validLenses,
-  (newLenses: Lens[]) => {
-    if (newLenses.length === 0) {
-      selectedLensTab.value = "req-headers"
+  [validLenses, presentTabIds],
+  () => {
+    const present = presentTabIds.value
+
+    // Keep the current tab whenever it is still mounted. Emptying the lens
+    // list mid-stream must not jump to a missing id (HoppSmartTabs would
+    // show no content — the 事件 header and 分条展示/自动合并 vanish).
+    if (selectedLensTab.value && present.includes(selectedLensTab.value)) return
+
+    if (present.length === 0) {
+      selectedLensTab.value = ""
       return
     }
 
-    const validRenderers = [
-      ...newLenses.map((x) => x.renderer),
-      "headers",
-      "actual-request",
-      "results",
-    ]
-
-    // The lens list also changes mid-request (a stream completes and raw
-    // becomes available, headers arrive, …). Never move the user away from
-    // a tab that still exists — only pick a tab when the current selection
-    // is gone (fresh response, no lenses, …).
-    if (validRenderers.includes(selectedLensTab.value)) return
-
     const { responseTabPreference } = doc.value
 
-    if (
-      responseTabPreference &&
-      validRenderers.includes(responseTabPreference)
-    ) {
+    if (responseTabPreference && present.includes(responseTabPreference)) {
       selectedLensTab.value = responseTabPreference
-    } else {
-      selectedLensTab.value = newLenses[0].renderer
+      return
     }
+
+    selectedLensTab.value = validLenses.value[0]?.renderer ?? present[0] ?? ""
   },
   { immediate: true }
 )

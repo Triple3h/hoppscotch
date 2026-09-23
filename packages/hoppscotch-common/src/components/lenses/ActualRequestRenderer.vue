@@ -103,17 +103,21 @@
             placement="bottom"
             :on-shown="() => tippyActions.focus()"
           >
-            <HoppSmartSelectWrapper>
-              <HoppButtonSecondary
-                :label="selectedCodegen?.caption"
-                outline
-                class="flex-1 pr-8"
-              />
+            <HoppSmartSelectWrapper class="min-w-36">
+              <button
+                type="button"
+                class="flex-1 rounded border border-divider bg-primaryLight py-1.5 pl-3 pr-8 text-left text-tiny font-semibold text-secondaryDark transition hover:border-dividerDark hover:bg-primaryDark focus-visible:border-dividerDark focus-visible:outline-none"
+                :title="selectedCodegen?.caption"
+              >
+                <span class="block truncate">
+                  {{ selectedCodegen?.caption }}
+                </span>
+              </button>
             </HoppSmartSelectWrapper>
             <template #content="{ hide }">
               <div
                 ref="tippyActions"
-                class="flex max-h-64 flex-col overflow-y-auto focus:outline-none"
+                class="flex max-h-64 min-w-40 flex-col overflow-y-auto focus:outline-none"
                 tabindex="0"
                 @keyup.escape="hide()"
               >

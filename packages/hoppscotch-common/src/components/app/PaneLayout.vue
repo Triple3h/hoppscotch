@@ -29,7 +29,7 @@
         <Pane
           v-if="hasSecondary"
           :size="PANE_MAIN_BOTTOM_SIZE"
-          class="flex flex-col overflow-auto"
+          class="flex min-h-0 flex-col overflow-hidden"
           min-size="25"
         >
           <slot name="secondary" />

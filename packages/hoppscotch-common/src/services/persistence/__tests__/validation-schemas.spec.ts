@@ -1,7 +1,10 @@
 import { GQL_REQ_SCHEMA_VERSION } from "@hoppscotch/data"
 import { describe, expect, it } from "vitest"
 
-import { WORKSPACE_TABS_STATE_SCHEMA } from "../validation-schemas"
+import {
+  ENVIRONMENTS_SCHEMA,
+  WORKSPACE_TABS_STATE_SCHEMA,
+} from "../validation-schemas"
 
 const originalRequest = {
   v: "1",
@@ -80,6 +83,44 @@ describe("WORKSPACE_TABS_STATE_SCHEMA — gql-request branch", () => {
       } else {
         throw new Error("expected a gql-request doc")
       }
+    }
+  })
+})
+
+describe("ENVIRONMENTS_SCHEMA — environment v2 → v3", () => {
+  const v2Env = {
+    v: 2,
+    id: "env-1",
+    name: "PROD",
+    variables: [
+      {
+        key: "base_url",
+        initialValue: "https://api.example.com",
+        currentValue: "https://api.example.com",
+        secret: false,
+      },
+    ],
+  }
+
+  it("migrates a v2 environment to v3, leaving it colourless", () => {
+    const result = ENVIRONMENTS_SCHEMA.safeParse([v2Env])
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data[0].v).toBe(3)
+      expect(result.data[0].color).toBeUndefined()
+      expect(result.data[0].variables).toEqual(v2Env.variables)
+    }
+  })
+
+  it("keeps the colour picked for a v3 environment", () => {
+    const result = ENVIRONMENTS_SCHEMA.safeParse([
+      { ...v2Env, v: 3, color: "#3b82f6" },
+    ])
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data[0].color).toBe("#3b82f6")
     }
   })
 })

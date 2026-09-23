@@ -13,6 +13,7 @@ import { Ref, watch } from "vue"
 
 import { invokeAction } from "~/helpers/actions"
 import { getService } from "~/modules/dioc"
+import { getI18n } from "~/modules/i18n"
 import {
   AggregateEnvironment,
   aggregateEnvsWithCurrentValue$,
@@ -101,13 +102,32 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
         (env) => env.key === parsedEnvKey
       )
       const currentSelectedEnvironment = getCurrentEnvironment()
-      const envName = tooltipEnv?.sourceEnv ?? "Choose an Environment"
+      const t = getI18n()
 
-      let envInitialValue = tooltipEnv?.initialValue
+      const hasSource = Boolean(tooltipEnv?.sourceEnv)
 
-      // If the environment is not a request variable or collection variable, get the current value from the current environment service
-      // For collection variables and request variables, use the value directly from tooltipEnv
-      let envCurrentValue =
+      // Winner-only source label (empty higher-precedence keys already fell
+      // through filterNonEmptyEnvironmentVariables).
+      const sourceLabel = (() => {
+        if (!tooltipEnv || !hasSource) return t("env_tooltip.not_found")
+        if (tooltipEnv.sourceEnv === "RequestVariable")
+          return t("env_tooltip.request_variable")
+        if (tooltipEnv.sourceEnv === "CollectionVariable")
+          return tooltipEnv.sourceEnvName
+            ? t("env_tooltip.collection_variable_named", {
+                name: tooltipEnv.sourceEnvName,
+              })
+            : t("env_tooltip.collection_variable")
+        if (tooltipEnv.sourceEnv === "Global")
+          return t("env_tooltip.global_environment")
+        return t("env_tooltip.environment_named", {
+          name: tooltipEnv.sourceEnv,
+        })
+      })()
+
+      // Prefer the live current value; fall back to initial — same
+      // current→initial resolution the runner uses (getResolvedVariableValue).
+      const envCurrentValue =
         tooltipEnv?.sourceEnv !== "RequestVariable" &&
         tooltipEnv?.sourceEnv !== "CollectionVariable"
           ? currentEnvironmentValueService.getEnvironmentByKey(
@@ -117,8 +137,7 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
               tooltipEnv?.key ?? ""
             )?.currentValue || tooltipEnv?.currentValue
           : tooltipEnv?.currentValue
-
-      const hasSource = Boolean(tooltipEnv?.sourceEnv)
+      let effectiveValue = envCurrentValue || tooltipEnv?.initialValue || ""
 
       const tooltipSourceEnvID =
         tooltipEnv?.sourceEnv === "Global"
@@ -145,47 +164,23 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
       const isSecret = tooltipEnv?.secret === true
 
       if (isSecret) {
-        if (hasSecretValueStored && hasSecretInitialValueStored) {
-          envInitialValue = maskSecretValue(envInitialValue)
-          envCurrentValue = maskSecretValue(envCurrentValue)
-        } else if (!hasSecretValueStored && hasSecretInitialValueStored) {
-          envInitialValue = maskSecretValue(envInitialValue)
-        } else if (hasSecretValueStored && !hasSecretInitialValueStored) {
-          envCurrentValue = maskSecretValue(envCurrentValue)
+        // Mask the single effective value when either secret slot holds data;
+        // otherwise nothing was ever stored for this key.
+        if (
+          (hasSecretValueStored || hasSecretInitialValueStored) &&
+          effectiveValue
+        ) {
+          effectiveValue = maskSecretValue(effectiveValue)
         } else {
-          envInitialValue = "Empty"
-          envCurrentValue = "Empty"
+          effectiveValue = ""
         }
       } else if (!hasSource) {
-        envInitialValue = "Not Found"
-        envCurrentValue = "Not Found"
-      } else {
-        // Resolve each column independently so a variable that has BOTH an
-        // initial and a current value still previews resolved values (matching
-        // what the runner resolves), instead of leaving `<<...>>` unparsed when
-        // both are set. Empty values are skipped so they stay empty.
-        // `maskValue = true`: a non-secret wrapper like `Bearer <<apiKey>>` must
-        // render its nested SECRET reference masked, never as raw plaintext.
-        if (envInitialValue) {
-          const parsedInitial = parseTemplateStringE(
-            envInitialValue,
-            aggregateEnvs,
-            true
-          )
-          envInitialValue = E.isLeft(parsedInitial)
-            ? "error"
-            : parsedInitial.right
-        }
-        if (envCurrentValue) {
-          const parsedCurrent = parseTemplateStringE(
-            envCurrentValue,
-            aggregateEnvs,
-            true
-          )
-          envCurrentValue = E.isLeft(parsedCurrent)
-            ? "error"
-            : parsedCurrent.right
-        }
+        effectiveValue = "Not Found"
+      } else if (effectiveValue) {
+        // Resolve nested `<<...>>` (maskValue = true so a non-secret wrapper
+        // like `Bearer <<apiKey>>` never leaks a secret).
+        const parsed = parseTemplateStringE(effectiveValue, aggregateEnvs, true)
+        effectiveValue = E.isLeft(parsed) ? "error" : parsed.right
       }
 
       const selectedEnvType = getSelectedEnvironmentType()
@@ -226,7 +221,10 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
               "requestVariables"
           } else {
             invokeAction(invokeActionType, {
-              envName: tooltipEnv?.sourceEnv === "Global" ? "Global" : envName,
+              envName:
+                tooltipEnv?.sourceEnv === "Global"
+                  ? "Global"
+                  : tooltipEnv?.sourceEnv,
               variableName: parsedEnvKey,
               isSecret: tooltipEnv?.secret,
             })
@@ -261,7 +259,7 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
           const icon = document.createElement("span")
           icon.innerHTML = envTypeIcon
           const envNameBlock = document.createElement("span")
-          envNameBlock.innerText = envName
+          envNameBlock.innerText = sourceLabel
 
           iconNameContainer.appendChild(icon)
           iconNameContainer.appendChild(envNameBlock)
@@ -273,18 +271,11 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
           envContainer.className = `flex flex-col items-start space-y-1 flex-1 w-full mt-2 ${TOOLTIP_ENV_CONTAINER_Z_INDEX_CLASS}`
           envContainer.style.overflow = "hidden"
 
-          // Use createTooltipValueRow for overflow-safe value display
-          const initialValueRow = createTooltipValueRow(
-            "Initial",
-            envInitialValue
+          // Single effective value — what the runner would actually send —
+          // replaces the old Initial / Current split.
+          envContainer.appendChild(
+            createTooltipValueRow(t("env_tooltip.value"), effectiveValue)
           )
-          const currentValueRow = createTooltipValueRow(
-            "Current",
-            envCurrentValue
-          )
-
-          envContainer.appendChild(initialValueRow)
-          envContainer.appendChild(currentValueRow)
 
           tooltipContainer.className =
             "tippy-content env-tooltip-content env-tooltip-constrained"

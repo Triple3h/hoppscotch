@@ -307,10 +307,23 @@
       "tests": "没有针对该请求的测试",
       "response": "未收到响应"
    },
+   "env_tooltip": {
+      "collection_variable": "集合变量",
+      "collection_variable_named": "集合变量 · {name}",
+      "description": "说明",
+      "environment_named": "当前环境 · {name}",
+      "global_environment": "全局环境",
+      "not_found": "未找到",
+      "predefined_variable": "预定义变量",
+      "request_variable": "请求变量",
+      "source": "来源",
+      "value": "值"
+   },
    "environment": {
       "heading": "环境",
       "add_to_global": "添加到全局环境",
       "added": "环境变量已添加",
+      "color": "颜色",
       "create_new": "创建新环境",
       "created": "环境已创建",
       "current_value": "当前值",
@@ -446,6 +459,7 @@
    },
    "folder": {
       "edit": "编辑文件夹",
+      "heading": "文件夹",
       "invalid_name": "请提供文件夹的名称",
       "name_length_insufficient": "文件夹名称应至少为 3 个字符",
       "new": "新文件夹",
@@ -1098,6 +1112,12 @@
       "twitter": "在 Twitter 关注我们"
    },
    "tab": {
+      "all_tabs": "所有标签页",
+      "group_requests": "请求",
+      "group_environments": "环境",
+      "group_folders": "文件夹",
+      "group_test_runner": "测试运行器",
+      "group_other": "其他",
       "authorization": "授权",
       "body": "请求体",
       "close": "关闭标签页",

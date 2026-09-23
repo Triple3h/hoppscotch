@@ -16,15 +16,6 @@
       />
     </div>
     <EnvironmentsMy @select-environment="handleEnvironmentChange" />
-    <EnvironmentsMyDetails
-      :show="showModalDetails"
-      :action="action"
-      :editing-environment-index="editingEnvironmentIndex"
-      :editing-variable-name="editingVariableName"
-      :env-vars="envVars"
-      :is-secret-option-selected="secretOptionSelected"
-      @hide-modal="displayModalEdit(false)"
-    />
     <EnvironmentsAdd
       :show="showModalNew"
       :name="editingVariableName"
@@ -50,6 +41,7 @@ import { computed, ref } from "vue"
 import { useI18n } from "~/composables/i18n"
 import { useToast } from "~/composables/toast"
 import { defineActionHandler } from "~/helpers/actions"
+import { openEnvironmentTab } from "~/helpers/tab/openEnvironmentTab"
 import {
   createEnvironment,
   deleteEnvironment,
@@ -73,7 +65,7 @@ const globalEnv = useReadonlyStream(globalEnv$, {
 } as GlobalEnvironment)
 
 const globalEnvironment = computed<Environment>(() => ({
-  v: 2 as const,
+  v: 3,
   id: "Global",
   name: "Global",
   variables: globalEnv.value.variables,
@@ -87,25 +79,14 @@ const selectedEnvironmentIndex = useStream(
 
 const showConfirmRemoveEnvModal = ref(false)
 const showModalNew = ref(false)
-const showModalDetails = ref(false)
-const action = ref<"new" | "edit">("edit")
-const editingEnvironmentIndex = ref<"Global" | null>(null)
 const editingVariableName = ref("")
 const editingVariableValue = ref("")
-const secretOptionSelected = ref(false)
 const duplicateGlobalEnvironmentLoading = ref(false)
 
 const position = ref({ top: 0, left: 0 })
 
 const displayModalNew = (shouldDisplay: boolean) => {
   showModalNew.value = shouldDisplay
-}
-
-const displayModalEdit = (shouldDisplay: boolean) => {
-  action.value = "edit"
-  showModalDetails.value = shouldDisplay
-
-  if (!shouldDisplay) resetSelectedData()
 }
 
 const handleEnvironmentChange = ({ index }: { index: number }) => {
@@ -116,10 +97,7 @@ const handleEnvironmentChange = ({ index }: { index: number }) => {
 }
 
 const editEnvironment = (environmentIndex: "Global") => {
-  editingEnvironmentIndex.value = environmentIndex
-  action.value = "edit"
-  editingVariableName.value = ""
-  displayModalEdit(true)
+  openEnvironmentTab({ isGlobal: environmentIndex === "Global" })
 }
 
 const duplicateGlobalEnvironment = async () => {
@@ -154,35 +132,23 @@ const removeSelectedEnvironment = () => {
   }
 }
 
-const resetSelectedData = () => {
-  editingEnvironmentIndex.value = null
-  editingVariableName.value = ""
-  editingVariableValue.value = ""
-  secretOptionSelected.value = false
-}
-
 defineActionHandler("modals.environment.new", () => {
-  action.value = "new"
-  showModalDetails.value = true
+  openEnvironmentTab({ isNew: true })
 })
 
 defineActionHandler("modals.environment.delete-selected", () => {
   showConfirmRemoveEnvModal.value = true
 })
 
-const additionalVars = ref<Environment["variables"]>([])
-
-const envVars = () => [...globalEnv.value.variables, ...additionalVars.value]
-
 defineActionHandler(
   "modals.global.environment.update",
   ({ variables, isSecret }) => {
-    if (variables) {
-      additionalVars.value = variables
-    }
-    secretOptionSelected.value = isSecret ?? false
-    editEnvironment("Global")
-    editingVariableName.value = "Global"
+    openEnvironmentTab({
+      isGlobal: true,
+      seedVariables: variables,
+      selectedOption: isSecret ? "secret" : "variables",
+      selectedVariableName: variables?.[0]?.key ?? null,
+    })
   }
 )
 

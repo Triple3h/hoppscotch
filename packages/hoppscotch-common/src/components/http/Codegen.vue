@@ -237,7 +237,7 @@ const buildFinalEnvironment = (): Environment => {
   const filteredVariables = filterNonEmptyEnvironmentVariables(resolvedEnvs)
 
   return {
-    v: 2,
+    v: 3,
     id: "env",
     name: "Env",
     variables: filteredVariables,

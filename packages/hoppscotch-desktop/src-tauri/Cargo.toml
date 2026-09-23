@@ -54,6 +54,12 @@ minisign-verify = "0.2.3"
 blake3 = "1.5.5"
 base64 = "0.22.1"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+# Incremental web updates: an update is assembled locally, which means reading
+# the archive already on disk (`zip`) and inflating whatever a Range request
+# bought (`flate2`). Both are already in the graph through appload, and the
+# features here are the ones it pulls in, so this adds no compilation units.
+zip = { version = "2", default-features = false, features = ["deflate"] }
+flate2 = "1.0.35"
 
 [dev-dependencies]
 tempfile = "3.20.0"

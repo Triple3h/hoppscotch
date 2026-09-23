@@ -5,6 +5,7 @@ import { SecretEnvironmentService } from "~/services/secret-environment.service"
 import {
   populateValuesInInheritedCollectionVars,
   resolveInheritedVariables,
+  transformInheritedCollectionVariablesToAggregateEnv,
 } from "../inheritedCollectionVarTransformer"
 
 const currentValues = getService(CurrentValueService)
@@ -281,6 +282,30 @@ describe("resolveInheritedVariables — secret variables", () => {
 
     expect(resolved).toEqual([
       expect.objectContaining({ key: "TOKEN", currentValue: "" }),
+    ])
+  })
+})
+
+describe("transformInheritedCollectionVariablesToAggregateEnv", () => {
+  test("keeps the parent collection name as sourceEnvName for the variable tooltip", () => {
+    const rows = transformInheritedCollectionVariablesToAggregateEnv(
+      [
+        {
+          parentID: "parent-coll",
+          parentName: "Parent Coll",
+          inheritedVariables: [collectionVar("token", "from-coll")],
+        },
+      ],
+      false
+    )
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        key: "token",
+        sourceEnv: "CollectionVariable",
+        sourceEnvID: "parent-coll",
+        sourceEnvName: "Parent Coll",
+      }),
     ])
   })
 })

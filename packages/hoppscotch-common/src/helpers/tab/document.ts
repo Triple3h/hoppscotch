@@ -210,6 +210,78 @@ export type HoppCollectionDocument = {
   inheritedProperties?: HoppInheritedProperty
 }
 
+/**
+ * A single variable row in the environment editor draft. Local `id` is only
+ * for list keys in the UI (not a store identity).
+ */
+export type HoppEnvironmentDraftVariable = {
+  id: number
+  env: {
+    key: string
+    initialValue: string
+    currentValue: string
+    secret: boolean
+  }
+}
+
+export type HoppEnvironmentDocument = {
+  /**
+   * The document type
+   */
+  type: "environment"
+
+  /**
+   * Dedupe key: `"Global"` for the global environment, otherwise the
+   * personal environment's `id` (or a temp id for a not-yet-saved draft).
+   */
+  environmentID: string
+
+  /**
+   * Whether this tab edits the Global environment
+   */
+  isGlobal: boolean
+
+  /**
+   * True until the first save creates the personal environment
+   */
+  isNew: boolean
+
+  /**
+   * Draft name (always `"Global"` when `isGlobal`)
+   */
+  name: string
+
+  /**
+   * Draft color swatch (`""` = none)
+   */
+  color: string
+
+  /**
+   * Draft variables (including secrets/current values resolved on open)
+   */
+  variables: HoppEnvironmentDraftVariable[]
+
+  /**
+   * Which variables sub-tab is active
+   */
+  selectedOption: "variables" | "secret"
+
+  /**
+   * Variable key to focus/select on open (spotlight / inspector)
+   */
+  selectedVariableName?: string | null
+
+  /**
+   * Next local row id for newly added variables
+   */
+  idTicker: number
+
+  /**
+   * Whether the environment has any unsaved changes
+   */
+  isDirty: boolean
+}
+
 export type HoppRequestDocument = {
   /**
    * The document type
@@ -394,6 +466,7 @@ export type HoppTabDocument =
   | HoppSavedExampleDocument
   | HoppSavedGQLExampleDocument
   | HoppCollectionDocument
+  | HoppEnvironmentDocument
   | HoppRequestDocument
   | HoppTestRunnerDocument
   | HoppGQLRequestDocument

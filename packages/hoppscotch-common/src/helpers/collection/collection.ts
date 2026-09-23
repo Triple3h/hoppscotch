@@ -52,7 +52,11 @@ export function resolveSaveContextOnCollectionReorder(
   const tabService = getService(WorkspaceTabsService)
 
   const tabs = tabService.getTabsRefTo((tab) => {
-    if (tab.document.type === "test-runner") return false
+    if (
+      tab.document.type === "test-runner" ||
+      tab.document.type === "environment"
+    )
+      return false
     return (
       tab.document.saveContext?.originLocation === "user-collection" &&
       affectedPaths.has(tab.document.saveContext.folderPath)
@@ -62,6 +66,7 @@ export function resolveSaveContextOnCollectionReorder(
   for (const tab of tabs) {
     if (
       tab.value.document.type !== "test-runner" &&
+      tab.value.document.type !== "environment" &&
       tab.value.document.saveContext?.originLocation === "user-collection"
     ) {
       const newPath = affectedPaths.get(
@@ -94,7 +99,11 @@ export function updateSaveContextForAffectedRequests(
 ) {
   const tabService = getService(WorkspaceTabsService)
   const tabs = tabService.getTabsRefTo((tab) => {
-    if (tab.document.type === "test-runner") return false
+    if (
+      tab.document.type === "test-runner" ||
+      tab.document.type === "environment"
+    )
+      return false
 
     return (
       tab.document.saveContext?.originLocation === "user-collection" &&
@@ -103,7 +112,11 @@ export function updateSaveContextForAffectedRequests(
   })
 
   for (const tab of tabs) {
-    if (tab.value.document.type === "test-runner") return
+    if (
+      tab.value.document.type === "test-runner" ||
+      tab.value.document.type === "environment"
+    )
+      return
 
     if (
       tab.value.document.saveContext?.originLocation === "user-collection" &&
@@ -132,6 +145,9 @@ export function updateInheritedPropertiesForAffectedRequests(
   const effectedTabs = tabService.getTabsRefTo((tab) => {
     if ("type" in tab.document && tab.document.type === "test-runner")
       return false
+    if ("type" in tab.document && tab.document.type === "environment")
+      return false
+    if (!("saveContext" in tab.document)) return false
     const saveContext = tab.document.saveContext
 
     const saveContextPath = saveContext?.folderPath
@@ -150,7 +166,13 @@ export function updateInheritedPropertiesForAffectedRequests(
       tab.value.document.type === "test-runner"
     )
       return
+    if (
+      "type" in tab.value.document &&
+      tab.value.document.type === "environment"
+    )
+      return
     if (!("inheritedProperties" in tab.value.document)) return
+    if (!("saveContext" in tab.value.document)) return
 
     if (
       tab.value.document.saveContext?.originLocation === "user-collection" &&
@@ -168,7 +190,12 @@ export function updateInheritedPropertiesForAffectedRequests(
 function resetSaveContextForAffectedRequests(folderPath: string) {
   const tabService = getService(WorkspaceTabsService)
   const tabs = tabService.getTabsRefTo((tab) => {
-    if (tab.document.type === "test-runner") return false
+    if (
+      tab.document.type === "test-runner" ||
+      tab.document.type === "environment"
+    )
+      return false
+    if (!("saveContext" in tab.document)) return false
     return (
       tab.document.saveContext?.originLocation === "user-collection" &&
       tab.document.saveContext.folderPath.startsWith(folderPath)
@@ -177,6 +204,8 @@ function resetSaveContextForAffectedRequests(folderPath: string) {
 
   for (const tab of tabs) {
     if (tab.value.document.type === "test-runner") return
+    if (tab.value.document.type === "environment") return
+    if (!("saveContext" in tab.value.document)) continue
     tab.value.document.saveContext = null
     tab.value.document.isDirty = true
 

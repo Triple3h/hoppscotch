@@ -83,6 +83,7 @@ declare module 'vue' {
     CookiesEditCookie: typeof import('./components/cookies/EditCookie.vue')['default']
     Environments: typeof import('./components/environments/index.vue')['default']
     EnvironmentsAdd: typeof import('./components/environments/Add.vue')['default']
+    EnvironmentsEnvironmentTab: typeof import('./components/environments/EnvironmentTab.vue')['default']
     EnvironmentsImportExport: typeof import('./components/environments/ImportExport.vue')['default']
     EnvironmentsMy: typeof import('./components/environments/my/index.vue')['default']
     EnvironmentsMyDetails: typeof import('./components/environments/my/Details.vue')['default']
@@ -252,10 +253,12 @@ declare module 'vue' {
     IconLucideInbox: typeof import('~icons/lucide/inbox')['default']
     IconLucideInfo: typeof import('~icons/lucide/info')['default']
     IconLucideLayers: typeof import('~icons/lucide/layers')['default']
+    IconLucideListCollapse: typeof import('~icons/lucide/list-collapse')['default']
     IconLucideListEnd: typeof import('~icons/lucide/list-end')['default']
     IconLucideLoader2: typeof import('~icons/lucide/loader2')['default']
     IconLucideLock: typeof import('~icons/lucide/lock')['default']
     IconLucideMinus: typeof import('~icons/lucide/minus')['default']
+    IconLucidePalette: typeof import('~icons/lucide/palette')['default']
     IconLucidePlusCircle: typeof import('~icons/lucide/plus-circle')['default']
     IconLucideRss: typeof import('~icons/lucide/rss')['default']
     IconLucideSearch: typeof import('~icons/lucide/search')['default']
@@ -309,5 +312,6 @@ declare module 'vue' {
     TabsNav: typeof import('./components/TabsNav.vue')['default']
     Tippy: typeof import('vue-tippy')['Tippy']
     WorkspaceCurrent: typeof import('./components/workspace/Current.vue')['default']
+    WorkspaceTabHeader: typeof import('./components/workspace/TabHeader.vue')['default']
   }
 }

@@ -1,53 +1,79 @@
 <template>
-  <div class="flex divide-x divide-dividerLight">
+  <div
+    class="flex min-w-0 max-w-full items-stretch overflow-hidden bg-primary"
+    :class="
+      isScopeSelector
+        ? 'h-10 w-full rounded'
+        : 'mr-2 h-9 w-fit rounded border border-divider'
+    "
+    :style="
+      selectedEnvTint && !isScopeSelector
+        ? { backgroundColor: selectedEnvTint }
+        : undefined
+    "
+  >
     <tippy
       interactive
       trigger="click"
       theme="popover"
-      :on-shown="() => envSelectorActions!.focus()"
+      :on-shown="() => envSearchInput?.focus()"
     >
-      <HoppSmartSelectWrapper
-        v-tippy="{ theme: 'tooltip' }"
-        :title="`${t('environment.select')}`"
+      <button
+        type="button"
+        class="flex h-full min-w-0 flex-1 items-center gap-2 px-3 text-secondaryDark focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+        :class="{
+          'hover:bg-primaryLight': !selectedEnvColor || isScopeSelector,
+        }"
+        :aria-label="`${t('environment.select')}: ${selectedEnvName}`"
+        :title="`${t('environment.select')}: ${selectedEnvName}`"
       >
-        <HoppButtonSecondary
-          :icon="IconLayers"
-          :label="
-            mdAndLarger
-              ? selectedEnv.type !== 'NO_ENV_SELECTED'
-                ? selectedEnv.name
-                : `${t('environment.select')}`
-              : ''
-          "
-          class="flex-1 !justify-start rounded-none pr-8"
+        <span
+          class="h-2.5 w-2.5 flex-none rounded-full border border-dividerDark"
+          :class="selectedEnvColor ? '' : 'bg-primary'"
+          :style="selectedEnvColor ? { backgroundColor: selectedEnvColor } : {}"
         />
-      </HoppSmartSelectWrapper>
+        <span class="min-w-0 max-w-40 flex-1 truncate text-left font-medium">
+          {{ selectedEnvName }}
+        </span>
+        <icon-lucide-chevron-down
+          class="svg-icons !h-4 !w-4 flex-none text-secondaryLight"
+          aria-hidden="true"
+        />
+      </button>
       <template #content="{ hide }">
         <div
-          ref="envSelectorActions"
-          role="menu"
-          class="flex flex-col space-y-2 focus:outline-none"
-          tabindex="0"
+          role="dialog"
+          :aria-label="t('environment.select')"
+          class="flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-2 focus:outline-none"
           @keyup.escape="hide()"
         >
-          <SmartEnvInput
-            v-model="filterText"
-            :placeholder="`${t('action.search')}`"
-            :context-menu-enabled="false"
-            class="border border-dividerDark focus:border-primaryDark rounded"
-          />
-          <div class="flex flex-col">
+          <div class="relative flex flex-1 items-center">
+            <icon-lucide-search
+              class="svg-icons pointer-events-none absolute left-2 text-secondaryLight"
+            />
+            <input
+              ref="envSearchInput"
+              v-model="filterText"
+              type="text"
+              :aria-label="t('action.search')"
+              :placeholder="`${t('action.search')}`"
+              class="w-full rounded border border-transparent bg-primaryLight py-1.5 pl-8 pr-2 text-body text-secondaryDark placeholder-secondaryLight transition focus:border-dividerDark focus:outline-none"
+            />
+          </div>
+          <div class="flex max-h-72 flex-col overflow-y-auto">
             <HoppSmartItem
               v-if="!isScopeSelector"
-              :icon="IconCircleSlash"
               :label="`${t('environment.no_environment')}`"
-              :info-icon="
+              :icon="
                 selectedEnvironmentIndex.type === 'NO_ENV_SELECTED'
                   ? IconCheck
-                  : undefined
+                  : IconCircleSlash
               "
-              :active-info-icon="
+              class="!px-3 !py-1.5"
+              :class="
                 selectedEnvironmentIndex.type === 'NO_ENV_SELECTED'
+                  ? 'bg-primaryDark'
+                  : ''
               "
               @click="
                 () => {
@@ -59,9 +85,9 @@
             <HoppSmartItem
               v-else-if="isScopeSelector && modelValue"
               :label="t('environment.global')"
-              :icon="IconGlobe"
-              :info-icon="modelValue.type === 'global' ? IconCheck : undefined"
-              :active-info-icon="modelValue.type === 'global'"
+              :icon="modelValue.type === 'global' ? IconCheck : IconGlobe"
+              class="!px-3 !py-1.5"
+              :class="modelValue.type === 'global' ? 'bg-primaryDark' : ''"
               @click="
                 () => {
                   $emit('update:modelValue', {
@@ -72,15 +98,20 @@
                 }
               "
             />
-          </div>
-          <div class="flex flex-col">
             <HoppSmartItem
               v-for="{ env, index } in filteredAndAlphabetizedPersonalEnvs"
               :key="`gen-${index}`"
-              :icon="IconLayers"
               :label="env.name"
-              :info-icon="isEnvActive(index) ? IconCheck : undefined"
-              :active-info-icon="isEnvActive(index)"
+              :icon="isEnvActive(index) ? IconCheck : IconLayers"
+              class="!px-3 !py-1.5"
+              :class="
+                isEnvActive(index) && !selectedEnvTint ? 'bg-primaryDark' : ''
+              "
+              :style="
+                isEnvActive(index) && selectedEnvTint
+                  ? { backgroundColor: selectedEnvTint }
+                  : undefined
+              "
               @click="
                 () => {
                   handleEnvironmentChange(index, {
@@ -115,10 +146,26 @@
               </template>
             </HoppSmartPlaceholder>
           </div>
+          <div
+            v-if="!isScopeSelector"
+            class="mt-1 flex flex-col border-t border-dividerLight pt-1"
+          >
+            <HoppSmartItem
+              :icon="IconPlus"
+              :label="t('environment.create_new')"
+              class="!px-3 !py-1.5"
+              @click="
+                () => {
+                  invokeAction('modals.environment.new', {})
+                  hide()
+                }
+              "
+            />
+          </div>
         </div>
       </template>
     </tippy>
-    <span class="flex">
+    <span v-if="!isScopeSelector" class="flex flex-none">
       <tippy
         interactive
         trigger="click"
@@ -129,7 +176,12 @@
           v-tippy="{ theme: 'tooltip' }"
           :title="`${t('environment.quick_peek')}`"
           :icon="IconEye"
-          class="!px-4"
+          class="h-full !px-2.5"
+          :class="
+            selectedEnvColor
+              ? '!bg-transparent hover:!bg-transparent focus-visible:!bg-transparent'
+              : 'hover:bg-primaryLight focus-visible:bg-primaryLight'
+          "
         />
         <template #content="{ hide }">
           <div
@@ -268,7 +320,6 @@
 <script lang="ts" setup>
 import { useColorMode } from "@composables/theming"
 import { Environment, GlobalEnvironment } from "@hoppscotch/data"
-import { breakpointsTailwind, useBreakpoints } from "@vueuse/core"
 import { useService } from "dioc/vue"
 import { computed, onMounted, ref } from "vue"
 import { TippyComponent } from "vue-tippy"
@@ -291,6 +342,7 @@ import IconEdit from "~icons/lucide/edit"
 import IconEye from "~icons/lucide/eye"
 import IconGlobe from "~icons/lucide/globe"
 import IconLayers from "~icons/lucide/layers"
+import IconPlus from "~icons/lucide/plus"
 
 export type Scope =
   | {
@@ -309,9 +361,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "update:modelValue", data: Scope): void
 }>()
-
-const breakpoints = useBreakpoints(breakpointsTailwind)
-const mdAndLarger = breakpoints.greater("md")
 
 const t = useI18n()
 
@@ -366,6 +415,26 @@ const handleEnvironmentChange = (
     }
   }
 }
+
+const selectedEnvColor = computed(() => {
+  if (selectedEnv.value.type !== "MY_ENV") return ""
+  return myEnvironments.value[selectedEnv.value.index]?.color ?? ""
+})
+
+const selectedEnvTint = computed(() =>
+  selectedEnvColor.value
+    ? `color-mix(in srgb, ${selectedEnvColor.value} 16%, var(--primary-color))`
+    : ""
+)
+
+const selectedEnvName = computed(() =>
+  selectedEnv.value.type === "NO_ENV_SELECTED"
+    ? t("environment.no_environment")
+    : selectedEnv.value.type === "global"
+      ? t("environment.global")
+      : selectedEnv.value.name
+)
+
 const isEnvActive = (id: string | number) => {
   if (props.isScopeSelector) {
     if (props.modelValue?.type === "my-environment") {
@@ -437,7 +506,7 @@ onMounted(() => {
 })
 
 // Template refs
-const envSelectorActions = ref<TippyComponent | null>(null)
+const envSearchInput = ref<HTMLInputElement | null>(null)
 const envQuickPeekActions = ref<TippyComponent | null>(null)
 
 const globalVals = useReadonlyStream(globalEnv$, {

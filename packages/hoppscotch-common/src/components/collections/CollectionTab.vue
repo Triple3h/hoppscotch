@@ -1,29 +1,22 @@
 <template>
   <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-    <div
-      class="flex flex-shrink-0 items-center gap-2 border-b border-dividerLight bg-primary px-4 py-1.5"
+    <WorkspaceTabHeader
+      v-model="name"
+      badge-class="text-blue-500"
+      :path="displayFolderPath"
+      :placeholder="t('action.label')"
+      @save="saveCollection"
     >
-      <icon-lucide-folder
-        class="svg-icons flex-shrink-0 text-secondaryLight"
-        aria-hidden="true"
-      />
-      <HoppSmartInput
-        v-model="name"
-        class="min-w-0 flex-1"
-        input-styles="floating-input"
-        :label="t('action.label')"
-        @submit="saveCollection"
-      />
-      <HoppButtonSecondary
-        v-tippy="{ theme: 'tooltip' }"
-        :title="t('action.save')"
-        :label="t('action.save')"
-        :icon="IconSave"
-        outline
-        filled
-        @click="saveCollection"
-      />
-    </div>
+      <template #badge-icon>
+        <icon-lucide-folder
+          class="h-3.5 w-3.5 text-blue-500"
+          aria-hidden="true"
+        />
+      </template>
+      <template #badge>
+        {{ isRootCollection ? t("collection.title") : t("folder.heading") }}
+      </template>
+    </WorkspaceTabHeader>
     <CollectionsPropertiesTabs
       v-model:collection="editableCollection"
       v-model:active-tab="activeTab"
@@ -39,6 +32,7 @@
 <script setup lang="ts">
 import { useI18n } from "@composables/i18n"
 import { useToast } from "@composables/toast"
+import { useReadonlyStream } from "@composables/stream"
 import { HoppCollection } from "@hoppscotch/data"
 import { useService } from "dioc/vue"
 import { computed, onMounted, ref, watch } from "vue"
@@ -51,15 +45,20 @@ import {
   persistCollectionProperties,
 } from "~/helpers/collection/collectionProperties"
 import { HoppCollectionDocument } from "~/helpers/tab/document"
+import { restCollections$ } from "~/newstore/collections"
 import { HoppTab } from "~/services/tab"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
-import IconSave from "~icons/lucide/save"
+import type { TabPathSegment } from "~/components/workspace/TabHeader.vue"
+// Explicit import — unplugin-vue-components may not rewrite this on a live
+// dev server, leaving runtime _resolveComponent blank.
+import WorkspaceTabHeader from "~/components/workspace/TabHeader.vue"
 
 const props = defineProps<{ modelValue: HoppTab<HoppCollectionDocument> }>()
 
 const t = useI18n()
 const toast = useToast()
 const tabs = useService(WorkspaceTabsService)
+const collections = useReadonlyStream(restCollections$, [])
 
 // The document is mutated in place: the tab map is deeply reactive, so the
 // tab head (name) and the dirty dot update without a round-trip through
@@ -75,6 +74,62 @@ const storeKey = computed(() =>
 const name = computed({
   get: () => doc.value.collection.name,
   set: (value: string) => (doc.value.collection.name = value),
+})
+
+// Root path is a single segment (e.g. "0"); deeper paths are folders
+const isRootCollection = computed(
+  () => doc.value.folderPath.split("/").length === 1
+)
+
+/**
+ * Ancestor names for the breadcrumb (parents only — the editable name sits
+ * after the last chevron, same as ProtocolSwitcher's request path + name).
+ */
+const folderPathNames = computed<string[]>(() => {
+  const indexes = doc.value.folderPath
+    .split("/")
+    .map((x) => parseInt(x, 10))
+    .filter((n) => !Number.isNaN(n))
+
+  // Root collection: no ancestors
+  if (indexes.length <= 1) return []
+
+  const cols = collections.value
+  if (!cols.length) return []
+
+  const names: string[] = []
+  let current = cols[indexes[0]]
+  if (!current) return []
+  names.push(current.name)
+
+  // Walk parents of the edited node (exclude the node itself — last index)
+  for (let i = 1; i < indexes.length - 1; i++) {
+    const folder = current?.folders?.[indexes[i]]
+    if (!folder) break
+    names.push(folder.name)
+    current = folder
+  }
+
+  return names
+})
+
+// Deep paths collapse to `root > … > parent` with the rest in the tooltip
+const displayFolderPath = computed<TabPathSegment[]>(() => {
+  const path = folderPathNames.value
+  if (path.length <= 3) {
+    return path.map((segmentName) => ({
+      name: segmentName,
+      tooltip: segmentName,
+    }))
+  }
+  return [
+    { name: path[0], tooltip: path[0] },
+    {
+      name: "…",
+      tooltip: path.slice(1, -1).join(" > "),
+    },
+    { name: path[path.length - 1], tooltip: path[path.length - 1] },
+  ]
 })
 
 // The panels edit the collection in place, so the document's collection *is*

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="sticky top-0 z-20 flex-none flex-shrink-0 bg-primary p-4 sm:flex sm:flex-shrink-0 sm:space-x-2"
+    class="workspace-request-bar sticky top-0 z-20 flex-none flex-shrink-0 bg-primary p-4 sm:flex sm:flex-shrink-0 sm:space-x-2"
   >
     <div
       class="min-w-[12rem] flex flex-1 whitespace-nowrap rounded border border-divider"
@@ -109,7 +109,7 @@
                 :shortcut="['C']"
                 @click="
                   () => {
-                    showCurlImportModal = !showCurlImportModal
+                    showCurlImportModal = true
                     hide()
                   }
                 "
@@ -121,7 +121,7 @@
                 :shortcut="['S']"
                 @click="
                   () => {
-                    showCodegenModal = !showCodegenModal
+                    showCodegenModal = true
                     hide()
                   }
                 "
@@ -141,65 +141,6 @@
             </div>
           </template>
         </tippy>
-      </span>
-      <span class="ml-2 flex rounded border border-divider transition">
-        <HoppButtonSecondary
-          v-tippy="{ theme: 'tooltip', delay: [500, 20], allowHTML: true }"
-          :title="`${t(
-            'request.save'
-          )} <kbd>${getSpecialKey()}</kbd><kbd>S</kbd>`"
-          :label="COLUMN_LAYOUT ? `${t('request.save')}` : ''"
-          filled
-          :icon="IconSave"
-          class="flex-1 rounded rounded-r-none"
-          @click="saveRequest()"
-        />
-        <span class="flex">
-          <tippy
-            interactive
-            trigger="click"
-            theme="popover"
-            :on-shown="() => saveTippyActions.focus()"
-          >
-            <HoppButtonSecondary
-              v-tippy="{ theme: 'tooltip' }"
-              :title="t('app.options')"
-              :icon="IconChevronDown"
-              filled
-              class="rounded rounded-l-none"
-            />
-            <template #content="{ hide }">
-              <div
-                ref="saveTippyActions"
-                class="flex flex-col focus:outline-none"
-                tabindex="0"
-                @keyup.escape="hide()"
-              >
-                <input
-                  id="request-name"
-                  v-model="tab.document.request.name"
-                  :placeholder="`${t('request.name')}`"
-                  name="request-name"
-                  type="text"
-                  autocomplete="off"
-                  class="input mb-2 !bg-primaryContrast"
-                  @keyup.enter="hide()"
-                />
-                <HoppSmartItem
-                  ref="saveRequestAction"
-                  :label="`${t('request.save_as')}`"
-                  :icon="IconFolderPlus"
-                  @click="
-                    () => {
-                      showSaveRequestModal = true
-                      hide()
-                    }
-                  "
-                />
-              </div>
-            </template>
-          </tippy>
-        </span>
       </span>
     </div>
     <HttpImportCurl
@@ -224,7 +165,6 @@
 
 <script setup lang="ts">
 import { useI18n } from "@composables/i18n"
-import { useSetting } from "@composables/settings"
 import { useReadonlyStream, useStreamSubscriber } from "@composables/stream"
 import { useToast } from "@composables/toast"
 import { useVModel } from "@vueuse/core"
@@ -238,9 +178,7 @@ import { editRESTRequest } from "~/newstore/collections"
 import IconChevronDown from "~icons/lucide/chevron-down"
 import IconCode2 from "~icons/lucide/code-2"
 import IconFileCode from "~icons/lucide/file-code"
-import IconFolderPlus from "~icons/lucide/folder-plus"
 import IconRotateCCW from "~icons/lucide/rotate-ccw"
-import IconSave from "~icons/lucide/save"
 import { getDefaultRESTRequest } from "~/helpers/rest/default"
 import { RESTHistoryEntry, restHistory$ } from "~/newstore/history"
 import { platform } from "~/platform"
@@ -301,11 +239,9 @@ const showSaveRequestModal = ref(false)
 
 const methodTippyActions = ref<any | null>(null)
 const sendTippyActions = ref<any | null>(null)
-const saveTippyActions = ref<any | null>(null)
 const curl = ref<any | null>(null)
 const show = ref<any | null>(null)
 const clearAll = ref<any | null>(null)
-const saveRequestAction = ref<any | null>(null)
 const urlInput = ref<{ focus: () => void } | null>(null)
 
 const history = useReadonlyStream<RESTHistoryEntry[]>(restHistory$, [])
@@ -616,8 +552,6 @@ const isCustomMethod = computed(() => {
     !methods.includes(newMethod.value)
   )
 })
-
-const COLUMN_LAYOUT = useSetting("COLUMN_LAYOUT")
 
 const tabResults = inspectionService.getResultViewFor(tabs.currentTabID.value)
 </script>

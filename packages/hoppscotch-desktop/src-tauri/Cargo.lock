@@ -2331,6 +2331,7 @@ dependencies = [
  "blake3",
  "dirs 6.0.0",
  "file-rotate",
+ "flate2",
  "minisign-verify",
  "native-dialog",
  "random-port",
@@ -2360,6 +2361,7 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "winreg 0.52.0",
+ "zip",
 ]
 
 [[package]]
@@ -3187,9 +3189,9 @@ checksum = "6367d84fb54d4242af283086402907277715b8fe46976963af5ebf173f8efba3"
 
 [[package]]
 name = "miniz_oxide"
-version = "0.8.1"
+version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2ef2593ffb6958c941575cee70c8e257438749971869c4ae5acf6f91a168a61"
+checksum = "1fa76a2c86f704bdb222d66965fb3d63269ce38518b83cb0575fca855ebb6316"
 dependencies = [
  "adler2",
  "simd-adler32",

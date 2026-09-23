@@ -7,12 +7,20 @@
 //! this module is that path.
 //!
 //! It fetches the bundle's signed manifest from the release assets, verifies it,
-//! downloads the matching archive and stores both for the next launch. The copy
-//! compiled into the binary stays the baseline: appload installs whatever sits at
-//! `path::bundle_path()` / `path::manifest_path()` during startup, so overlaying
-//! the newer pair onto those paths between `write_vendored` and the plugin's
-//! setup is all it takes. The plugin never learns that an update exists, and
-//! nothing in it has to change.
+//! and produces the archive the next launch will use. Files the installed copy
+//! already holds — same path, same blake3 — are taken from it; the rest are
+//! fetched one HTTP Range request at a time, against the compressed extents the
+//! manifest records for the published zip, and the whole set is written back out
+//! as a fresh archive. A frontend-only release usually costs a few hundred KB
+//! that way instead of the full ~12MB. Downloading the archive whole stays the
+//! path for a first install, and the fallback whenever anything about the
+//! incremental one cannot be trusted.
+//!
+//! The copy compiled into the binary stays the baseline: appload installs
+//! whatever sits at `path::bundle_path()` / `path::manifest_path()` during
+//! startup, so overlaying the newer pair onto those paths between
+//! `write_vendored` and the plugin's setup is all it takes. The plugin never
+//! learns that an update exists, and nothing in it has to change.
 //!
 //! Trust chain, in the order the checks run:
 //!
@@ -21,15 +29,24 @@
 //!    download is read before this passes.
 //! 2. `shell_min_version` from the manifest against the running shell, so a
 //!    bundle can refuse a shell too old to run it.
-//! 3. `bundle.size` and `bundle.blake3` for the archive as downloaded.
-//! 4. per-file blake3, performed by appload itself when it extracts the archive
-//!    against the very same manifest bytes.
+//! 3. per-file blake3 over the inflated bytes, on the way into the archive:
+//!    whatever a Range request returns is checked against the signed manifest
+//!    before it is written, and every reused file is checked the same way.
+//! 4. `bundle.size` and `bundle.blake3` against the archive as downloaded. Only
+//!    the full-download path can satisfy these: an assembled archive is
+//!    equivalent to the published one file for file, not byte for byte.
+//!
+//! appload's own per-file check does not apply to a vendored bundle — it only
+//! requires that the files the manifest names are present in the archive — so
+//! the checks above are what keeps a bad bundle from being laid down at all.
 //!
 //! A version applied twice without the loaded app reporting in is assumed broken
 //! and rolled back to the one it replaced, so a bad bundle costs one restart
 //! instead of a reinstall.
 
+use std::collections::HashMap;
 use std::fs;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -37,6 +54,7 @@ use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime};
 use thiserror::Error;
+use tokio::task::JoinSet;
 
 use crate::path;
 
@@ -87,6 +105,9 @@ pub enum WebUpdateError {
     #[error("Bundle does not match its manifest: {0}")]
     Mismatch(String),
 
+    #[error("Could not fetch a bundle entry: {0}")]
+    Fetch(String),
+
     #[error("Missing configuration: {0}")]
     Config(&'static str),
 }
@@ -128,11 +149,6 @@ pub struct WebUpdateStatus {
 }
 
 /// The parts of the published manifest this module needs.
-///
-/// The per-file list is deliberately not modelled here: the bytes verified by
-/// the signature are the same bytes handed to appload, which re-checks every
-/// extracted file against them. Re-deserialising it here would only add a second
-/// interpretation of the same data.
 #[derive(Debug, Clone, Deserialize)]
 struct SignedManifest {
     version: String,
@@ -140,6 +156,29 @@ struct SignedManifest {
     shell_min_version: Option<String>,
     #[serde(default)]
     bundle: Option<BundleFacts>,
+    /// Published order is the order the bundler wrote the archive in, so an
+    /// assembled archive keeps it.
+    #[serde(default)]
+    files: Vec<ManifestFile>,
+}
+
+/// One entry as the published manifest describes it.
+///
+/// The uncompressed identity (`size` / `hash`) is what decides whether the
+/// installed copy already has this file, and where an assembled archive gets
+/// its content from. `offset` / `length` / `method` locate this entry's
+/// *compressed* bytes inside the published zip, which is what a Range request
+/// has to ask for.
+#[derive(Debug, Clone, Deserialize)]
+struct ManifestFile {
+    path: String,
+    size: u64,
+    #[serde(with = "hash_base64")]
+    hash: blake3::Hash,
+    offset: u64,
+    length: u64,
+    /// ZIP compression method: 0 = stored, 8 = deflate.
+    method: u16,
 }
 
 /// Whole-archive facts, so a truncated or swapped download is caught before
@@ -348,16 +387,16 @@ async fn apply_inner<R: Runtime>(app: &AppHandle<R>) -> Result<WebUpdateStatus, 
         return Ok(status);
     }
 
-    let archive = client
-        .get(format!("{}/{}", endpoint, BUNDLE_FILE_NAME))
-        .send()
-        .await?
-        .error_for_status()?
-        .bytes()
-        .await?
-        .to_vec();
-
-    verify_archive(&archive, manifest.bundle.as_ref())?;
+    let archive = match incremental_archive(&client, &endpoint, &manifest).await {
+        Ok(Some(archive)) => archive,
+        // Nothing local to diff against: a first install, or a manifest that
+        // predates the incremental channel.
+        Ok(None) => download_archive(&client, &endpoint, &manifest).await?,
+        Err(e) => {
+            tracing::warn!(error = %e, "Incremental assembly failed; downloading the whole archive");
+            download_archive(&client, &endpoint, &manifest).await?
+        }
+    };
 
     let layout = Layout::resolve()?;
     layout.install(&manifest, &manifest_bytes, &archive)?;
@@ -426,6 +465,470 @@ fn status_for<R: Runtime>(
 }
 
 // ---------------------------------------------------------------------------
+// Incremental assembly
+// ---------------------------------------------------------------------------
+
+/// File fetches in flight at once. Enough that a release touching a hundred
+/// files is not a hundred round trips in series, low enough to stay a guest on
+/// the release host.
+const FETCH_CONCURRENCY: usize = 8;
+
+/// Attempts per entry. A body that ends early now and then is a fact of the
+/// release host rather than a sign of anything wrong with the bundle, and a
+/// retried GET for a byte range costs nothing but itself.
+const FETCH_ATTEMPTS: u32 = 3;
+
+/// Downloads the published archive whole and checks it against the signed
+/// whole-archive facts.
+async fn download_archive(
+    client: &reqwest::Client,
+    endpoint: &str,
+    manifest: &SignedManifest,
+) -> Result<Vec<u8>, WebUpdateError> {
+    let archive = client
+        .get(format!("{}/{}", endpoint, BUNDLE_FILE_NAME))
+        .send()
+        .await?
+        .error_for_status()?
+        .bytes()
+        .await?
+        .to_vec();
+
+    verify_archive(&archive, manifest.bundle.as_ref())?;
+
+    Ok(archive)
+}
+
+/// Rebuilds the published archive from the installed one plus whatever
+/// changed, without downloading it whole.
+///
+/// `Ok(None)` means the incremental path does not apply to this release —
+/// no local copy to diff against, or a manifest without compressed extents —
+/// and is not an error: the caller downloads the archive the usual way.
+async fn incremental_archive(
+    client: &reqwest::Client,
+    endpoint: &str,
+    manifest: &SignedManifest,
+) -> Result<Option<Vec<u8>>, WebUpdateError> {
+    // An entry the manifest gives no compressed extent for cannot be asked
+    // for by Range. One is enough to make the whole manifest unusable here,
+    // and it is also how a manifest published before this channel existed
+    // looks.
+    if manifest.files.is_empty() || manifest.files.iter().any(|f| f.length == 0 && f.size > 0) {
+        tracing::info!("Published manifest carries no usable compressed extents");
+        return Ok(None);
+    }
+
+    let Some(base) = read_base_bundle() else {
+        tracing::info!("No installed archive to diff against");
+        return Ok(None);
+    };
+
+    let local = local_file_contents(&base)?;
+    let (mut slots, pending) = plan_reuse(&local, manifest);
+
+    tracing::info!(
+        entries = manifest.files.len(),
+        reused = manifest.files.len() - pending.len(),
+        to_fetch = pending.len(),
+        "Assembling the published bundle from the installed one"
+    );
+
+    let url = format!("{}/{}", endpoint, BUNDLE_FILE_NAME);
+    let fetched_bytes = fetch_pending(client, &url, manifest, &mut slots, &pending).await?;
+
+    let mut contents = Vec::with_capacity(slots.len());
+    for slot in slots {
+        contents.push(
+            slot.ok_or_else(|| WebUpdateError::Mismatch("an entry was never filled".into()))?,
+        );
+    }
+
+    let archive = build_archive(manifest, &contents)?;
+
+    tracing::info!(
+        downloaded_bytes = fetched_bytes,
+        archive_bytes = archive.len(),
+        "Assembled the new bundle locally"
+    );
+
+    Ok(Some(archive))
+}
+
+/// The archive the running app was loaded from, if it is still on disk.
+///
+/// `temp_dir` is the OS's to wipe, which is why this answers `Option` and the
+/// caller falls back to a full download rather than failing.
+fn read_base_bundle() -> Option<Vec<u8>> {
+    if let Ok(bytes) = fs::read(path::bundle_path()) {
+        return Some(bytes);
+    }
+
+    // An installed update also lives in the channel's own directory, which
+    // survives a wipe of the scratch copy.
+    let active = Layout::resolve().ok()?.active.join(BUNDLE_FILE_NAME);
+
+    fs::read(active).ok()
+}
+
+/// Every entry in `archive`, by path, inflated.
+///
+/// The reuse decision is a hash over uncompressed bytes — the value the
+/// manifest carries — so the archive has to be opened up to answer it.
+fn local_file_contents(archive: &[u8]) -> Result<HashMap<String, Vec<u8>>, WebUpdateError> {
+    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(archive)).map_err(|e| {
+        WebUpdateError::Mismatch(format!("installed archive is not a readable zip: {e}"))
+    })?;
+
+    let mut files = HashMap::with_capacity(zip.len());
+
+    for index in 0..zip.len() {
+        let mut file = zip
+            .by_index(index)
+            .map_err(|e| WebUpdateError::Mismatch(format!("installed archive entry: {e}")))?;
+
+        if !file.is_file() {
+            continue;
+        }
+
+        let name = file.name().to_string();
+        let mut content = Vec::with_capacity(file.size() as usize);
+        file.read_to_end(&mut content)?;
+
+        files.insert(name, content);
+    }
+
+    Ok(files)
+}
+
+/// Splits the manifest's entries into the ones the installed copy already has
+/// and the ones that have to be fetched.
+///
+/// Reuse is decided on content, never on the path alone: an unchanged file
+/// passes the manifest's own hash, while a path that survived a rebuild with
+/// different bytes is fetched like any other.
+fn plan_reuse(
+    local: &HashMap<String, Vec<u8>>,
+    manifest: &SignedManifest,
+) -> (Vec<Option<Vec<u8>>>, Vec<usize>) {
+    let mut slots: Vec<Option<Vec<u8>>> = vec![None; manifest.files.len()];
+    let mut pending = Vec::new();
+
+    for (index, entry) in manifest.files.iter().enumerate() {
+        // An empty file's content is known without asking anyone for it, and a
+        // stored one has no compressed extent a Range request could name.
+        if entry.size == 0 {
+            slots[index] = Some(Vec::new());
+            continue;
+        }
+
+        match local.get(&entry.path) {
+            Some(content)
+                if content.len() as u64 == entry.size && blake3::hash(content) == entry.hash =>
+            {
+                slots[index] = Some(content.clone());
+            }
+            _ => pending.push(index),
+        }
+    }
+
+    (slots, pending)
+}
+
+/// A run of the published archive that one request can bring back.
+struct Extent {
+    start: u64,
+    /// Exclusive.
+    end: u64,
+    /// Indices into the manifest, in archive order.
+    entries: Vec<usize>,
+}
+
+/// How much unchanged data an extent may swallow to join the one before it.
+///
+/// A few KB of extra bytes is cheaper than the request it saves: every request
+/// is a redirect, a handshake and a slot against the release host's patience.
+const EXTENT_GAP: u64 = 8 * 1024;
+
+/// Groups the entries that have to be fetched into as few extents as possible.
+///
+/// A release's changed files tend to arrive in runs — a directory's worth of
+/// chunks — and it is the merging here that keeps a hundred changed files from
+/// being a hundred requests.
+fn merge_extents(manifest: &SignedManifest, pending: &[usize]) -> Vec<Extent> {
+    let mut ordered = pending.to_vec();
+    ordered.sort_by_key(|&index| manifest.files[index].offset);
+
+    let mut extents: Vec<Extent> = Vec::new();
+
+    for index in ordered {
+        let entry = &manifest.files[index];
+        let end = entry.offset + entry.length;
+
+        match extents.last_mut() {
+            Some(last) if entry.offset <= last.end + EXTENT_GAP => {
+                last.end = last.end.max(end);
+                last.entries.push(index);
+            }
+            _ => extents.push(Extent {
+                start: entry.offset,
+                end,
+                entries: vec![index],
+            }),
+        }
+    }
+
+    extents
+}
+
+/// Fetches one contiguous run of the published archive.
+///
+/// The request goes against the archive as published, never against the local
+/// copy: the offsets describe the published layout, which an assembled archive
+/// no longer shares.
+async fn fetch_extent(
+    client: &reqwest::Client,
+    url: &str,
+    start: u64,
+    length: u64,
+) -> Result<Vec<u8>, WebUpdateError> {
+    let response = client
+        .get(url)
+        .header(
+            reqwest::header::RANGE,
+            format!("bytes={}-{}", start, start + length - 1),
+        )
+        // Offsets only address the bytes as stored: a body that arrived
+        // transparently decompressed would be the wrong alphabet to index into.
+        .header(reqwest::header::ACCEPT_ENCODING, "identity")
+        .send()
+        .await?
+        .error_for_status()?;
+
+    if response.status() != reqwest::StatusCode::PARTIAL_CONTENT {
+        return Err(WebUpdateError::Fetch(format!(
+            "bytes {start}-: expected a partial response, got {}",
+            response.status()
+        )));
+    }
+
+    let bytes = response.bytes().await?;
+    if bytes.len() as u64 != length {
+        return Err(WebUpdateError::Mismatch(format!(
+            "bytes {start}-: expected {length} bytes, got {}",
+            bytes.len()
+        )));
+    }
+
+    Ok(bytes.to_vec())
+}
+
+/// [`fetch_extent`], retried: see [`FETCH_ATTEMPTS`].
+async fn fetch_extent_with_retries(
+    client: &reqwest::Client,
+    url: &str,
+    start: u64,
+    length: u64,
+) -> Result<Vec<u8>, WebUpdateError> {
+    let mut last = None;
+
+    for attempt in 1..=FETCH_ATTEMPTS {
+        match fetch_extent(client, url, start, length).await {
+            Ok(bytes) => return Ok(bytes),
+            Err(e) => {
+                tracing::warn!(start, length, attempt, error = %e, "Archive extent fetch failed");
+                last = Some(e);
+            }
+        }
+    }
+
+    Err(last.unwrap_or_else(|| WebUpdateError::Fetch("no attempt was made".into())))
+}
+
+/// The content one entry holds inside a fetched extent, checked against the
+/// manifest.
+fn unpack_entry(
+    extent: &[u8],
+    extent_start: u64,
+    entry: &ManifestFile,
+) -> Result<Vec<u8>, WebUpdateError> {
+    let start = (entry.offset - extent_start) as usize;
+    let compressed = &extent[start..start + entry.length as usize];
+
+    let content = inflate(compressed, entry.method)?;
+
+    if content.len() as u64 != entry.size {
+        return Err(WebUpdateError::Mismatch(format!(
+            "{}: expected {} bytes, got {}",
+            entry.path,
+            entry.size,
+            content.len()
+        )));
+    }
+
+    let actual = blake3::hash(&content);
+    if actual != entry.hash {
+        return Err(WebUpdateError::Mismatch(format!(
+            "{}: blake3 mismatch (expected {}, got {})",
+            entry.path,
+            entry.hash.to_hex(),
+            actual.to_hex()
+        )));
+    }
+
+    Ok(content)
+}
+
+/// Fetches every pending entry into its slot, and answers the compressed bytes
+/// that came over the wire.
+///
+/// The one place the download loop lives, so the app and the end-to-end test
+/// over a real release run the same one.
+async fn fetch_pending(
+    client: &reqwest::Client,
+    url: &str,
+    manifest: &SignedManifest,
+    slots: &mut [Option<Vec<u8>>],
+    pending: &[usize],
+) -> Result<u64, WebUpdateError> {
+    let extents = merge_extents(manifest, pending);
+
+    tracing::info!(
+        entries = pending.len(),
+        extents = extents.len(),
+        "Fetching the changed entries"
+    );
+
+    let mut fetched = 0u64;
+
+    for chunk in extents.chunks(FETCH_CONCURRENCY) {
+        let mut tasks = JoinSet::new();
+
+        for extent in chunk {
+            let client = client.clone();
+            let url = url.to_string();
+            let start = extent.start;
+            let length = extent.end - extent.start;
+            let entries = extent.entries.clone();
+
+            tasks.spawn(async move {
+                fetch_extent_with_retries(&client, &url, start, length)
+                    .await
+                    .map(|bytes| (start, length, entries, bytes))
+            });
+        }
+
+        while let Some(joined) = tasks.join_next().await {
+            let (start, length, entries, bytes) =
+                joined.map_err(|e| WebUpdateError::Fetch(e.to_string()))??;
+
+            fetched += length;
+
+            for index in entries {
+                slots[index] = Some(unpack_entry(&bytes, start, &manifest.files[index])?);
+            }
+        }
+    }
+
+    Ok(fetched)
+}
+
+/// The content behind a compressed extent, per the method's number in the
+/// manifest.
+fn inflate(compressed: &[u8], method: u16) -> Result<Vec<u8>, WebUpdateError> {
+    match method {
+        0 => Ok(compressed.to_vec()),
+        8 => {
+            let mut content = Vec::new();
+            flate2::read::DeflateDecoder::new(compressed).read_to_end(&mut content)?;
+
+            Ok(content)
+        }
+        other => Err(WebUpdateError::Mismatch(format!(
+            "unsupported compression method {other}"
+        ))),
+    }
+}
+
+/// Writes the manifest's entries into a fresh archive, in manifest order.
+///
+/// Nothing here is byte-compatible with the published archive — a reused entry
+/// may have been compressed by an earlier build — so the whole-archive blake3
+/// does not apply. What does apply is every file's own hash, and every file has
+/// passed it by the time it reaches this point: `fetch_file` checks what came
+/// off the wire, `plan_reuse` checks what came off the disk.
+fn build_archive(
+    manifest: &SignedManifest,
+    contents: &[Vec<u8>],
+) -> Result<Vec<u8>, WebUpdateError> {
+    let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+
+    for (entry, content) in manifest.files.iter().zip(contents) {
+        // The options the bundler uses, so an assembled archive is drawn the
+        // same way as a published one.
+        let options = zip::write::SimpleFileOptions::default().unix_permissions(0o644);
+
+        writer
+            .start_file(entry.path.as_str(), options)
+            .map_err(|e| WebUpdateError::Mismatch(format!("{}: {e}", entry.path)))?;
+
+        writer
+            .write_all(content)
+            .map_err(|e| WebUpdateError::Mismatch(format!("{}: {e}", entry.path)))?;
+    }
+
+    let archive = writer
+        .finish()
+        .map_err(|e| WebUpdateError::Mismatch(format!("assembled archive: {e}")))?
+        .into_inner();
+
+    // A bundle appload cannot read is a launch that fails on the next start,
+    // and the files it looks up by name are the whole of what it requires, so
+    // reading the archive back once is the cheapest place to catch a bad one.
+    verify_assembled(&archive, manifest)?;
+
+    Ok(archive)
+}
+
+/// Reads the archive just written back and checks every entry against the
+/// manifest: present under the name appload will ask for, and holding the bytes
+/// the manifest hashes.
+///
+/// A bundle appload cannot open is a launch that fails on the next start. The
+/// content half of this is not redundant with the checks on the way in: a
+/// compressor can write a stream that is structurally fine and wrong, which is
+/// exactly what an arithmetic overflow in miniz_oxide 0.8.1 did to some inputs.
+fn verify_assembled(
+    archive: &[u8],
+    manifest: &SignedManifest,
+) -> Result<(), WebUpdateError> {
+    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(archive))
+        .map_err(|e| WebUpdateError::Mismatch(format!("assembled archive is unreadable: {e}")))?;
+
+    for entry in &manifest.files {
+        let mut file = zip.by_name(&entry.path).map_err(|e| {
+            WebUpdateError::Mismatch(format!("assembled archive is missing {}: {e}", entry.path))
+        })?;
+
+        let mut content = Vec::with_capacity(entry.size as usize);
+        file.read_to_end(&mut content)
+            .map_err(|e| WebUpdateError::Mismatch(format!("{}: {e}", entry.path)))?;
+
+        let actual = blake3::hash(&content);
+        if actual != entry.hash {
+            return Err(WebUpdateError::Mismatch(format!(
+                "{}: assembled blake3 mismatch (expected {}, got {})",
+                entry.path,
+                entry.hash.to_hex(),
+                actual.to_hex()
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Fetching and verification
 // ---------------------------------------------------------------------------
 
@@ -433,8 +936,17 @@ fn http_client() -> Result<reqwest::Client, WebUpdateError> {
     // `reqwest` honours HTTPS_PROXY / HTTP_PROXY from the environment, the same
     // variables the updater reads, so a proxied machine works for both channels
     // without any extra configuration here.
+    //
+    // Connections are not reused (`http1_only`, no idle pool): across a run of
+    // Range requests the release host drops bodies often enough that the
+    // retries dominate the run's wall time, and a fresh handshake per request
+    // costs far less than the retries it avoids. A dropped body fails an entry
+    // and is retried, never a wrong result, so this is a choice about speed
+    // rather than correctness.
     Ok(reqwest::Client::builder()
         .timeout(Duration::from_secs(HTTP_TIMEOUT_SECS))
+        .http1_only()
+        .pool_max_idle_per_host(0)
         .build()?)
 }
 
@@ -967,5 +1479,270 @@ mod tests {
         }
 
         verify_manifest_signature(&manifest, &signature, &public_key).expect("should verify");
+    }
+
+    // -----------------------------------------------------------------------
+    // Incremental assembly
+    // -----------------------------------------------------------------------
+
+    /// A zip written the way the bundler writes one: same options, same order.
+    fn zip_of(files: &[(&str, &[u8])]) -> Vec<u8> {
+        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+
+        for (path, content) in files {
+            writer
+                .start_file(
+                    *path,
+                    zip::write::SimpleFileOptions::default().unix_permissions(0o644),
+                )
+                .unwrap();
+            writer.write_all(content).unwrap();
+        }
+
+        writer.finish().unwrap().into_inner()
+    }
+
+    fn encoded(hash: blake3::Hash) -> String {
+        base64::engine::general_purpose::STANDARD.encode(hash.as_bytes())
+    }
+
+    /// The manifest a release of `archive` publishes: same fields, same names,
+    /// compressed extents read back out of the archive the way the bundler's
+    /// `index_zip` reads them.
+    fn manifest_for(archive: &[u8], version: &str) -> SignedManifest {
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(archive)).unwrap();
+        let mut files = Vec::new();
+
+        for index in 0..zip.len() {
+            let mut file = zip.by_index(index).unwrap();
+            let mut content = Vec::new();
+            file.read_to_end(&mut content).unwrap();
+
+            files.push(serde_json::json!({
+                "path": file.name(),
+                "size": content.len(),
+                "hash": encoded(blake3::hash(&content)),
+                "offset": file.data_start(),
+                "length": file.compressed_size(),
+                "method": match file.compression() {
+                    zip::CompressionMethod::Stored => 0,
+                    _ => 8,
+                },
+            }));
+        }
+
+        serde_json::from_value(serde_json::json!({
+            "version": version,
+            "shell_min_version": "1.0.0",
+            "files": files,
+            "bundle": {
+                "name": "bundle.zip",
+                "size": archive.len(),
+                "blake3": encoded(blake3::hash(archive)),
+            },
+        }))
+        .unwrap()
+    }
+
+    /// A release: an unchanged file, an edited one, and a new one.
+    fn release(base: &[u8]) -> (Vec<u8>, SignedManifest) {
+        let head = zip_of(&[
+            ("index.html", base),
+            ("app.js", b"console.log('edited')"),
+            ("assets/new.css", b"body { margin: 0 }"),
+        ]);
+
+        let manifest = manifest_for(&head, "1.2.0");
+
+        (head, manifest)
+    }
+
+    #[test]
+    fn unchanged_files_are_reused_and_changed_ones_are_pending() {
+        let base = zip_of(&[
+            ("index.html", b"<!doctype html>"),
+            ("app.js", b"console.log('original')"),
+        ]);
+        let (_head, manifest) = release(b"<!doctype html>");
+
+        let local = local_file_contents(&base).unwrap();
+        let (slots, pending) = plan_reuse(&local, &manifest);
+
+        // index.html is untouched, app.js was edited, assets/new.css is new.
+        assert_eq!(slots[0].as_deref(), Some(&b"<!doctype html>"[..]));
+        assert_eq!(pending, vec![1, 2]);
+    }
+
+    #[test]
+    fn an_edited_file_with_an_unchanged_path_is_not_reused() {
+        let base = zip_of(&[("index.html", b"<!doctype html>"), ("app.js", b"stale bytes")]);
+        let (_head, manifest) = release(b"<!doctype html>");
+
+        let local = local_file_contents(&base).unwrap();
+        let (slots, pending) = plan_reuse(&local, &manifest);
+
+        // Same path, different content: the hash is what decides, so the stale
+        // copy must not be taken.
+        assert!(slots[1].is_none());
+        assert!(pending.contains(&1));
+    }
+
+    #[test]
+    fn assembly_reproduces_every_file_the_manifest_names() {
+        let base = zip_of(&[
+            ("index.html", b"<!doctype html>"),
+            ("app.js", b"console.log('original')"),
+        ]);
+        let (head, manifest) = release(b"<!doctype html>");
+
+        let local = local_file_contents(&base).unwrap();
+        let (mut slots, pending) = plan_reuse(&local, &manifest);
+
+        // Stand in for `fetch_file`: what it returns is the published content,
+        // already checked against the manifest's hash.
+        let published = local_file_contents(&head).unwrap();
+        for index in pending {
+            slots[index] = Some(published[&manifest.files[index].path].clone());
+        }
+
+        let contents: Vec<Vec<u8>> = slots.into_iter().map(Option::unwrap).collect();
+        let assembled = build_archive(&manifest, &contents).unwrap();
+
+        // What appload does at startup: read every entry the manifest names.
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(&assembled)).unwrap();
+        for entry in &manifest.files {
+            let mut file = zip.by_name(&entry.path).unwrap();
+            let mut content = Vec::new();
+            file.read_to_end(&mut content).unwrap();
+
+            assert_eq!(blake3::hash(&content), entry.hash, "{}", entry.path);
+        }
+    }
+
+    #[test]
+    fn a_changed_entry_pulled_by_range_inflates_to_its_manifest_hash() {
+        // What `fetch_extent` asks the host for is the compressed bytes, so the
+        // unpack step is the one thing between the wire and the hash check.
+        let content = b"console.log('a bundle entry that compresses');".repeat(20);
+        let head = zip_of(&[("app.js", content.as_slice())]);
+        let manifest = manifest_for(&head, "1.2.0");
+
+        let entry = &manifest.files[0];
+        assert_eq!(entry.method, 8, "the fixture must exercise deflate");
+
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(&head)).unwrap();
+        let file = zip.by_index(0).unwrap();
+        assert_eq!(file.data_start(), entry.offset);
+        assert_eq!(file.compressed_size(), entry.length);
+
+        let extent = &head[entry.offset as usize..(entry.offset + entry.length) as usize];
+
+        assert_eq!(inflate(extent, entry.method).unwrap(), content);
+        assert_eq!(blake3::hash(&inflate(extent, entry.method).unwrap()), entry.hash);
+    }
+
+    #[test]
+    fn a_stored_entry_needs_no_inflating() {
+        assert_eq!(inflate(b"plain", 0).unwrap(), b"plain".to_vec());
+
+        let error = inflate(b"plain", 12).expect_err("an unknown method must not be trusted");
+        assert!(matches!(error, WebUpdateError::Mismatch(_)), "{error:?}");
+    }
+
+    #[test]
+    fn nearby_entries_ride_in_one_extent_and_distant_ones_do_not() {
+        // Incompressible filler on purpose: anything a deflater can shrink
+        // collapses the gap to nothing and the test passes for the wrong
+        // reason. Hashes of the index are the cheapest bytes nobody can shrink.
+        let filler: Vec<u8> = (0..3_125u32)
+            .flat_map(|i| *blake3::hash(&i.to_le_bytes()).as_bytes())
+            .collect();
+
+        let archive = zip_of(&[
+            ("first.js", b"first"),
+            ("filler.bin", filler.as_slice()),
+            ("last.js", b"last"),
+        ]);
+        let manifest = manifest_for(&archive, "1.2.0");
+
+        // The middle entry is not being fetched, so its ~100KB of filler stands
+        // between the other two — too much to swallow, so two requests.
+        let extents = merge_extents(&manifest, &[0, 2]);
+        assert_eq!(extents.len(), 2, "a 100KB gap is not worth merging");
+        assert_eq!(extents[0].entries, vec![0]);
+        assert_eq!(extents[1].entries, vec![2]);
+
+        // Nothing left out: one request, spanning both ends.
+        let extents = merge_extents(&manifest, &[0, 1, 2]);
+        assert_eq!(extents.len(), 1);
+        assert_eq!(extents[0].entries, vec![0, 1, 2]);
+        assert_eq!(extents[0].start, manifest.files[0].offset);
+        assert_eq!(
+            extents[0].end,
+            manifest.files[2].offset + manifest.files[2].length
+        );
+    }
+
+    /// Opt-in end-to-end against the release host, and the number to quote when
+    /// this channel is tuned. Point `HOPP_WEB_UPDATE_RELEASE` at a directory
+    /// holding a release's `manifest.json` and `HOPP_WEB_UPDATE_BASE` at a
+    /// `bundle.zip` from an earlier release, then run with network access:
+    ///
+    /// ```sh
+    /// HOPP_WEB_UPDATE_RELEASE=/tmp/release HOPP_WEB_UPDATE_BASE=/tmp/base \
+    ///   cargo test incremental_assembly_against -- --nocapture
+    /// ```
+    ///
+    /// The entry fetches are real Range requests against the published archive,
+    /// so this is the whole incremental path bar the signature check and the
+    /// write into the update directory.
+    #[test]
+    fn incremental_assembly_against_the_release_host_when_fixtures_are_supplied() {
+        let Ok(release_dir) = std::env::var("HOPP_WEB_UPDATE_RELEASE") else {
+            return;
+        };
+        let Ok(base_dir) = std::env::var("HOPP_WEB_UPDATE_BASE") else {
+            return;
+        };
+
+        let manifest_bytes =
+            fs::read(Path::new(&release_dir).join(MANIFEST_FILE_NAME)).expect("release manifest");
+        let manifest: SignedManifest = serde_json::from_slice(&manifest_bytes).unwrap();
+        let base = fs::read(Path::new(&base_dir).join(BUNDLE_FILE_NAME)).expect("base bundle");
+
+        let local = local_file_contents(&base).unwrap();
+        let (mut slots, pending) = plan_reuse(&local, &manifest);
+
+        // The same URL the app derives from `plugins.updater.endpoints`.
+        let url = "https://github.com/Triple3h/hoppscotch/releases/latest/download/bundle.zip";
+
+        tauri::async_runtime::block_on(async {
+            let client = http_client().unwrap();
+            let fetched = fetch_pending(&client, url, &manifest, &mut slots, &pending)
+                .await
+                .expect("fetch");
+
+            let whole = manifest.bundle.as_ref().unwrap().size;
+            eprintln!(
+                "incremental: {} of {} files reused, {} fetched in {} extents; {} KB over the wire against {} KB whole ({:.1}%)",
+                manifest.files.len() - pending.len(),
+                manifest.files.len(),
+                pending.len(),
+                merge_extents(&manifest, &pending).len(),
+                fetched / 1024,
+                whole / 1024,
+                100.0 * fetched as f64 / whole as f64,
+            );
+
+            let contents: Vec<Vec<u8>> = slots.into_iter().map(Option::unwrap).collect();
+            let assembled = build_archive(&manifest, &contents).unwrap();
+
+            // Exactly what appload does with it at startup.
+            let mut zip = zip::ZipArchive::new(std::io::Cursor::new(&assembled)).unwrap();
+            for entry in &manifest.files {
+                zip.by_name(&entry.path)
+                    .unwrap_or_else(|e| panic!("{}: {e}", entry.path));
+            }
+        });
     }
 }

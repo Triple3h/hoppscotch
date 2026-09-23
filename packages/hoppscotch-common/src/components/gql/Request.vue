@@ -25,54 +25,6 @@
         outline
         @click="onConnectClick"
       />
-      <span class="flex rounded border border-divider transition">
-        <HoppButtonSecondary
-          v-tippy="{ theme: 'tooltip', delay: [500, 20], allowHTML: true }"
-          :title="`${t(
-            'request.save'
-          )} <kbd>${getSpecialKey()}</kbd><kbd>S</kbd>`"
-          :label="COLUMN_LAYOUT ? `${t('request.save')}` : ''"
-          filled
-          :icon="IconSave"
-          class="rounded rounded-r-none"
-          @click="saveRequest()"
-        />
-        <span class="flex">
-          <tippy
-            interactive
-            trigger="click"
-            theme="popover"
-            :on-shown="() => saveTippyActions.focus()"
-          >
-            <HoppButtonSecondary
-              v-tippy="{ theme: 'tooltip' }"
-              :title="t('app.options')"
-              :icon="IconChevronDown"
-              filled
-              class="rounded rounded-l-none"
-            />
-            <template #content="{ hide }">
-              <div
-                ref="saveTippyActions"
-                class="flex flex-col focus:outline-none"
-                tabindex="0"
-                @keyup.escape="hide()"
-              >
-                <HoppSmartItem
-                  :label="`${t('request.save_as')}`"
-                  :icon="IconFolderPlus"
-                  @click="
-                    () => {
-                      showSaveRequestModal = true
-                      hide()
-                    }
-                  "
-                />
-              </div>
-            </template>
-          </tippy>
-        </span>
-      </span>
     </div>
   </div>
   <CollectionsSaveRequest
@@ -97,12 +49,7 @@ import { defineActionHandler, invokeAction } from "~/helpers/actions"
 import { HoppGQLAuth, HoppGQLRequest } from "@hoppscotch/data"
 import { HoppTab } from "~/services/tab"
 import { HoppGQLRequestDocument } from "~/helpers/tab/document"
-import { getPlatformSpecialKey as getSpecialKey } from "~/helpers/platformutils"
 import { editRESTRequest } from "~/newstore/collections"
-import IconSave from "~icons/lucide/save"
-import IconChevronDown from "~icons/lucide/chevron-down"
-import IconFolderPlus from "~icons/lucide/folder-plus"
-import { useSetting } from "~/composables/settings"
 
 const t = useI18n()
 const toast = useToast()
@@ -110,7 +57,6 @@ const toast = useToast()
 const interceptorService = useService(KernelInterceptorService)
 const gqlTabConn = useService(GQLTabConnectionService)
 const inspectionService = useService(InspectionService)
-const COLUMN_LAYOUT = useSetting("COLUMN_LAYOUT")
 
 const props = defineProps<{
   modelValue: HoppTab<HoppGQLRequestDocument>
@@ -123,7 +69,6 @@ const emit = defineEmits<{
 const tab = useVModel(props, "modelValue", emit)
 
 const showSaveRequestModal = ref(false)
-const saveTippyActions = ref<HTMLDivElement | null>(null)
 
 const tabCtx = computed(() => gqlTabConn.getTabConnectionState(tab.value.id))
 const connected = computed(() => tabCtx.value.state === "CONNECTED")

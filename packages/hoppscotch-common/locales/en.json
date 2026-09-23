@@ -312,6 +312,18 @@
       "tests": "There are no tests for this request",
       "response": "No response received"
    },
+   "env_tooltip": {
+      "collection_variable": "Collection variable",
+      "collection_variable_named": "Collection variable · {name}",
+      "description": "Description",
+      "environment_named": "Environment · {name}",
+      "global_environment": "Global environment",
+      "not_found": "Not found",
+      "predefined_variable": "Predefined variable",
+      "request_variable": "Request variable",
+      "source": "Source",
+      "value": "Value"
+   },
    "environment": {
       "heading": "Environment",
       "add_to_global": "Add to Global",
@@ -459,6 +471,7 @@
    },
    "folder": {
       "edit": "Edit Folder",
+      "heading": "Folder",
       "invalid_name": "Please provide a name for the folder",
       "name_length_insufficient": "Folder name should be at least 3 characters long",
       "new": "New Folder",

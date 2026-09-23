@@ -88,14 +88,6 @@
         </div>
       </template>
     </HoppSmartPlaceholder>
-    <EnvironmentsMyDetails
-      :show="showModalDetails"
-      :action="action"
-      :editing-environment-index="editingEnvironmentIndex"
-      :editing-variable-name="editingVariableName"
-      :is-secret-option-selected="secretOptionSelected"
-      @hide-modal="displayModalEdit(false)"
-    />
     <EnvironmentsImportExport
       v-if="showModalImportExport"
       environment-type="MY_ENV"
@@ -117,6 +109,7 @@ import IconPlus from "~icons/lucide/plus"
 import IconImport from "~icons/lucide/folder-down"
 import IconHelpCircle from "~icons/lucide/help-circle"
 import { defineActionHandler } from "~/helpers/actions"
+import { openEnvironmentTab } from "~/helpers/tab/openEnvironmentTab"
 import { sortPersonalEnvironmentsAlphabetically } from "~/helpers/utils/sortEnvironmentsAlphabetically"
 import { HandleEnvChangeProp } from "../index.vue"
 import { Environment } from "@hoppscotch/data"
@@ -154,27 +147,11 @@ const filteredAndAlphabetizedPersonalEnvs = computed(() => {
 })
 
 const showModalImportExport = ref(false)
-const showModalDetails = ref(false)
-const action = ref<"new" | "edit">("edit")
-const editingEnvironmentIndex = ref<number | null>(null)
-const editingVariableName = ref("")
-const secretOptionSelected = ref(false)
 
 const displayModalAdd = async (shouldDisplay: boolean) => {
   const isValidToken = await handleTokenValidation()
   if (!isValidToken) return
-  action.value = "new"
-  showModalDetails.value = shouldDisplay
-}
-const displayModalEdit = async (shouldDisplay: boolean) => {
-  if (shouldDisplay) {
-    const isValidToken = await handleTokenValidation()
-    if (!isValidToken) return
-    action.value = "edit"
-  }
-  showModalDetails.value = shouldDisplay
-
-  if (!shouldDisplay) resetSelectedData()
+  if (shouldDisplay) openEnvironmentTab({ isNew: true })
 }
 const displayModalImportExport = async (shouldDisplay: boolean) => {
   const isValidToken = await handleTokenValidation()
@@ -191,14 +168,7 @@ const selectEnvironment = (index: number, environment: Environment) => {
   })
 }
 const editEnvironment = (environmentIndex: number) => {
-  editingEnvironmentIndex.value = environmentIndex
-  action.value = "edit"
-  displayModalEdit(true)
-}
-const resetSelectedData = () => {
-  editingEnvironmentIndex.value = null
-  editingVariableName.value = ""
-  secretOptionSelected.value = false
+  openEnvironmentTab({ environmentIndex })
 }
 
 const selectedEnvironmentIndex = useReadonlyStream(selectedEnvironmentIndex$, {
@@ -215,13 +185,15 @@ const isEnvironmentSelected = (index: number) => {
 defineActionHandler(
   "modals.my.environment.edit",
   ({ envName, variableName, isSecret }) => {
-    if (variableName) editingVariableName.value = variableName
     const env = filteredAndAlphabetizedPersonalEnvs.value.find(
       ({ env }) => env.name === envName
     )
     if (envName !== "Global" && env) {
-      editEnvironment(env.index)
-      secretOptionSelected.value = isSecret ?? false
+      openEnvironmentTab({
+        environmentIndex: env.index,
+        selectedVariableName: variableName ?? null,
+        selectedOption: isSecret ? "secret" : "variables",
+      })
     }
   }
 )

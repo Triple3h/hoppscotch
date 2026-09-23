@@ -733,6 +733,29 @@ export const WORKSPACE_TABS_STATE_SCHEMA = z
             inheritedProperties: z.optional(HoppInheritedPropertySchema),
           }),
           z.object({
+            type: z.literal("environment"),
+            environmentID: z.string(),
+            isGlobal: z.boolean(),
+            isNew: z.boolean(),
+            name: z.string(),
+            color: z.string(),
+            variables: z.array(
+              z.object({
+                id: z.number(),
+                env: z.object({
+                  key: z.string(),
+                  initialValue: z.string(),
+                  currentValue: z.string(),
+                  secret: z.boolean(),
+                }),
+              })
+            ),
+            selectedOption: z.enum(["variables", "secret"]),
+            selectedVariableName: z.optional(z.nullable(z.string())),
+            idTicker: z.number(),
+            isDirty: z.boolean(),
+          }),
+          z.object({
             type: z.literal("example-response").catch("example-response"),
             response: entityReference(HoppRESTRequestResponse),
             saveContext: z.optional(HoppTabSaveContextSchema),

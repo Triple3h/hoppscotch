@@ -3,7 +3,11 @@ import { computed, ref, readonly, type Ref } from "vue"
 import { cloneDeep } from "lodash-es"
 import type { HoppGQLRequest, HoppRESTRequest } from "@hoppscotch/data"
 import { getDefaultRESTRequest } from "~/helpers/rest/default"
-import { HoppTabSaveContext, HoppTabDocument } from "~/helpers/tab/document"
+import {
+  HoppEnvironmentDraftVariable,
+  HoppTabSaveContext,
+  HoppTabDocument,
+} from "~/helpers/tab/document"
 import { getService } from "~/modules/dioc"
 import { PersistenceService, STORE_KEYS } from "../persistence"
 import type { Workspace } from "../workspace.service"
@@ -218,6 +222,27 @@ export class WorkspaceTabsService extends TabService<HoppTabDocument> {
         }
       }
 
+      if (tab.document.type === "environment") {
+        // Secret values live only in SecretEnvironmentService — never write
+        // them into the (localStorage) tabs state.
+        return {
+          tabID: tab.id,
+          doc: {
+            ...tab.document,
+            variables: tab.document.variables.map(
+              (row: HoppEnvironmentDraftVariable) =>
+                row.env.secret
+                  ? {
+                      id: row.id,
+                      env: { ...row.env, initialValue: "", currentValue: "" },
+                    }
+                  : row
+            ),
+          },
+          protocolDrafts,
+        }
+      }
+
       if (tab.document.type === "test-runner") {
         // Run results are deliberately not persisted: the collection schema
         // strips `response`/`testResults`/counters so restored rows come back
@@ -306,7 +331,8 @@ export class WorkspaceTabsService extends TabService<HoppTabDocument> {
   ) {
     if (
       tab.document.type === "test-runner" ||
-      tab.document.type === "collection"
+      tab.document.type === "collection" ||
+      tab.document.type === "environment"
     )
       return false
 

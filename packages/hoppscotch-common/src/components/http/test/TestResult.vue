@@ -47,7 +47,7 @@
                       :label="t('environment.create_new')"
                       class="!bg-primary text-tiny"
                       filled
-                      @click="displayModalAdd(true)"
+                      @click="displayModalAdd()"
                     />
                   </p>
                 </div>
@@ -168,12 +168,6 @@
         {{ t("empty.tests") }}
       </div>
     </template>
-    <EnvironmentsMyDetails
-      :show="showMyEnvironmentDetailsModal"
-      action="new"
-      :env-vars="getAdditionVars"
-      @hide-modal="displayModalAdd(false)"
-    />
   </div>
 </template>
 
@@ -181,7 +175,7 @@
 import { useI18n } from "@composables/i18n"
 import { useReadonlyStream, useStream } from "@composables/stream"
 import { isEqual } from "lodash-es"
-import { computed, ref } from "vue"
+import { computed } from "vue"
 // Explicit import: auto-resolution inside `http/test/` maps the name to the
 // missing `http/test/ResultEntry.vue` (directoryAsNamespace) and fails at
 // runtime, so nested test entries never rendered.
@@ -200,6 +194,7 @@ import { GlobalEnvironment } from "@hoppscotch/data"
 import { useVModel } from "@vueuse/core"
 import { useColorMode } from "~/composables/theming"
 import { invokeAction } from "~/helpers/actions"
+import { openEnvironmentTab } from "~/helpers/tab/openEnvironmentTab"
 
 const props = withDefaults(
   defineProps<{
@@ -230,12 +225,6 @@ const shouldShowEntry = (result: HoppTestData) => {
 const t = useI18n()
 const colorMode = useColorMode()
 
-const showMyEnvironmentDetailsModal = ref(false)
-
-const displayModalAdd = (shouldDisplay: boolean) => {
-  showMyEnvironmentDetailsModal.value = shouldDisplay
-}
-
 /**
  * Get the "addition" environment variables
  * @returns Array of objects with key-value pairs of arguments
@@ -244,6 +233,13 @@ const getAdditionVars = () =>
   testResults?.value?.envDiff?.selected?.additions
     ? testResults.value.envDiff.selected.additions
     : []
+
+const displayModalAdd = () => {
+  openEnvironmentTab({
+    isNew: true,
+    seedVariables: getAdditionVars(),
+  })
+}
 
 const haveEnvVariables = computed(() => {
   if (!testResults.value) return false

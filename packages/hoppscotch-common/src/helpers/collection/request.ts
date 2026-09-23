@@ -39,6 +39,7 @@ export function resolveSaveContextOnRequestReorder(payload: {
 
   const tabService = getService(WorkspaceTabsService)
   const tabs = tabService.getTabsRefTo((tab) => {
+    if (!("saveContext" in tab.document)) return false
     return (
       tab.document.saveContext?.originLocation === "user-collection" &&
       tab.document.saveContext.folderPath === folderPath &&
@@ -47,6 +48,7 @@ export function resolveSaveContextOnRequestReorder(payload: {
   })
 
   for (const tab of tabs) {
+    if (!("saveContext" in tab.value.document)) continue
     if (tab.value.document.saveContext?.originLocation === "user-collection") {
       const newIndex = affectedIndexes.get(
         tab.value.document.saveContext?.requestIndex

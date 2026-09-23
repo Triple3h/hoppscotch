@@ -44,12 +44,17 @@
                 @duplicate-tab="duplicateTab(tab.id)"
               />
               <!-- Fallback for document types without a dedicated head
-                   (test-runner, collection) — providing the #tabhead slot
-                   suppresses the Window's own `label`, so an unmatched type
-                   would otherwise render a blank tab head. -->
+                   (test-runner, collection, environment) — providing the
+                   #tabhead slot suppresses the Window's own `label`, so an
+                   unmatched type would otherwise render a blank tab head. -->
               <span v-else class="flex items-center gap-1 truncate px-2">
                 <icon-lucide-folder
                   v-if="tab.document.type === 'collection'"
+                  class="svg-icons flex-shrink-0"
+                  aria-hidden="true"
+                />
+                <icon-lucide-layers
+                  v-else-if="tab.document.type === 'environment'"
                   class="svg-icons flex-shrink-0"
                   aria-hidden="true"
                 />
@@ -71,11 +76,11 @@
                 </svg>
               </span>
             </template>
+            <!-- Always show the shared top bar (REST badge + path + save) -->
             <HttpProtocolSwitcher
               v-if="
-                isGqlWorkspaceEnabled &&
-                (tab.document.type === 'request' ||
-                  tab.document.type === 'gql-request')
+                tab.document.type === 'request' ||
+                tab.document.type === 'gql-request'
               "
             />
             <HttpExampleResponseTab
@@ -109,6 +114,11 @@
             <!-- Collection/folder properties tab -->
             <CollectionsCollectionTab
               v-if="tab.document.type === 'collection'"
+              :model-value="tab"
+            />
+            <!-- Environment editor tab -->
+            <EnvironmentsEnvironmentTab
+              v-if="tab.document.type === 'environment'"
               :model-value="tab"
             />
             <!-- When document.type === 'gql-request' render GQL tab -->
@@ -211,7 +221,10 @@ import { HoppTab } from "~/services/tab"
 import { HoppTabDocument } from "~/helpers/tab/document"
 import { ScrollService } from "~/services/scroll.service"
 import { GQLTabConnectionService } from "~/services/gql-tab-connection.service"
-import { useGqlWorkspaceVisibility } from "~/composables/gqlWorkspaceVisibility"
+// Explicit import: unplugin-vue-components did not rewrite this tag to a
+// static import on a running dev server, so runtime _resolveComponent left
+// the environment tab body blank.
+import EnvironmentsEnvironmentTab from "~/components/environments/EnvironmentTab.vue"
 
 const scrollService = useService(ScrollService)
 const gqlTabConn = useService(GQLTabConnectionService)
@@ -225,8 +238,6 @@ const gqlTabConn = useService(GQLTabConnectionService)
 onBeforeUnmount(() => {
   gqlTabConn.disconnectAllTabs()
 })
-
-const { isGqlWorkspaceEnabled } = useGqlWorkspaceVisibility()
 
 const savingRequest = ref(false)
 const confirmingCloseForTabID = ref<string | null>(null)
@@ -317,6 +328,8 @@ const getTabName = (tab: HoppTab<HoppTabDocument>) => {
     return tab.document.response?.name ?? "Untitled"
   } else if (tab.document.type === "collection") {
     return tab.document.collection?.name ?? "Untitled"
+  } else if (tab.document.type === "environment") {
+    return tab.document.name || "Untitled"
   }
 
   return "Unnamed tab"

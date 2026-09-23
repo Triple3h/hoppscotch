@@ -1,63 +1,52 @@
 <template>
-  <div
-    class="sticky top-0 z-20 flex items-center border-b border-dividerLight bg-primary px-4 py-2"
+  <WorkspaceTabHeader
+    v-model="requestName"
+    badge-class="text-blue-500"
+    :path="displayFolderPath"
+    show-save-menu
+    :placeholder="'Untitled'"
+    @save="invokeAction('request-response.save')"
   >
-    <!-- Static protocol prefix — quiet breadcrumb metadata (Postman-style),
-         not a control. Protocol is chosen via the unified new-request entry. -->
-    <div
-      class="flex flex-shrink-0 items-center gap-1.5 border-r border-dividerLight pr-3 mr-3 text-xs font-medium tracking-wide text-secondary"
-    >
+    <template #badge-icon>
       <component
         :is="currentProtocolIcon"
         class="h-3.5 w-3.5"
         :class="isGQL ? 'text-accent' : 'text-blue-500'"
       />
-      <span
-        class="font-semibold"
-        :class="isGQL ? 'text-accent' : 'text-blue-500'"
-      >
-        {{ currentProtocolLabel }}
-      </span>
-    </div>
-
-    <!-- Folder path + editable request name -->
-    <div class="flex min-w-0 items-center">
-      <template v-if="displayFolderPath.length > 0">
-        <template v-for="(segment, i) in displayFolderPath" :key="i">
-          <span
-            v-tippy="{ theme: 'tooltip' }"
-            :title="segment.tooltip"
-            class="max-w-[10rem] flex-shrink-0 cursor-default truncate text-xs text-secondaryLight"
-          >
-            {{ segment.name }}
-          </span>
-          <component
-            :is="IconChevronRight"
-            class="mx-0.5 h-3.5 w-3.5 flex-shrink-0 text-secondaryLight opacity-50"
-          />
-        </template>
-      </template>
-      <HoppSmartInput
-        v-model="requestName"
-        :autofocus="false"
-        styles=""
-        input-styles="border border-transparent bg-transparent text-xs text-secondaryDark focus:border-divider focus:bg-primaryLight rounded px-2 py-0.5 outline-none transition-colors"
-        placeholder="Untitled"
+    </template>
+    <template #badge>{{ currentProtocolLabel }}</template>
+    <template #save-menu="{ hide }">
+      <HoppSmartItem
+        :label="`${t('request.save_as')}`"
+        :icon="IconFolderPlus"
+        @click="
+          () => {
+            invokeAction('request.save-as')
+            hide()
+          }
+        "
       />
-    </div>
-  </div>
+    </template>
+  </WorkspaceTabHeader>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue"
 import { useService } from "dioc/vue"
+import { useI18n } from "@composables/i18n"
 import { useReadonlyStream } from "@composables/stream"
+import { invokeAction } from "~/helpers/actions"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
 import { restCollections$ } from "~/newstore/collections"
-import IconChevronRight from "~icons/lucide/chevron-right"
+import type { TabPathSegment } from "~/components/workspace/TabHeader.vue"
+// Explicit import — unplugin-vue-components may not rewrite this on a live
+// dev server, leaving runtime _resolveComponent blank.
+import WorkspaceTabHeader from "~/components/workspace/TabHeader.vue"
+import IconFolderPlus from "~icons/lucide/folder-plus"
 import IconGlobe from "~icons/lucide/globe"
 import IconGraphql from "~icons/hopp/graphql"
 
+const t = useI18n()
 const tabs = useService(WorkspaceTabsService)
 
 const collections = useReadonlyStream(restCollections$, [])
@@ -109,18 +98,15 @@ const folderPath = computed<string[]>(() => {
   const indexPath = saveContext.folderPath
   const indexes = indexPath.split("/").map((x) => parseInt(x))
 
-  // Walk the collection tree collecting names
   const names: string[] = []
   const cols = collections.value
 
   if (indexes.length === 0 || !cols.length) return []
 
-  // First index is the root collection
   let current = cols[indexes[0]]
   if (!current) return []
   names.push(current.name)
 
-  // Subsequent indexes traverse into folders
   for (let i = 1; i < indexes.length; i++) {
     const folder = current.folders[indexes[i]]
     if (!folder) break
@@ -131,13 +117,15 @@ const folderPath = computed<string[]>(() => {
   return names
 })
 
-// Every segment is width-capped (ellipsized by CSS),
-// and deep paths collapse to `root > … > parent` with the hidden
-// segments in the tooltip
-const displayFolderPath = computed<{ name: string; tooltip: string }[]>(() => {
+// Deep paths collapse to `root > … > parent` with the hidden segments
+// in the tooltip (same rules as the previous inline breadcrumb).
+const displayFolderPath = computed<TabPathSegment[]>(() => {
   const path = folderPath.value
   if (path.length <= 3) {
-    return path.map((name) => ({ name, tooltip: name }))
+    return path.map((segmentName) => ({
+      name: segmentName,
+      tooltip: segmentName,
+    }))
   }
   return [
     { name: path[0], tooltip: path[0] },

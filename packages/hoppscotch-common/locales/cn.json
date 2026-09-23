@@ -1112,6 +1112,12 @@
       "twitter": "在 Twitter 关注我们"
    },
    "tab": {
+      "all_tabs": "所有标签页",
+      "group_requests": "请求",
+      "group_environments": "环境",
+      "group_folders": "文件夹",
+      "group_test_runner": "测试运行器",
+      "group_other": "其他",
       "authorization": "授权",
       "body": "请求体",
       "close": "关闭标签页",

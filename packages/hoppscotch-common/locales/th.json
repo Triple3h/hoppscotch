@@ -862,7 +862,6 @@
       "update_check_description": "ตรวจสอบเวอร์ชันใหม่และติดตั้งด้วยตนเอง ทำงานได้ไม่ว่าจะตั้งค่าสวิตช์ด้านล่างไว้อย่างไร",
       "update_check_now": "ตรวจสอบการอัปเดต",
       "update_checking": "กำลังตรวจสอบ…",
-      "update_download_version": "ดาวน์โหลด v{version}",
       "update_downloading": "กำลังดาวน์โหลด…",
       "update_downloading_percent": "กำลังดาวน์โหลด {percent}%",
       "update_installing": "กำลังติดตั้ง…",

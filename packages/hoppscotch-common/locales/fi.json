@@ -862,7 +862,6 @@
       "update_check_description": "Tarkista manuaalisesti uusi versio ja asenna se. Toimii alla olevan kytkimen asetuksesta riippumatta.",
       "update_check_now": "Tarkista päivitykset",
       "update_checking": "Tarkistetaan…",
-      "update_download_version": "Lataa v{version}",
       "update_downloading": "Ladataan…",
       "update_downloading_percent": "Ladataan {percent}%",
       "update_installing": "Asennetaan…",

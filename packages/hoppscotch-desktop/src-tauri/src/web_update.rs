@@ -58,6 +58,10 @@ use tokio::task::JoinSet;
 
 use crate::path;
 
+/// Serializes installs into the layout below; see [`apply_inner`].
+static INSTALL_LOCK: std::sync::LazyLock<tokio::sync::Mutex<()>> =
+    std::sync::LazyLock::new(|| tokio::sync::Mutex::new(()));
+
 const ACTIVE_DIR_NAME: &str = "active";
 const PREVIOUS_DIR_NAME: &str = "previous";
 const STATE_FILE_NAME: &str = "state.json";
@@ -365,6 +369,40 @@ pub async fn apply_web_update<R: Runtime>(app: AppHandle<R>) -> Result<WebUpdate
     })
 }
 
+/// Reports a web bundle that has been downloaded and staged, but is not the
+/// one this session is running.
+///
+/// Nothing about it can fail from here — the download, the signature and the
+/// per-file hashes were all checked when it was installed — so the only step
+/// left is the restart that makes [`apply_installed_update`] lay it down. That
+/// is what the settings page turns into a restart button, instead of leaving
+/// the update to appear on whatever launch happens next.
+#[tauri::command]
+pub fn pending_web_update() -> Option<String> {
+    let staged = Layout::resolve().ok()?.read_state()?.active_version?;
+    let running = running_version()?;
+
+    is_newer(&staged, &running).then_some(staged)
+}
+
+/// Version of the web bundle this session is running.
+///
+/// `write_vendored` rewrites `path::manifest_path()` from the binary on every
+/// launch and [`apply_installed_update`] overlays the staged copy on it right
+/// after, so that file describes the bundle appload loaded — as opposed to the
+/// staged one, which only describes the bundle the *next* launch will load.
+fn running_version() -> Option<String> {
+    let bytes = fs::read(path::manifest_path()).ok()?;
+
+    match serde_json::from_slice::<SignedManifest>(&bytes) {
+        Ok(manifest) => Some(manifest.version),
+        Err(e) => {
+            tracing::warn!(error = %e, "Could not read the running web bundle manifest");
+            None
+        }
+    }
+}
+
 async fn check_inner<R: Runtime>(app: &AppHandle<R>) -> Result<WebUpdateStatus, WebUpdateError> {
     let current = effective_version();
     let (endpoint, public_key) = update_endpoint(app)?;
@@ -376,6 +414,12 @@ async fn check_inner<R: Runtime>(app: &AppHandle<R>) -> Result<WebUpdateStatus, 
 }
 
 async fn apply_inner<R: Runtime>(app: &AppHandle<R>) -> Result<WebUpdateStatus, WebUpdateError> {
+    // One install at a time: two of them would write the same `active/`
+    // directory at once, and a half-written staged bundle is a bundle the next
+    // launch would lay down. The second caller waits and then finds nothing to
+    // do, since `current` is read after the wait.
+    let _installing = INSTALL_LOCK.lock().await;
+
     let current = effective_version();
     let (endpoint, public_key) = update_endpoint(app)?;
     let client = http_client()?;

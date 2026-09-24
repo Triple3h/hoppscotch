@@ -847,7 +847,6 @@
       "update_check_description": "Гараар шинэ хувилбар байгаа эсэхийг шалгаад суулгана уу. Доорх шилжүүлэгчээс үл хамааран ажиллана.",
       "update_check_now": "Шинэчлэлт байгаа эсэхийг шалгана уу",
       "update_checking": "Шалгаж байна...",
-      "update_download_version": "v{version} татаж авах",
       "update_downloading": "Татаж авч байна…",
       "update_downloading_percent": "Татаж авч байна {percent}%",
       "update_installing": "Суулгаж байна...",

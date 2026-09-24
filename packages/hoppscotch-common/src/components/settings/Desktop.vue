@@ -310,13 +310,23 @@ onMounted(async () => {
   } catch (err) {
     console.warn("Failed to read the app version:", err)
   }
+
+  // A web bundle staged during startup is one restart away from being in use,
+  // and it was staged before this section existed — so the state has to be
+  // read here rather than waited for.
+  await updateCheck.refreshStagedUpdate()
 })
 
 // The version the pending update would install, empty when there is nothing to
 // install, so the version line and the notes panel share one gate.
 const pendingVersion = computed(() => {
   const s = updateCheck.state.value
-  return s.kind === "available" ? s.latestVersion : ""
+  if (s.kind === "available") return s.latestVersion
+  // Same story for a web bundle: it is the version the restart would bring,
+  // it just arrives without an installer.
+  if (s.kind === "staging_web_update" || s.kind === "web_update_ready")
+    return s.version
+  return ""
 })
 
 // "What's new" for the version the button would install. Grouped only while an
@@ -362,14 +372,17 @@ const view = computed<ButtonView>(() => {
         action: noop,
       }
     case "available":
+      // The click that starts the update, and the only difference between the
+      // two channels: one runs an installer, the other fetches a bundle.
       return {
-        label: t("settings.update_download_version", {
-          version: s.latestVersion,
-        }),
+        label: t("settings.update_start"),
         icon: IconLucideDownload,
         disabled: false,
         showCancel: false,
-        action: updateCheck.download,
+        action:
+          s.source === "web"
+            ? updateCheck.applyWebUpdate
+            : updateCheck.download,
       }
     case "not_available":
       return {
@@ -396,6 +409,26 @@ const view = computed<ButtonView>(() => {
         disabled: true,
         showCancel: true,
         action: noop,
+      }
+    case "staging_web_update":
+      // No cancel button: the web bundle download is not cancellable, and an
+      // offer to stop it that does nothing is worse than no offer.
+      return {
+        label: t("settings.update_staging_web"),
+        icon: IconLucideLoader,
+        disabled: true,
+        showCancel: false,
+        action: noop,
+      }
+    case "web_update_ready":
+      // The same restart the installer path ends in, and the only step left:
+      // the staged bundle is applied by the next launch.
+      return {
+        label: t("settings.update_restart_now"),
+        icon: IconLucideRefreshCw,
+        disabled: false,
+        showCancel: false,
+        action: updateCheck.restart,
       }
     case "ready_to_restart":
       return {
@@ -463,6 +496,12 @@ onBeforeUnmount(() => {
 })
 
 const helperText = computed(() => {
+  // Stays put rather than fading like the transient feedback below: it
+  // describes an update that is on disk and waiting, not a moment that passed.
+  if (updateCheck.state.value.kind === "web_update_ready") {
+    return t("settings.update_web_ready_hint")
+  }
+
   if (showTransientFeedback.value) {
     const s = updateCheck.state.value
     if (s.kind === "error") {

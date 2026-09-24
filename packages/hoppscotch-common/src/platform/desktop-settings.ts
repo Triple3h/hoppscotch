@@ -48,8 +48,14 @@ export const DESKTOP_SETTINGS_SCHEMA = z.object({
   // `disableUpdateNotifications` field so all three update-related
   // booleans read uniformly, and the on-by-default framing ("Disable X"
   // with default false) nudges users toward keeping the update flow
-  // active. `disableUpdateChecks` is bound to a toggle in the current
-  // settings UI. `disableUpdateDownloads` is future scope.
+  // active.
+  //
+  // Both are inert today: an update only ever starts from the settings
+  // page's button, and that click is its own permission, so there is no
+  // automatic fetch left for either to gate. `disableUpdateChecks` keeps
+  // its settings-page toggle — removing a visible control is a bigger
+  // change than leaving it inert — and `disableUpdateDownloads` was never
+  // bound to one.
   disableUpdateChecks: z.boolean().default(false),
   disableUpdateDownloads: z.boolean().default(false),
 

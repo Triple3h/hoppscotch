@@ -175,7 +175,7 @@ const presentTabIds = computed(() => {
   const ids = validLenses.value.map((x) => x.renderer)
   if (maybeHeaders.value) ids.push("headers")
   if (actualRequest.value) ids.push("actual-request")
-  if (doc.value.response?.type !== "network_fail" && !isEditable)
+  if (doc.value.response?.type !== "network_fail" && !props.isEditable)
     ids.push("results")
   if (requestHeaders.value) ids.push("req-headers")
   if (showConsoleTab.value) ids.push("console")
@@ -207,10 +207,12 @@ watch(
   [validLenses, presentTabIds],
   () => {
     const present = presentTabIds.value
+    const lensIds = validLenses.value.map((x) => x.renderer)
 
-    // Keep the current tab whenever it is still mounted. Emptying the lens
-    // list mid-stream must not jump to a missing id (HoppSmartTabs would
-    // show no content — the 事件 header and 分条展示/自动合并 vanish).
+    // Keep the current tab whenever it is still mounted — both the user's
+    // manual pick (实际请求/测试结果…) and the lens list churn mid-stream.
+    // Emptying the lens list must not jump to a missing id (HoppSmartTabs
+    // would show no content — the 事件 header and 分条展示/自动合并 vanish).
     if (selectedLensTab.value && present.includes(selectedLensTab.value)) return
 
     if (present.length === 0) {
@@ -218,9 +220,14 @@ watch(
       return
     }
 
+    // The preference only counts when it points at a real lens. A non-lens
+    // tab (实际请求/测试结果/请求头…) was never a "default view" choice, and
+    // honouring it would rob the new response of its JSON landing tab —
+    // the renderer remounts for every completed response, so this initial
+    // pick is what decides the default.
     const { responseTabPreference } = doc.value
 
-    if (responseTabPreference && present.includes(responseTabPreference)) {
+    if (responseTabPreference && lensIds.includes(responseTabPreference)) {
       selectedLensTab.value = responseTabPreference
       return
     }

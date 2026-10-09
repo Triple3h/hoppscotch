@@ -213,12 +213,13 @@ pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
                     let _ = app.emit("updater-event", UpdateEvent::DownloadProgress { progress });
                 });
             },
+            // Emitted on the download thread rather than spawned: this pair has
+            // to reach the webview before the install starts, or a late
+            // delivery lands after `RestartRequired` and leaves the UI showing
+            // "installing" with the update already in place.
             move || {
-                let app = app_callback.clone();
-                tauri::async_runtime::spawn(async move {
-                    let _ = app.emit("updater-event", UpdateEvent::DownloadCompleted);
-                    let _ = app.emit("updater-event", UpdateEvent::InstallStarted);
-                });
+                let _ = app_callback.emit("updater-event", UpdateEvent::DownloadCompleted);
+                let _ = app_callback.emit("updater-event", UpdateEvent::InstallStarted);
             },
         )
         .await

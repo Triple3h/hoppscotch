@@ -466,50 +466,12 @@ export function useAppInitialization() {
     }
   }
 
-  // Web-bundle update channel. A release whose shell did not change ships the
-  // frontend on its own, and installing it here means the next launch already
-  // runs the new bundle — no installer, no reinstall, no restart prompt. The
-  // Tauri updater stays the path for anything that touches the shell, and it is
-  // the Rust side that decides which of the two a release needs.
-  //
-  // The only automatic check left, and deliberately fire-and-forget and quiet:
-  // this is an optimisation on top of the full updater, so a failure or a slow
-  // connection must not delay startup or surface an error. Blocking startup on
-  // an update check is what used to leave the user stuck on the launcher when
-  // the release host was unreachable. The bundle in use does not change under
-  // the user either — the new one is picked up on the next launch.
-  const installWebBundleUpdate = async () => {
-    try {
-      await desktopSettings.ready()
-      // Two flags mean "no automatic checks": the settings-page toggle and the
-      // portable welcome checkbox. Honouring both keeps a user who set either
-      // one opted out.
-      if (
-        desktopSettings.settings.disableUpdateChecks ||
-        desktopSettings.settings.disableUpdateNotifications
-      )
-        return
-
-      const status = await invoke<{
-        state: string
-        availableVersion?: string
-      }>("check_web_update")
-      if (status.state !== "available") {
-        mainDiag(`web bundle update: ${status.state}`)
-        return
-      }
-
-      mainDiag(`web bundle update available: ${status.availableVersion}`)
-      await invoke("apply_web_update")
-      console.log(
-        "Web bundle update installed; it applies on the next launch",
-        status.availableVersion
-      )
-    } catch (err) {
-      console.warn("Web bundle update check failed:", err)
-    }
-  }
-
+  // No update check runs here, on either channel. The web bundle used to be
+  // fetched in the background at this point, which meant a release could land
+  // without anyone asking for it; both channels are now started from the
+  // settings page's button and nowhere else. Startup has no business on the
+  // release host at all: it is the one moment where a slow or unreachable one
+  // costs the user the app rather than a click.
   const performBasicInitialization = async () => {
     try {
       appVersion.value = await getVersion()
@@ -549,10 +511,6 @@ export function useAppInitialization() {
         `Persistence init failed: ${initResult.left.kind}: ${initResult.left.message}`
       )
     }
-
-    // Started, not awaited: the app carries on to the launcher, and the download
-    // runs alongside it.
-    void installWebBundleUpdate()
   }
 
   const initialize = async (customLogic?: () => Promise<void>) => {

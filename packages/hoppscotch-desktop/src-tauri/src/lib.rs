@@ -273,6 +273,7 @@ pub fn run() {
             updater::is_portable_mode,
             web_update::check_web_update,
             web_update::apply_web_update,
+            web_update::pending_web_update,
             web_update::web_update_report_healthy,
             path::get_config_dir,
             path::get_latest_dir,

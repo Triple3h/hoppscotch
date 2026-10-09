@@ -4,18 +4,28 @@
        window) steals the scrollbar. overflow-auto keeps scrolling here, under
        the sticky meta + tab bars. -->
   <div class="relative min-h-0 flex flex-1 flex-col overflow-auto">
-    <HttpResponseMeta
-      :response="doc.response"
-      :is-embed="isEmbed"
-      :is-loading="loading"
-    />
-    <LensesResponseBodyRenderer
-      v-if="showLenses"
-      v-model:document="doc"
-      :is-editable="false"
-      :tab-id="tabId"
-      @save-as-example="saveAsExample"
-    />
+    <!-- 请求进行中（等响应 / 测试脚本在跑）：整个卡片只留一个转圈 -->
+    <div
+      v-if="plainLoading"
+      class="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-secondaryLight"
+    >
+      <HoppSmartSpinner />
+      <span>{{ t("state.loading") }}</span>
+    </div>
+    <template v-else>
+      <HttpResponseMeta
+        :response="doc.response"
+        :is-embed="isEmbed"
+        :is-loading="loading"
+      />
+      <LensesResponseBodyRenderer
+        v-if="showLenses"
+        v-model:document="doc"
+        :is-editable="false"
+        :tab-id="tabId"
+        @save-as-example="saveAsExample"
+      />
+    </template>
   </div>
   <HttpSaveResponseName
     v-model:response-name="responseName"
@@ -70,6 +80,15 @@ const loading = computed(
   // during test execution (when testResults is null)
   () => doc.value.response?.type === "loading" || doc.value.testResults === null
 )
+
+// 请求进行中（等响应，或响应已到但测试脚本还在跑）且未进入流式：整卡只显示转圈，
+// 不渲染 meta 与响应体。流式响应有自己的事件时间线，不进这个分支。
+const plainLoading = computed(() => {
+  const response = doc.value.response
+  if (!response) return false
+  if (response.type === "loading" && response.streaming) return false
+  return loading.value
+})
 
 // SSE responses stream headers + body chunks into a `loading` response
 // before they finish; that payload is already renderable (the events

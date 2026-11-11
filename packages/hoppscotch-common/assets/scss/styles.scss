@@ -73,7 +73,8 @@ html {
 body {
   @apply bg-primary;
   @apply text-body text-secondary;
-  @apply font-medium;
+  @apply font-normal;
+  @apply tabular-nums;
   @apply select-none;
   @apply overflow-x-hidden;
   @apply leading-body;
@@ -207,9 +208,8 @@ hr {
 }
 
 .heading {
-  @apply font-bold;
-  @apply text-lg text-secondaryDark;
-  @apply tracking-tight;
+  @apply font-semibold;
+  @apply text-xl text-secondaryDark;
 }
 
 .input,
@@ -487,14 +487,14 @@ pre.ace_editor {
 
 .shortcut-key {
   @apply inline-flex;
-  @apply font-sans;
+  @apply font-mono;
   @apply text-tiny;
   @apply bg-dividerLight;
-  @apply rounded;
+  @apply rounded-sm;
   @apply ml-2;
-  @apply px-0.5;
-  @apply min-w-[1rem];
-  @apply min-h-[1rem];
+  @apply px-1;
+  @apply min-w-[1.125rem];
+  @apply min-h-[1.125rem];
   @apply leading-none;
   @apply items-center;
   @apply justify-center;
@@ -681,4 +681,29 @@ details[open] summary .indicator {
   .smart-splitter.splitpanes--horizontal > .splitpanes__splitter {
     height: 1px;
   }
+}
+
+/*
+ * HoppSmartToggle ships as a 26x10 track in the pinned UI package. Lift it to
+ * a 32x16 switch so it reads at the same scale as the 13px labels beside it.
+ */
+body .toggle.toggle {
+  width: 2rem;
+  height: 1rem;
+}
+
+body .toggle.toggle .handle {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin: 0.125rem;
+}
+
+body .toggle.toggle.on {
+  border-color: var(--accent-color);
+  background-color: var(--accent-color);
+}
+
+body .toggle.toggle.on .handle {
+  left: 1.125rem;
+  background-color: var(--accent-contrast-color);
 }

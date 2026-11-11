@@ -2,17 +2,27 @@
   --accent-color: theme("colors.emerald.500");
   --accent-light-color: theme("colors.emerald.400");
   --accent-dark-color: theme("colors.emerald.600");
-  --accent-contrast-color: theme("colors.white");
+  --accent-contrast-color: #06130e;
   --gradient-from-color: theme("colors.emerald.400");
   --gradient-via-color: theme("colors.emerald.500");
   --gradient-to-color: theme("colors.emerald.600");
+}
+
+@mixin green-theme-light {
+  --accent-color: theme("colors.emerald.700");
+  --accent-light-color: theme("colors.emerald.600");
+  --accent-dark-color: theme("colors.emerald.800");
+  --accent-contrast-color: theme("colors.white");
+  --gradient-from-color: theme("colors.emerald.600");
+  --gradient-via-color: theme("colors.emerald.700");
+  --gradient-to-color: theme("colors.emerald.800");
 }
 
 @mixin teal-theme {
   --accent-color: theme("colors.teal.500");
   --accent-light-color: theme("colors.teal.400");
   --accent-dark-color: theme("colors.teal.600");
-  --accent-contrast-color: theme("colors.white");
+  --accent-contrast-color: #041916;
   --gradient-from-color: theme("colors.teal.400");
   --gradient-via-color: theme("colors.teal.500");
   --gradient-to-color: theme("colors.teal.600");
@@ -52,7 +62,7 @@
   --accent-color: theme("colors.amber.500");
   --accent-light-color: theme("colors.amber.400");
   --accent-dark-color: theme("colors.amber.600");
-  --accent-contrast-color: theme("colors.white");
+  --accent-contrast-color: #1f1503;
   --gradient-from-color: theme("colors.amber.400");
   --gradient-via-color: theme("colors.amber.500");
   --gradient-to-color: theme("colors.amber.600");
@@ -62,7 +72,7 @@
   --accent-color: theme("colors.orange.500");
   --accent-light-color: theme("colors.orange.400");
   --accent-dark-color: theme("colors.orange.600");
-  --accent-contrast-color: theme("colors.white");
+  --accent-contrast-color: #1f1004;
   --gradient-from-color: theme("colors.orange.400");
   --gradient-via-color: theme("colors.orange.500");
   --gradient-to-color: theme("colors.orange.600");

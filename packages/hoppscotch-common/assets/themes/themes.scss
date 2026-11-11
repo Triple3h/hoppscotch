@@ -67,3 +67,8 @@
 :root[data-accent="yellow"] {
   @include yellow-theme;
 }
+
+:root.light[data-accent="green"],
+:root.light:not([data-accent]) {
+  @include green-theme-light;
+}

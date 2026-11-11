@@ -1,9 +1,9 @@
 @mixin base-theme {
   --font-sans: "Inter Variable", sans-serif;
   --font-mono: "Roboto Mono Variable", monospace;
-  --font-size-body: 0.75rem;
-  --font-size-tiny: 0.625rem;
-  --line-height-body: 1rem;
+  --font-size-body: 0.8125rem;
+  --font-size-tiny: 0.6875rem;
+  --line-height-body: 1.125rem;
   --upper-primary-sticky-fold: 4.125rem;
   --upper-runner-sticky-fold: 4.125rem;
   --upper-secondary-sticky-fold: 6.188rem;
@@ -24,17 +24,17 @@
 
 @mixin light-theme {
   --primary-color: theme("colors.white");
-  --primary-light-color: #f8f9fb;
-  --primary-dark-color: #eef1f5;
-  --primary-contrast-color: #fbfcfe;
+  --primary-light-color: #f6f6f7;
+  --primary-dark-color: #ececee;
+  --primary-contrast-color: #fafafa;
 
-  --secondary-color: theme("colors.gray.500");
-  --secondary-light-color: theme("colors.gray.400");
-  --secondary-dark-color: theme("colors.gray.900");
+  --secondary-color: theme("colors.zinc.600");
+  --secondary-light-color: theme("colors.zinc.500");
+  --secondary-dark-color: theme("colors.zinc.900");
 
-  --divider-color: #e4e7eb;
-  --divider-light-color: #eef0f3;
-  --divider-dark-color: #cbd1d9;
+  --divider-color: #e6e6e8;
+  --divider-light-color: #f0f0f2;
+  --divider-dark-color: #cfcfd4;
 
   --banner-info-color: theme("colors.stone.100");
   --banner-warning-color: theme("colors.yellow.100");
@@ -43,38 +43,38 @@
   --tooltip-color: theme("colors.neutral.800");
   --popover-color: theme("colors.white");
 
-  --method-get-color: theme("colors.green.500");
-  --method-post-color: theme("colors.amber.500");
-  --method-put-color: theme("colors.blue.500");
-  --method-patch-color: theme("colors.purple.500");
-  --method-delete-color: theme("colors.red.500");
-  --method-head-color: theme("colors.lime.500");
-  --method-options-color: theme("colors.pink.500");
+  --method-get-color: theme("colors.green.600");
+  --method-post-color: theme("colors.amber.600");
+  --method-put-color: theme("colors.blue.600");
+  --method-patch-color: theme("colors.purple.600");
+  --method-delete-color: theme("colors.red.600");
+  --method-head-color: theme("colors.lime.600");
+  --method-options-color: theme("colors.pink.600");
   --method-default-color: theme("colors.gray.500");
 
-  --status-info-color: theme("colors.blue.500");
-  --status-success-color: theme("colors.green.500");
-  --status-redirect-color: theme("colors.amber.500");
-  --status-critical-error-color: theme("colors.red.500");
-  --status-server-error-color: theme("colors.rose.500");
+  --status-info-color: theme("colors.blue.600");
+  --status-success-color: theme("colors.green.600");
+  --status-redirect-color: theme("colors.amber.600");
+  --status-critical-error-color: theme("colors.red.600");
+  --status-server-error-color: theme("colors.rose.600");
   --status-missing-data-color: theme("colors.slate.500");
 
   --editor-theme: "textmate";
 }
 
 @mixin dark-theme {
-  --primary-color: #181818;
-  --primary-light-color: #1c1c1e;
-  --primary-dark-color: theme("colors.neutral.800");
-  --primary-contrast-color: theme("colors.neutral.900");
+  --primary-color: #171719;
+  --primary-light-color: #1e1e21;
+  --primary-dark-color: #26262a;
+  --primary-contrast-color: #101012;
 
-  --secondary-color: theme("colors.neutral.400");
-  --secondary-light-color: theme("colors.neutral.500");
-  --secondary-dark-color: theme("colors.zinc.50");
+  --secondary-color: #a2a2a8;
+  --secondary-light-color: #8a8a90;
+  --secondary-dark-color: #ececee;
 
-  --divider-color: #1f1f1f;
-  --divider-light-color: #1f1f1f;
-  --divider-dark-color: theme("colors.zinc.800");
+  --divider-color: #2a2a2e;
+  --divider-light-color: #222226;
+  --divider-dark-color: #35353b;
 
   --banner-info-color: theme("colors.stone.800");
   --banner-warning-color: theme("colors.yellow.800");
@@ -103,18 +103,18 @@
 }
 
 @mixin black-theme {
-  --primary-color: #0f0f0f;
-  --primary-light-color: theme("colors.neutral.900");
-  --primary-dark-color: #181818;
-  --primary-contrast-color: #0f0f0f;
+  --primary-color: #0e0e10;
+  --primary-light-color: #151518;
+  --primary-dark-color: #1d1d21;
+  --primary-contrast-color: #09090b;
 
-  --secondary-color: theme("colors.neutral.400");
-  --secondary-light-color: theme("colors.neutral.500");
-  --secondary-dark-color: theme("colors.neutral.50");
+  --secondary-color: #a2a2a8;
+  --secondary-light-color: #8a8a90;
+  --secondary-dark-color: #f4f4f5;
 
-  --divider-color: theme("colors.neutral.900");
-  --divider-light-color: theme("colors.neutral.900");
-  --divider-dark-color: theme("colors.zinc.800");
+  --divider-color: #222227;
+  --divider-light-color: #1a1a1e;
+  --divider-dark-color: #2d2d33;
 
   --banner-info-color: theme("colors.stone.900");
   --banner-warning-color: theme("colors.yellow.900");

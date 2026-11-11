@@ -66,10 +66,12 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick, computed, Ref } from "vue"
 import {
+  Decoration,
   EditorView,
   placeholder as placeholderExt,
   ViewPlugin,
   ViewUpdate,
+  WidgetType,
   keymap,
   tooltips,
 } from "@codemirror/view"
@@ -78,6 +80,8 @@ import {
   EditorSelection,
   EditorState,
   Extension,
+  StateEffect,
+  StateField,
 } from "@codemirror/state"
 import { clone } from "lodash-es"
 import { history, historyKeymap } from "@codemirror/commands"
@@ -122,6 +126,7 @@ const props = withDefaults(
     secret?: boolean
     autoCompleteEnv?: boolean
     autoCompleteEnvSource?: AggregateEnvironment[] | null
+    suffix?: string
   }>(),
   {
     modelValue: "",
@@ -139,6 +144,7 @@ const props = withDefaults(
     secret: false,
     autoCompleteEnv: false,
     autoCompleteEnvSource: null,
+    suffix: "",
   }
 )
 
@@ -170,6 +176,56 @@ const secretText = ref(props.modelValue)
 
 // Compartment to store the readOnly state of the editor
 const readOnly = new Compartment()
+
+class SuffixWidget extends WidgetType {
+  constructor(readonly text: string) {
+    super()
+  }
+
+  eq(other: SuffixWidget) {
+    return other.text === this.text
+  }
+
+  toDOM() {
+    const span = document.createElement("span")
+    span.className = "cm-inline-suffix"
+    span.textContent = this.text
+    return span
+  }
+}
+
+const setSuffix = StateEffect.define<string>()
+
+const suffixState = StateField.define<string>({
+  create: () => props.suffix ?? "",
+  update(value, tr) {
+    for (const effect of tr.effects) {
+      if (effect.is(setSuffix)) return effect.value
+    }
+    return value
+  },
+})
+
+const suffixDecorations = EditorView.decorations.compute(
+  ["doc", suffixState],
+  (state) => {
+    const text = state.field(suffixState)
+    if (!text) return Decoration.none
+    return Decoration.set([
+      Decoration.widget({
+        widget: new SuffixWidget(text),
+        side: 1,
+      }).range(state.doc.length),
+    ])
+  }
+)
+
+watch(
+  () => props.suffix,
+  (newSuffix) => {
+    view.value?.dispatch({ effects: setSuffix.of(newSuffix ?? "") })
+  }
+)
 
 watch(
   () => secretText.value,
@@ -572,6 +628,8 @@ const getExtensions = (readonly: boolean): Extension => {
     EditorView.contentAttributes.of({ "aria-label": props.placeholder }),
     EditorView.contentAttributes.of({ "data-enable-grammarly": "false" }),
     inputTheme,
+    suffixState,
+    suffixDecorations,
     readOnly.of(readOnlyConfigs),
     tooltips({
       parent: document.body,
@@ -760,6 +818,11 @@ watch(
   @apply flex-1;
   @apply flex-shrink-0;
   @apply whitespace-nowrap py-4;
+
+  :deep(.cm-inline-suffix) {
+    @apply text-secondaryLight;
+    @apply select-none;
+  }
 
   // Hide horizontal scrollbar for CodeMirror in Firefox (Chrome is handled by global ::-webkit-scrollbar { h-0 })
   :deep(.cm-scroller) {

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="workspace-request-bar sticky top-0 z-20 flex-none flex-shrink-0 bg-primary px-4 py-3.5 sm:flex sm:flex-shrink-0 sm:space-x-2"
+    class="workspace-request-bar sticky top-0 z-20 flex-none flex-shrink-0 bg-primary px-4 py-3 sm:flex sm:flex-shrink-0 sm:space-x-2"
   >
     <div
       class="min-w-[12rem] flex flex-1 whitespace-nowrap rounded border border-divider"
@@ -62,6 +62,7 @@
           :auto-complete-source="userHistories"
           :auto-complete-env="true"
           :inspection-results="tabResults"
+          :suffix="paramSuffix"
           @paste="onPasteUrl($event)"
           @enter="newSendRequest"
         />
@@ -223,6 +224,30 @@ const newEndpoint = computed(() => {
 })
 const newMethod = computed(() => {
   return tab.value.document.request.method
+})
+
+// Params are appended to the URL only at send time; surface the resulting
+// query string inline so the request bar reflects what will actually be sent.
+const paramSuffix = computed(() => {
+  const { endpoint, params } = tab.value.document.request
+
+  const activeParams = params.filter(
+    (param) => param.active && param.key !== ""
+  )
+  if (activeParams.length === 0) return ""
+
+  const queryString = activeParams
+    .map((param) => `${param.key}=${param.value}`)
+    .join("&")
+
+  const base = endpoint.split("#")[0]
+  const separator = !base.includes("?")
+    ? "?"
+    : base.endsWith("?") || base.endsWith("&")
+      ? ""
+      : "&"
+
+  return `${separator}${queryString}`
 })
 
 const curlText = ref("")

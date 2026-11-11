@@ -12,29 +12,6 @@
   .tippy-box[data-theme~="tooltip"] {
     @apply rounded;
 
-    .env-tooltip-content {
-      @apply flex-col;
-    }
-
-    // Constrained tooltip styles to prevent overflow beyond the viewport
-    // when environment variable values are very long (fixes #5876)
-    .env-tooltip-constrained {
-      @apply flex-col;
-      @apply w-full;
-      @apply box-border;
-      @apply overflow-hidden;
-
-      .env-tooltip-value {
-        @apply break-words;
-        @apply break-all;
-        @apply whitespace-pre-wrap;
-        @apply overflow-hidden;
-        @apply inline-block;
-        @apply max-w-full;
-        @apply align-top;
-      }
-    }
-
     .tippy-content {
       @apply flex;
       @apply text-tiny;
@@ -60,6 +37,58 @@
         @apply transition;
         @apply inline-flex;
         @apply items-center;
+      }
+    }
+
+    // Declared after `.tippy-content` so the variable tooltip overrides the
+    // shared one-liner tooltip styles (padding, weight, alignment).
+    .env-tooltip-content {
+      @apply flex-col;
+      @apply font-normal;
+      @apply items-stretch;
+    }
+
+    // Constrained tooltip styles to prevent overflow beyond the viewport
+    // when environment variable values are very long (fixes #5876)
+    .env-tooltip-constrained {
+      @apply flex-col;
+      @apply w-full;
+      @apply box-border;
+      @apply overflow-hidden;
+      @apply px-3 py-2.5;
+
+      .env-tooltip-header {
+        @apply text-tiny;
+        @apply font-medium;
+        @apply text-secondaryLight;
+
+        button {
+          @apply -my-1;
+        }
+      }
+
+      .env-tooltip-row {
+        @apply items-start;
+      }
+
+      .env-tooltip-label {
+        @apply text-tiny;
+        @apply font-medium;
+        @apply text-secondaryLight;
+      }
+
+      .env-tooltip-value {
+        @apply text-body;
+        @apply font-normal;
+        @apply text-secondaryDark;
+        @apply select-text;
+        @apply break-words;
+        @apply break-all;
+        @apply whitespace-pre-wrap;
+        @apply overflow-hidden;
+        @apply inline-block;
+        @apply max-w-full;
+        @apply align-top;
       }
     }
   }

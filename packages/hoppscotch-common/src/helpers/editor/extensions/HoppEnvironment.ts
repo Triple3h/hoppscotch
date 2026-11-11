@@ -199,7 +199,9 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
       const appendEditAction = (tooltip: HTMLElement) => {
         const editIcon = document.createElement("button")
         editIcon.className =
-          "ml-2 cursor-pointer text-accent hover:text-accentDark"
+          "-mr-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded text-secondaryLight transition hover:bg-primaryLight hover:text-accent"
+        editIcon.title = t("action.edit")
+        editIcon.setAttribute("aria-label", t("action.edit"))
         editIcon.addEventListener("click", () => {
           let invokeActionType:
             "modals.my.environment.edit" | "modals.global.environment.update" =
@@ -248,17 +250,17 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
 
           const tooltipHeaderBlock = document.createElement("div")
           tooltipHeaderBlock.className =
-            "flex items-center justify-between w-full space-x-2 "
+            "env-tooltip-header flex w-full items-center justify-between gap-3"
           tooltipContainer.appendChild(tooltipHeaderBlock)
 
           const iconNameContainer = document.createElement("div")
-          iconNameContainer.className =
-            "flex items-center space-x-2 flex-1 mr-4 "
+          iconNameContainer.className = "flex min-w-0 flex-1 items-center gap-2"
           tooltipHeaderBlock.appendChild(iconNameContainer)
 
           const icon = document.createElement("span")
           icon.innerHTML = envTypeIcon
           const envNameBlock = document.createElement("span")
+          envNameBlock.className = "truncate"
           envNameBlock.innerText = sourceLabel
 
           iconNameContainer.appendChild(icon)
@@ -268,7 +270,7 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
 
           const envContainer = document.createElement("div")
           tooltipContainer.appendChild(envContainer)
-          envContainer.className = `flex flex-col items-start space-y-1 flex-1 w-full mt-2 ${TOOLTIP_ENV_CONTAINER_Z_INDEX_CLASS}`
+          envContainer.className = `mt-2 flex w-full flex-col gap-1.5 ${TOOLTIP_ENV_CONTAINER_Z_INDEX_CLASS}`
           envContainer.style.overflow = "hidden"
 
           // Single effective value — what the runner would actually send —

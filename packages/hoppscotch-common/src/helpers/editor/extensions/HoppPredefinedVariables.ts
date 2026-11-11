@@ -11,9 +11,10 @@ import IconSquareAsterisk from "~icons/lucide/square-asterisk?raw"
 import { isComment } from "./helpers"
 import { getI18n } from "~/modules/i18n"
 import {
-  stabilizeTooltipHover,
   constrainTooltipToViewport,
   createTooltipValueRow,
+  stabilizeTooltipHover,
+  TOOLTIP_MAX_VALUE_LENGTH,
 } from "~/helpers/utils/tooltip"
 
 const HOPP_PREDEFINED_VARIABLES_REGEX = /(<<\$[a-zA-Z0-9-_]+>>)/g
@@ -102,18 +103,18 @@ const cursorTooltipField = () =>
 
           const tooltipHeaderBlock = document.createElement("div")
           tooltipHeaderBlock.className =
-            "flex items-center justify-between w-full space-x-2 "
+            "env-tooltip-header flex w-full items-center justify-between gap-3"
           tooltipContainer.appendChild(tooltipHeaderBlock)
 
           const iconNameContainer = document.createElement("div")
-          iconNameContainer.className =
-            "flex items-center space-x-2 flex-1 mr-4 "
+          iconNameContainer.className = "flex min-w-0 flex-1 items-center gap-2"
           tooltipHeaderBlock.appendChild(iconNameContainer)
 
           const icon = document.createElement("span")
           icon.innerHTML = variableIcon
 
           const envNameBlock = document.createElement("span")
+          envNameBlock.className = "truncate"
           envNameBlock.innerText = sourceLabel
 
           iconNameContainer.appendChild(icon)
@@ -121,8 +122,7 @@ const cursorTooltipField = () =>
 
           const envContainer = document.createElement("div")
           tooltipContainer.appendChild(envContainer)
-          envContainer.className =
-            "flex flex-col items-start space-y-1 flex-1 w-full mt-2"
+          envContainer.className = "mt-2 flex w-full flex-col gap-1.5"
           envContainer.style.overflow = "hidden"
 
           envContainer.appendChild(
@@ -130,7 +130,12 @@ const cursorTooltipField = () =>
           )
           if (description) {
             envContainer.appendChild(
-              createTooltipValueRow(t("env_tooltip.description"), description)
+              createTooltipValueRow(
+                t("env_tooltip.description"),
+                description,
+                TOOLTIP_MAX_VALUE_LENGTH,
+                false
+              )
             )
           }
 

@@ -137,26 +137,28 @@ export function applyTooltipOverflowStyles(
  * @param label - The label text (e.g., "Initial", "Current", "Value")
  * @param value - The raw value string to display
  * @param maxValueLength - Maximum characters before truncation
+ * @param mono - Render the value in a monospace font (defaults to true;
+ *               prose like a variable description passes false)
  * @returns The row container element
  */
 export function createTooltipValueRow(
   label: string,
   value: string | undefined | null,
-  maxValueLength: number = TOOLTIP_MAX_VALUE_LENGTH
+  maxValueLength: number = TOOLTIP_MAX_VALUE_LENGTH,
+  mono = true
 ): HTMLDivElement {
   const row = document.createElement("div")
-  row.className = "flex items-start space-x-2"
+  row.className = "env-tooltip-row flex items-start gap-2"
   row.style.width = "100%"
 
   const labelEl = document.createElement("div")
   labelEl.textContent = label
-  labelEl.className = "font-bold"
+  labelEl.className = "env-tooltip-label"
   labelEl.style.flexShrink = "0"
-  labelEl.style.minWidth = "50px"
-  labelEl.style.marginRight = "0.5rem"
+  labelEl.style.minWidth = "4rem"
 
   const valueEl = document.createElement("span")
-  valueEl.className = "env-tooltip-value"
+  valueEl.className = mono ? "env-tooltip-value font-mono" : "env-tooltip-value"
   const displayValue = formatTooltipValue(value, maxValueLength)
   valueEl.textContent = displayValue
 

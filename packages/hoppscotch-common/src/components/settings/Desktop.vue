@@ -1,17 +1,12 @@
 <template>
-  <!-- Three-column grid identical to the shared settings page's other
-       sections (General / Theme / Kernel interceptor), so this section
-       aligns with them and declares no column widths of its own. -->
-  <div class="md:grid md:grid-cols-3 md:gap-4">
-    <div class="p-8 md:col-span-1">
-      <h3 class="heading">
-        {{ t("settings.desktop") }}
-      </h3>
-      <p class="my-1 text-secondaryLight">
-        {{ t("settings.desktop_description") }}
-      </p>
-    </div>
-    <div class="space-y-8 p-8 md:col-span-2">
+  <div class="py-10">
+    <h3 class="heading">
+      {{ t("settings.desktop") }}
+    </h3>
+    <p class="mt-2 text-secondaryLight">
+      {{ t("settings.desktop_description") }}
+    </p>
+    <div class="mt-8 space-y-8">
       <section>
         <h4 class="font-semibold text-secondaryDark">
           {{ t("settings.desktop_updates") }}

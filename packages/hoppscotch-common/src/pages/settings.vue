@@ -1,16 +1,14 @@
 <template>
   <div>
-    <div class="container divide-y divide-dividerLight">
-      <div class="md:grid md:grid-cols-3 md:gap-4">
-        <div class="p-8 md:col-span-1">
-          <h3 class="heading">
-            {{ t("settings.general") }}
-          </h3>
-          <p class="my-1 text-secondaryLight">
-            {{ t("settings.general_description") }}
-          </p>
-        </div>
-        <div class="space-y-8 p-8 md:col-span-2">
+    <div class="mx-auto max-w-3xl divide-y divide-dividerLight px-8 py-10">
+      <section class="pb-10">
+        <h3 class="heading">
+          {{ t("settings.general") }}
+        </h3>
+        <p class="mt-2 text-secondaryLight">
+          {{ t("settings.general_description") }}
+        </p>
+        <div class="mt-8 space-y-8">
           <section>
             <h4 class="font-semibold text-secondaryDark">
               {{ t("settings.language") }}
@@ -177,18 +175,16 @@
             </div>
           </section>
         </div>
-      </div>
+      </section>
 
-      <div class="md:grid md:grid-cols-3 md:gap-4">
-        <div class="p-8 md:col-span-1">
-          <h3 class="heading">
-            {{ t("settings.theme") }}
-          </h3>
-          <p class="my-1 text-secondaryLight">
-            {{ t("settings.theme_description") }}
-          </p>
-        </div>
-        <div class="space-y-8 p-8 md:col-span-2">
+      <section class="py-10">
+        <h3 class="heading">
+          {{ t("settings.theme") }}
+        </h3>
+        <p class="mt-2 text-secondaryLight">
+          {{ t("settings.theme_description") }}
+        </p>
+        <div class="mt-8 space-y-8">
           <section>
             <h4 class="font-semibold text-secondaryDark">
               {{ t("settings.background") }}
@@ -215,22 +211,17 @@
             </div>
           </section>
         </div>
-      </div>
+      </section>
 
-      <div class="md:grid md:grid-cols-3 md:gap-4">
-        <div class="p-8 md:col-span-1">
-          <h3 class="heading">
-            {{ t("settings.kernel_interceptor") }}
-          </h3>
-          <p class="my-1 text-secondaryLight">
-            {{ t("settings.kernel_interceptor_description") }}
-          </p>
-        </div>
-        <div class="space-y-8 p-8 md:col-span-2">
-          <section class="flex flex-col space-y-2">
-            <h4 class="font-semibold text-secondaryDark">
-              {{ t("settings.kernel_interceptor") }}
-            </h4>
+      <section class="py-10">
+        <h3 class="heading">
+          {{ t("settings.kernel_interceptor") }}
+        </h3>
+        <p class="mt-2 text-secondaryLight">
+          {{ t("settings.kernel_interceptor_description") }}
+        </p>
+        <div class="mt-8 space-y-8">
+          <section>
             <AppKernelInterceptor :is-tooltip-component="false" />
           </section>
           <section
@@ -243,7 +234,7 @@
             <component :is="settings.component" />
           </section>
         </div>
-      </div>
+      </section>
 
       <template v-if="platform.ui?.additionalSettingsSections?.length">
         <template

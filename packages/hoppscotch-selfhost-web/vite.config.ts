@@ -147,10 +147,6 @@ export default defineConfig({
             variables: ["variable-full"],
           },
           {
-            name: "Material Symbols Rounded Variable",
-            variables: ["variable-full"],
-          },
-          {
             name: "Roboto Mono Variable",
             variables: ["variable-full"],
           },

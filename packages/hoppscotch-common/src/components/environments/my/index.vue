@@ -1,37 +1,26 @@
 <template>
   <div>
-    <input
+    <AppSidebarSearch
       v-model="filterText"
-      type="search"
-      autocomplete="off"
-      class="flex w-full bg-transparent px-4 py-2 h-8 border-b border-dividerLight"
-      :placeholder="t('action.search')"
-    />
-    <div
-      class="sticky top-upperPrimaryStickyFold z-10 flex flex-1 flex-shrink-0 justify-between overflow-x-auto border-b border-dividerLight bg-primary"
+      class="sticky top-upperPrimaryStickyFold z-10"
     >
-      <HoppButtonSecondary
-        :icon="IconPlus"
-        :label="`${t('action.new')}`"
-        class="!rounded-none"
-        @click="displayModalAdd(true)"
-      />
-      <div class="flex">
+      <template #actions>
         <HoppButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          to="https://docs.hoppscotch.io/documentation/features/environments"
-          blank
-          :title="t('app.wiki')"
-          :icon="IconHelpCircle"
+          :title="t('action.new')"
+          :icon="IconPlus"
+          class="!px-2"
+          @click="displayModalAdd(true)"
         />
         <HoppButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
           :icon="IconImport"
           :title="t('modal.import_export')"
+          class="!px-2"
           @click="displayModalImportExport(true)"
         />
-      </div>
-    </div>
+      </template>
+    </AppSidebarSearch>
 
     <EnvironmentsMyEnvironment
       v-for="{ env, index } in filteredAndAlphabetizedPersonalEnvs"
@@ -107,7 +96,6 @@ import { useReadonlyStream } from "@composables/stream"
 import { useI18n } from "~/composables/i18n"
 import IconPlus from "~icons/lucide/plus"
 import IconImport from "~icons/lucide/folder-down"
-import IconHelpCircle from "~icons/lucide/help-circle"
 import { defineActionHandler } from "~/helpers/actions"
 import { openEnvironmentTab } from "~/helpers/tab/openEnvironmentTab"
 import { sortPersonalEnvironmentsAlphabetically } from "~/helpers/utils/sortEnvironmentsAlphabetically"

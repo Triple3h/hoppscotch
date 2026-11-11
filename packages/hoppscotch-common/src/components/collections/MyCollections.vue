@@ -1,44 +1,5 @@
 <template>
   <div class="flex flex-1 flex-col">
-    <div
-      class="sticky z-10 flex flex-1 justify-between border-b border-dividerLight bg-primary"
-      :style="
-        saveRequest
-          ? 'top: calc(var(--upper-primary-sticky-fold) - var(--line-height-body))'
-          : 'top: var(--upper-primary-sticky-fold)'
-      "
-    >
-      <HoppButtonSecondary
-        :icon="IconPlus"
-        :label="t('action.new')"
-        class="!rounded-none"
-        @click="emit('command', { type: 'display-modal-add' })"
-      />
-      <span class="flex">
-        <HoppButtonSecondary
-          v-tippy="{ theme: 'tooltip' }"
-          to="https://docs.hoppscotch.io/documentation/features/collections"
-          blank
-          :title="t('app.wiki')"
-          :icon="IconHelpCircle"
-        />
-        <HoppButtonSecondary
-          v-if="filteredCollections && filteredCollections.length > 1"
-          v-tippy="{ theme: 'tooltip' }"
-          blank
-          :title="t('action.sort')"
-          :icon="IconArrowUpDown"
-          @click="debouncedSorting"
-        />
-        <HoppButtonSecondary
-          v-if="!saveRequest"
-          v-tippy="{ theme: 'tooltip' }"
-          :icon="IconImport"
-          :title="t('modal.import_export')"
-          @click="emit('command', { type: 'display-modal-import-export' })"
-        />
-      </span>
-    </div>
     <div class="flex flex-1 flex-col">
       <HoppSmartTree :adapter="myAdapter">
         <template
@@ -501,15 +462,13 @@
 
 <script setup lang="ts">
 import IconPlus from "~icons/lucide/plus"
-import IconHelpCircle from "~icons/lucide/help-circle"
 import IconImport from "~icons/lucide/folder-down"
-import IconArrowUpDown from "~icons/lucide/arrow-up-down"
 import {
   HoppCollection,
   HoppRESTRequest,
   HoppGQLRequest,
 } from "@hoppscotch/data"
-import { computed, PropType, ref, Ref, toRef } from "vue"
+import { computed, PropType, Ref, toRef } from "vue"
 import { ChildrenResult, SmartTreeAdapter } from "@hoppscotch/ui/helpers"
 import { useI18n } from "@composables/i18n"
 import { useColorMode } from "@composables/theming"
@@ -518,8 +477,6 @@ import * as O from "fp-ts/Option"
 import { Picked } from "~/helpers/types/HoppPicked.js"
 import { useService } from "dioc/vue"
 import { WorkspaceTabsService } from "~/services/tab/workspace-tabs"
-import { useDebounceFn } from "@vueuse/core"
-import { CurrentSortValuesService } from "~/services/current-sort.service"
 import type { CollectionCommand } from "~/composables/useCollectionActions"
 
 export type Collection = {
@@ -587,12 +544,6 @@ const emit = defineEmits<{
 }>()
 
 const refFilterCollection = toRef(props, "filteredCollections")
-
-const currentSortValuesService = useService(CurrentSortValuesService)
-
-const currentSortOrder = ref<"asc" | "desc">(
-  currentSortValuesService.getSortOption("personal")?.sortOrder ?? "asc"
-)
 
 const pathToIndex = (path: string) => {
   const pathArr = path.split("/")
@@ -772,18 +723,6 @@ const updateCollectionOrder = (
     },
   })
 }
-
-const debouncedSorting = useDebounceFn(() => {
-  currentSortOrder.value = currentSortOrder.value === "asc" ? "desc" : "asc"
-  emit("command", {
-    type: "sort-collections",
-    payload: {
-      collectionID: null,
-      sortOrder: currentSortOrder.value,
-      collectionRefID: "personal",
-    },
-  })
-}, 250)
 
 type MyCollectionNode = Collection | Folder | Requests
 

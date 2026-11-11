@@ -1,29 +1,16 @@
 <template>
   <div>
     <div
-      class="sticky top-0 z-10 flex flex-shrink-0 flex-col overflow-x-auto border-b border-dividerLight bg-primary"
+      class="sticky top-0 z-10 flex flex-shrink-0 flex-col overflow-x-auto bg-primary"
     >
-      <div class="flex">
-        <input
-          v-model="filterText"
-          type="search"
-          autocomplete="off"
-          class="flex w-full bg-transparent px-4 py-2 h-8"
-          :placeholder="`${t('action.search')}`"
-        />
-        <div class="flex">
-          <HoppButtonSecondary
-            v-tippy="{ theme: 'tooltip' }"
-            to="https://docs.hoppscotch.io/documentation/features/history"
-            blank
-            :title="t('app.wiki')"
-            :icon="IconHelpCircle"
-          />
+      <AppSidebarSearch v-model="filterText">
+        <template #actions>
           <tippy interactive trigger="click" theme="popover">
             <HoppButtonSecondary
               v-tippy="{ theme: 'tooltip' }"
               :title="t('action.filter')"
               :icon="IconFilter"
+              class="!px-2"
             />
             <template #content="{ hide }">
               <div ref="tippyActions" class="flex flex-col focus:outline-none">
@@ -53,10 +40,11 @@
             :disabled="history.length === 0"
             :icon="IconTrash2"
             :title="t('action.clear_all')"
+            class="!px-2"
             @click="confirmRemove = true"
           />
-        </div>
-      </div>
+        </template>
+      </AppSidebarSearch>
     </div>
     <div class="flex flex-col">
       <details
@@ -175,7 +163,6 @@ import {
   toggleRESTHistoryEntryStar,
 } from "~/newstore/history"
 import IconFilter from "~icons/lucide/filter"
-import IconHelpCircle from "~icons/lucide/help-circle"
 import IconTrash from "~icons/lucide/trash"
 import IconTrash2 from "~icons/lucide/trash-2"
 

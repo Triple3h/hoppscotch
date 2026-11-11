@@ -11,20 +11,41 @@
     @dragend="draggingToRoot = false"
   >
     <div
-      class="sticky z-10 flex flex-shrink-0 flex-col overflow-x-auto bg-primary border-b border-dividerLight"
+      class="sticky z-10 flex flex-shrink-0 flex-col overflow-x-auto bg-primary"
       :class="{ 'rounded-t': saveRequest }"
       :style="
         saveRequest ? 'top: calc(-1 * var(--line-height-body))' : 'top: 0'
       "
     >
       <WorkspaceCurrent :section="t('tab.collections')" />
-      <input
-        v-model="filterTexts"
-        type="search"
-        autocomplete="off"
-        class="flex w-full bg-transparent px-4 py-2 h-8"
-        :placeholder="t('action.search')"
-      />
+      <AppSidebarSearch v-model="filterTexts">
+        <template #actions>
+          <HoppButtonSecondary
+            v-tippy="{ theme: 'tooltip' }"
+            :title="t('action.new')"
+            :icon="IconPlus"
+            class="!px-2"
+            @click="displayModalAdd(true)"
+          />
+          <HoppButtonSecondary
+            v-if="filteredCollections.length > 1"
+            v-tippy="{ theme: 'tooltip' }"
+            blank
+            :title="t('action.sort')"
+            :icon="IconArrowUpDown"
+            class="!px-2"
+            @click="debouncedSorting"
+          />
+          <HoppButtonSecondary
+            v-if="!saveRequest"
+            v-tippy="{ theme: 'tooltip' }"
+            :icon="IconImport"
+            :title="t('modal.import_export')"
+            class="!px-2"
+            @click="displayModalImportExport(true, 'my-collections')"
+          />
+        </template>
+      </AppSidebarSearch>
     </div>
     <CollectionsMyCollections
       :collections-type="collectionsType"
@@ -171,6 +192,12 @@ import { Picked } from "~/helpers/types/HoppPicked"
 import { RESTOptionTabs } from "../http/RequestOptions.vue"
 import { EditingProperties } from "./Properties.vue"
 import { restCollections$ } from "~/newstore/collections"
+import IconPlus from "~icons/lucide/plus"
+import IconArrowUpDown from "~icons/lucide/arrow-up-down"
+import IconImport from "~icons/lucide/folder-down"
+import { useDebounceFn } from "@vueuse/core"
+import { useService } from "dioc/vue"
+import { CurrentSortValuesService } from "~/services/current-sort.service"
 
 const t = useI18n()
 const toast = useToast()
@@ -250,6 +277,20 @@ const editingProperties = ref<EditingProperties>({
 const confirmModalTitle = ref<string | null>(null)
 
 const filterTexts = ref("")
+
+const currentSortValuesService = useService(CurrentSortValuesService)
+const currentSortOrder = ref<"asc" | "desc">(
+  currentSortValuesService.getSortOption("personal")?.sortOrder ?? "asc"
+)
+
+const debouncedSorting = useDebounceFn(() => {
+  currentSortOrder.value = currentSortOrder.value === "asc" ? "desc" : "asc"
+  sortCollections({
+    collectionID: null,
+    sortOrder: currentSortOrder.value,
+    collectionRefID: "personal",
+  })
+}, 250)
 
 const myCollections = useReadonlyStream(restCollections$, [], "deep")
 

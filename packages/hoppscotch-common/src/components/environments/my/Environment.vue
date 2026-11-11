@@ -1,6 +1,8 @@
 <template>
   <div
-    class="group flex items-stretch"
+    class="group flex items-stretch transition"
+    :class="selected ? '' : 'hover:bg-primaryLight'"
+    :style="selected ? { backgroundColor: selectedTint } : undefined"
     @contextmenu.prevent="options!.tippy?.show()"
   >
     <span
@@ -9,19 +11,27 @@
     >
       <icon-lucide-globe
         v-if="environmentIndex === 'Global'"
-        class="svg-icons"
+        class="svg-icons text-secondaryLight"
       />
-      <icon-lucide-check-circle
-        v-else-if="selected"
-        class="svg-icons text-green-500"
+      <span
+        v-else-if="environment.color"
+        class="h-2.5 w-2.5 flex-none rounded-full border border-dividerDark"
+        :style="{ backgroundColor: environment.color }"
       />
-      <icon-lucide-layers v-else class="svg-icons" />
+      <icon-lucide-layers v-else class="svg-icons text-secondaryLight" />
     </span>
     <span
-      class="flex min-w-0 flex-1 cursor-pointer py-2 pr-2 transition group-hover:text-secondaryDark"
+      class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-2 pr-2 transition group-hover:text-secondaryDark"
       @click="emit('select-environment')"
     >
-      <span class="truncate"> {{ environment.name }} </span>
+      <span class="truncate" :class="{ 'font-medium': selected }">
+        {{ environment.name }}
+      </span>
+      <icon-lucide-check
+        v-if="selected"
+        class="svg-icons !h-3.5 !w-3.5 flex-none"
+        :style="{ color: environment.color || 'var(--accent-color)' }"
+      />
     </span>
 
     <div class="flex">
@@ -204,6 +214,14 @@ watch(
 )
 
 const isGlobalEnvironment = computed(() => props.environmentIndex === "Global")
+
+// Tint the active row with the environment's own color so the selection and
+// the color identity survive together (same treatment as the header selector).
+const selectedTint = computed(() =>
+  props.environment.color
+    ? `color-mix(in srgb, ${props.environment.color} 12%, var(--primary-color))`
+    : "var(--primary-light-color)"
+)
 
 const exportEnvironmentAsJSON = async () => {
   const { environment, environmentIndex } = props

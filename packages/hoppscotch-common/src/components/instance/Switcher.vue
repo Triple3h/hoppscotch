@@ -21,9 +21,7 @@
       <div class="flex items-center gap-4">
         <IconLucideServer />
         <div class="flex flex-col">
-          <span class="font-semibold uppercase">{{
-            currentInstance.displayName
-          }}</span>
+          <span class="font-semibold">{{ currentInstance.displayName }}</span>
           <div class="flex items-center gap-1">
             <span class="text-xs">{{ currentInstance.kind }}</span>
             <span v-if="currentInstance.version" class="text-xs">

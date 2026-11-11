@@ -93,7 +93,7 @@
           to="https://docs.hoppscotch.io/documentation/getting-started/rest/tests"
           blank
         />
-        <h4 class="pt-6 font-bold text-secondaryLight">
+        <h4 class="pt-6 font-semibold text-secondaryLight">
           {{ t("test.snippets") }}
         </h4>
         <div class="flex flex-col pt-4">

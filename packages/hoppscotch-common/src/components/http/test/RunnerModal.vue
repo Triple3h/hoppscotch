@@ -69,7 +69,7 @@
                         {{ config.dataset.fileName }}
                       </span>
                       <span class="text-secondaryLight">•</span>
-                      <span class="font-semibold text-secondaryLight uppercase">
+                      <span class="font-medium text-secondaryLight">
                         {{ config.dataset.type }}
                       </span>
                       <span class="text-secondaryLight">•</span>
@@ -345,7 +345,7 @@
             {{ config.dataset.fileName }}
           </span>
           <span class="text-secondaryLight">•</span>
-          <span class="font-semibold text-secondaryLight uppercase">
+          <span class="font-medium text-secondaryLight">
             {{ config.dataset.type }}
           </span>
           <span class="text-secondaryLight">•</span>

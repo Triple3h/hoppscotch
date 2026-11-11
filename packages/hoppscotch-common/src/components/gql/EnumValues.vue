@@ -45,7 +45,7 @@
       <button
         v-else
         type="button"
-        class="text-tiny font-semibold uppercase tracking-wide text-accent hover:underline px-4 py-2 text-left"
+        class="text-tiny font-medium text-accent hover:underline px-4 py-2 text-left"
         @click="handleShowDeprecated"
       >
         {{ t("graphql.show_depricated_values") }}

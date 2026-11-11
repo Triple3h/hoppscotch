@@ -7,8 +7,8 @@
     :on-shown="onShown"
     :on-hidden="onHidden"
   >
-    <!-- Same trigger box as EnvironmentsSelector (h-9 inside an h-12 rail) so
-         popper distance from the tab bar matches that bubble exactly. -->
+    <!-- h-9 trigger matches the tab rail's control height so the popover
+         offset from the bar stays consistent. -->
     <button
       type="button"
       class="flex h-9 min-w-7 items-center justify-center rounded px-1.5 text-secondary transition hover:bg-primary hover:text-secondaryDark focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
@@ -60,7 +60,7 @@
           -->
           <template v-for="group in groupedEntries" :key="group.key">
             <div
-              class="flex shrink-0 items-center gap-2 px-1 pt-2.5 pb-1 text-tiny font-semibold uppercase tracking-wide text-secondaryLight"
+              class="flex shrink-0 items-center gap-2 px-1 pt-3 pb-1 text-tiny font-medium text-secondaryLight"
               role="presentation"
             >
               <span>{{ group.label }}</span>

@@ -32,7 +32,7 @@
               "
               aria-hidden="true"
             />
-            <span class="flex-1 truncate font-bold">
+            <span class="flex-1 truncate font-semibold">
               {{ script.parentName }}
             </span>
           </button>

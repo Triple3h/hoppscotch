@@ -99,7 +99,7 @@
                   class="relative flex items-center rounded focus-within:ring-1 focus-within:ring-accent"
                 >
                   <span
-                    class="whitespace-nowrap px-1 text-sm font-bold tabular-nums text-secondaryDark"
+                    class="whitespace-nowrap px-1 text-sm font-semibold tabular-nums text-secondaryDark"
                   >
                     {{ viewedIteration }} / {{ iterationResults.length }}
                   </span>

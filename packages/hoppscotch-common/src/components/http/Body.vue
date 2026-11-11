@@ -48,7 +48,7 @@
                 class="flex flex-col text-left"
               >
                 <div class="flex rounded px-4 py-2">
-                  <span class="text-tiny font-bold text-secondaryLight">
+                  <span class="text-tiny font-semibold text-secondaryLight">
                     {{ t(contentTypeItems.title) }}
                   </span>
                 </div>

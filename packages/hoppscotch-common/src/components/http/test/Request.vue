@@ -34,11 +34,7 @@
             :title="`${t('collection.request_in_use')}`"
           >
             <span
-              class="absolute inline-flex flex-shrink-0 w-full h-full bg-green-500 rounded-full opacity-75 animate-ping"
-            >
-            </span>
-            <span
-              class="relative inline-flex flex-shrink-0 rounded-full h-1.5 w-1.5 bg-green-500"
+              class="relative inline-flex flex-shrink-0 rounded-full h-1.5 w-1.5 bg-green-500 ring-2 ring-green-500/20"
             ></span>
           </span>
         </span>

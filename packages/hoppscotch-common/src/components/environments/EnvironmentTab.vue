@@ -37,7 +37,7 @@
           v-for="swatch in ENVIRONMENT_COLORS"
           :key="swatch"
           type="button"
-          class="h-5 w-5 rounded-full transition hover:scale-110"
+          class="h-5 w-5 rounded-full transition-opacity hover:opacity-80"
           :class="
             doc.color === swatch
               ? 'ring-2 ring-accentDark ring-offset-1 ring-offset-primary'

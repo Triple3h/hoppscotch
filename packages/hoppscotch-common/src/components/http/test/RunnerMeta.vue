@@ -3,7 +3,7 @@
     <span class="text-xs text-secondaryLight mb-1 truncate">
       {{ heading }}
     </span>
-    <span class="text-sm font-bold text-secondaryDark truncate">
+    <span class="text-sm font-semibold text-secondaryDark truncate">
       <slot>
         {{ text }}
       </slot>

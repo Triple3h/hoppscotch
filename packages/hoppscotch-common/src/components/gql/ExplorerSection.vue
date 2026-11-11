@@ -4,7 +4,7 @@
       class="sticky top-0 z-[5] flex items-center justify-between bg-primary px-4 py-2"
     >
       <h3
-        class="text-tiny font-semibold uppercase tracking-wide text-secondaryLight"
+        class="text-tiny font-medium text-secondaryLight"
       >
         {{ title }}
       </h3>

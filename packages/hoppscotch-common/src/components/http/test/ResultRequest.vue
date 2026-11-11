@@ -23,7 +23,7 @@
           class="flex items-center justify-center truncate pointer-events-none"
           :style="{ color: requestLabelColor }"
         >
-          <span class="font-bold truncate">
+          <span class="font-semibold truncate">
             {{ requestChip.method }}
           </span>
         </span>

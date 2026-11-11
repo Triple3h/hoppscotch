@@ -31,7 +31,7 @@ const renderedComponent = computed(() => {
       "span",
       {
         class: `hopp-doc-explorer-type-name ${
-          props.isHeading ? "!text-lg !font-bold" : ""
+          props.isHeading ? "!text-lg !font-semibold" : ""
         }
         ${props.clickable ? "cursor-pointer hover:underline" : ""}
         `,

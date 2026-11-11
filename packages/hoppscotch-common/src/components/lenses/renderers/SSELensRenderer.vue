@@ -20,7 +20,7 @@
                 <button
                   v-tippy="{ theme: 'tooltip' }"
                   :title="t('response.sse.message_format')"
-                  class="flex items-center gap-1.5 rounded bg-primaryLight px-3 py-1 text-tiny font-bold text-secondaryDark transition hover:bg-primaryDark"
+                  class="flex items-center gap-1.5 rounded bg-primaryLight px-3 py-1 text-tiny font-semibold text-secondaryDark transition hover:bg-primaryDark"
                 >
                   {{ currentPresetLabel }}
                   <icon-lucide-chevron-down

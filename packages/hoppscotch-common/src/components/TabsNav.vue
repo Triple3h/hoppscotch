@@ -70,7 +70,7 @@ defineProps<{
     @apply justify-center;
     @apply px-4 py-2;
     @apply text-secondary;
-    @apply font-semibold;
+    @apply font-medium;
     @apply cursor-pointer;
     @apply hover:text-secondaryDark;
     @apply focus:outline-none;
@@ -93,9 +93,9 @@ defineProps<{
       @apply min-w-[1rem];
       @apply h-4;
       @apply ml-2;
-      @apply text-[8px];
+      @apply text-[10px];
       @apply border border-divider;
-      @apply rounded;
+      @apply rounded-sm;
       @apply text-secondaryLight;
     }
 

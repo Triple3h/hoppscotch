@@ -16,7 +16,7 @@
           >
             <span class="flex flex-1 items-center">
               <icon-lucide-activity class="svg-icons mr-2 text-accent" />
-              <span class="font-bold">
+              <span class="font-semibold">
                 {{ t("inspections.title") }}
               </span>
             </span>

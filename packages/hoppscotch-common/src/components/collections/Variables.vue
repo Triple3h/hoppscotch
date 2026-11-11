@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-col flex-1">
-    <div class="flex flex-1 justify-between items-center pl-4">
+  <div class="flex min-h-0 flex-1 flex-col">
+    <div class="flex shrink-0 items-center justify-between py-1 pl-4">
       <span class="truncate font-semibold text-secondaryLight">{{
         t("environment.variable_list")
       }}</span>
@@ -13,7 +13,9 @@
         :icon="IconHelpCircle"
       />
     </div>
-    <div class="flex flex-col border border-divider rounded">
+    <div
+      class="flex min-h-0 flex-1 flex-col overflow-hidden rounded border border-divider"
+    >
       <HoppSmartTabs v-model="selectedEnvOption" render-inactive-tabs>
         <template #actions>
           <div class="flex flex-1 items-center justify-between">
@@ -87,7 +89,14 @@
           :key="tab.id"
           :label="tab.label"
         >
-          <div class="divide-y divide-dividerLight">
+          <div
+            class="divide-y divide-dividerLight"
+            :class="
+              tab.variables.length === 0
+                ? 'flex flex-1 flex-col justify-center'
+                : 'overflow-y-auto'
+            "
+          >
             <HoppSmartPlaceholder
               v-if="tab.variables.length === 0"
               :src="`/images/states/${colorMode.value}/blockchain.svg`"

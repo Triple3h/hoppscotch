@@ -51,7 +51,7 @@
 
         <span
           v-if="entry.kind === 'rest'"
-          class="font-bold text-tiny flex-shrink-0"
+          class="font-semibold text-tiny flex-shrink-0"
           :style="{ color: entry.methodColor }"
         >
           {{ entry.method }}

@@ -3,7 +3,7 @@
     <header
       ref="headerRef"
       data-tauri-drag-region
-      class="workspace-header grid grid-cols-5 grid-rows-1 gap-2 overflow-x-auto overflow-y-hidden px-3 py-2"
+      class="workspace-header grid grid-cols-5 grid-rows-1 gap-2 overflow-x-auto overflow-y-hidden px-4 py-2"
     >
       <div
         data-tauri-drag-region
@@ -27,7 +27,7 @@
             :on-create="onSwitcherCreate"
           >
             <HoppButtonSecondary
-              class="!font-bold uppercase tracking-wide !text-secondaryDark hover:bg-primaryDark focus-visible:bg-primaryDark"
+              class="!text-base !font-semibold !text-secondaryDark hover:bg-primaryDark focus-visible:bg-primaryDark"
               :label="t('app.name')"
               :icon="IconChevronDown"
               reverse
@@ -58,7 +58,7 @@
 
           <HoppButtonSecondary
             v-else
-            class="!font-bold uppercase tracking-wide !text-secondaryDark hover:bg-primaryDark focus-visible:bg-primaryDark"
+            class="!text-base !font-semibold !text-secondaryDark hover:bg-primaryDark focus-visible:bg-primaryDark"
             :label="t('app.name')"
             to="/"
           />
@@ -74,6 +74,7 @@
         data-tauri-drag-region
         class="col-span-2 flex items-center justify-between space-x-2"
       >
+        <EnvironmentsSelector />
         <div class="flex">
           <tippy
             v-if="
@@ -117,16 +118,6 @@
               </div>
             </template>
           </tippy>
-
-          <HoppButtonSecondary
-            v-tippy="{ theme: 'tooltip', allowHTML: true }"
-            :title="`${
-              mdAndLarger ? t('support.title') : t('app.options')
-            } <kbd>?</kbd>`"
-            :icon="IconLifeBuoy"
-            class="rounded hover:bg-primaryDark focus-visible:bg-primaryDark"
-            @click="invokeAction('modals.support.toggle')"
-          />
         </div>
       </div>
     </header>
@@ -142,8 +133,7 @@
 import { getKernelMode } from "@hoppscotch/kernel"
 
 import { useI18n } from "@composables/i18n"
-import { invokeAction } from "@helpers/actions"
-import { breakpointsTailwind, useBreakpoints, useNetwork } from "@vueuse/core"
+import { useNetwork } from "@vueuse/core"
 import { useService } from "dioc/vue"
 import type { Instance } from "tippy.js"
 import { computed, reactive, ref, watch } from "vue"
@@ -157,7 +147,6 @@ import {
 } from "~/services/banner.service"
 import IconChevronDown from "~icons/lucide/chevron-down"
 import IconDownload from "~icons/lucide/download"
-import IconLifeBuoy from "~icons/lucide/life-buoy"
 
 const t = useI18n()
 const kernelMode = getKernelMode()
@@ -175,9 +164,6 @@ const onSwitcherCreate = (instance: Instance) => {
     content.style.scrollbarGutter = "stable"
   }
 }
-
-const breakpoints = useBreakpoints(breakpointsTailwind)
-const mdAndLarger = breakpoints.greater("md")
 
 const banner = useService(BannerService)
 const bannerContent = computed(() => banner.content.value?.content)

@@ -4,7 +4,7 @@
     :class="
       isScopeSelector
         ? 'h-10 w-full rounded'
-        : 'mr-2 h-9 w-fit rounded border border-divider'
+        : 'h-9 w-fit rounded border border-divider'
     "
     :style="
       selectedEnvTint && !isScopeSelector

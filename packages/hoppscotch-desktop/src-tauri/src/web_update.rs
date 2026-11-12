@@ -405,10 +405,9 @@ fn running_version() -> Option<String> {
 
 async fn check_inner<R: Runtime>(app: &AppHandle<R>) -> Result<WebUpdateStatus, WebUpdateError> {
     let current = effective_version();
-    let (endpoint, public_key) = update_endpoint(app)?;
     let client = http_client()?;
 
-    let (_, manifest) = fetch_manifest(&client, &endpoint, &public_key).await?;
+    let (_, _, manifest) = fetch_manifest_any(app, &client).await?;
 
     status_for(app, &manifest, current)
 }
@@ -421,10 +420,9 @@ async fn apply_inner<R: Runtime>(app: &AppHandle<R>) -> Result<WebUpdateStatus, 
     let _installing = INSTALL_LOCK.lock().await;
 
     let current = effective_version();
-    let (endpoint, public_key) = update_endpoint(app)?;
     let client = http_client()?;
 
-    let (manifest_bytes, manifest) = fetch_manifest(&client, &endpoint, &public_key).await?;
+    let (endpoint, manifest_bytes, manifest) = fetch_manifest_any(app, &client).await?;
 
     let status = status_for(app, &manifest, current)?;
     if status.state != "available" {
@@ -1129,6 +1127,103 @@ fn update_endpoint<R: Runtime>(app: &AppHandle<R>) -> Result<(String, String), W
     Ok((base, public_key.to_string()))
 }
 
+/// How long to wait for the npm registry before giving up on the npm channel
+/// for this launch. Deliberately short: the release mirror is one fallback away.
+const NPM_RESOLVE_TIMEOUT_SECS: u64 = 15;
+
+/// npm package that publishes web bundles, from
+/// `plugins.web-update.npmPackage`. Absent on shells that predate the channel.
+fn npm_package<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    app.config()
+        .plugins
+        .0
+        .get("web-update")
+        .and_then(|channel| channel.get("npmPackage"))
+        .and_then(|value| value.as_str())
+        .map(str::to_string)
+}
+
+/// Reads the `version` field out of the registry's `/<package>/latest` reply.
+fn parse_npm_latest(bytes: &[u8]) -> Result<String, WebUpdateError> {
+    #[derive(serde::Deserialize)]
+    struct Latest {
+        version: String,
+    }
+
+    Ok(serde_json::from_slice::<Latest>(bytes)?.version)
+}
+
+/// Resolves the newest published version of `package` and returns the immutable
+/// CDN base for it.
+///
+/// The registry reply itself is not the long-lived cache a CDN range would be,
+/// so a fresh release is visible on the next check; the versioned CDN path it
+/// produces never changes afterwards.
+async fn npm_update_base(
+    client: &reqwest::Client,
+    package: &str,
+) -> Result<String, WebUpdateError> {
+    let latest = client
+        .get(format!("https://registry.npmjs.org/{}/latest", package))
+        .timeout(Duration::from_secs(NPM_RESOLVE_TIMEOUT_SECS))
+        .send()
+        .await?
+        .error_for_status()?
+        .bytes()
+        .await?;
+
+    Ok(format!(
+        "https://cdn.jsdelivr.net/npm/{}@{}",
+        package,
+        parse_npm_latest(&latest)?
+    ))
+}
+
+/// Fetches and verifies the manifest from the first channel that answers.
+///
+/// npm is preferred when configured; the release host the updater already uses
+/// stays as a fallback so an outage of either cannot stall bundle updates. Both
+/// channels publish the same signed manifest, so which one answered does not
+/// change what gets installed.
+async fn fetch_manifest_any<R: Runtime>(
+    app: &AppHandle<R>,
+    client: &reqwest::Client,
+) -> Result<(String, Vec<u8>, SignedManifest), WebUpdateError> {
+    let (release_endpoint, public_key) = update_endpoint(app)?;
+
+    let mut channels = Vec::with_capacity(2);
+    if let Some(package) = npm_package(app) {
+        match npm_update_base(client, &package).await {
+            Ok(base) => channels.push(base),
+            Err(e) => tracing::warn!(
+                error = %e,
+                package,
+                "npm channel unavailable; falling back to the release host"
+            ),
+        }
+    }
+    channels.push(release_endpoint);
+
+    let mut last_error = None;
+    for endpoint in &channels {
+        match fetch_manifest(client, endpoint, &public_key).await {
+            Ok((manifest_bytes, manifest)) => {
+                return Ok((endpoint.clone(), manifest_bytes, manifest))
+            }
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    endpoint,
+                    "Web bundle manifest unavailable on this channel"
+                );
+                last_error = Some(e);
+            }
+        }
+    }
+
+    Err(last_error.expect("channels always contains the release host"))
+}
+
 fn decode_to_text(encoded: &str, what: &'static str) -> Result<String, WebUpdateError> {
     let bytes = base64::engine::general_purpose::STANDARD.decode(encoded)?;
 
@@ -1349,6 +1444,32 @@ mod tests {
         // A version nobody can parse must never authorise an install.
         assert!(!is_newer("0.1.0", "not-a-version"));
         assert!(!is_newer("not-a-version", "1.1.2"));
+    }
+
+    #[test]
+    fn npm_registry_reply_yields_the_published_version() {
+        assert_eq!(
+            parse_npm_latest(br#"{"name":"pkg","version":"1.2.3","dist-tags":{}}"#).unwrap(),
+            "1.2.3"
+        );
+        // Anything else must fail the resolve, not guess a version: the caller
+        // then uses the release mirror instead.
+        assert!(parse_npm_latest(b"not json").is_err());
+        assert!(parse_npm_latest(br#"{"dist-tags":{"latest":"1.2.3"}}"#).is_err());
+    }
+
+    #[test]
+    fn the_npm_update_channel_is_configured() {
+        // Rust reads this at runtime and the workflow reads it when publishing,
+        // so its absence would silently pin the app to the release mirror.
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).expect("tauri.conf.json");
+        assert!(
+            config["plugins"]["web-update"]["npmPackage"]
+                .as_str()
+                .is_some_and(|package| !package.is_empty()),
+            "plugins.web-update.npmPackage must name the published update package"
+        );
     }
 
     #[test]

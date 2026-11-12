@@ -89,6 +89,8 @@
 
 4.6 每个 TAG 对应一次正式发布；发布产物与发布说明由仓库既定流程（CI）依据 TAG 自动生成。
 
+4.7 发布前须按 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 更新 `CHANGELOG.md`：把「未发布」中的内容整理为本次版本号与发布日期，并新增指向对比链接的「未发布」小节，随发布提交一并合入 `main`。
+
 ## 5. 紧急修复（hotfix）
 
 5.1 线上缺陷需紧急发布时，从 `main` 拉出 `hotfix/<简述>` 分支进行修复。

@@ -1153,6 +1153,21 @@ fn parse_npm_latest(bytes: &[u8]) -> Result<String, WebUpdateError> {
     Ok(serde_json::from_slice::<Latest>(bytes)?.version)
 }
 
+/// Registry path for `package`'s `latest` dist-tag.
+///
+/// The registry wants the scope separator percent-encoded; the CDN does not.
+fn npm_registry_latest_url(package: &str) -> String {
+    format!(
+        "https://registry.npmjs.org/{}/latest",
+        package.replace('/', "%2F")
+    )
+}
+
+/// Immutable CDN base for one published version of `package`.
+fn npm_cdn_base(package: &str, version: &str) -> String {
+    format!("https://cdn.jsdelivr.net/npm/{}@{}", package, version)
+}
+
 /// Resolves the newest published version of `package` and returns the immutable
 /// CDN base for it.
 ///
@@ -1164,7 +1179,7 @@ async fn npm_update_base(
     package: &str,
 ) -> Result<String, WebUpdateError> {
     let latest = client
-        .get(format!("https://registry.npmjs.org/{}/latest", package))
+        .get(npm_registry_latest_url(package))
         .timeout(Duration::from_secs(NPM_RESOLVE_TIMEOUT_SECS))
         .send()
         .await?
@@ -1172,11 +1187,7 @@ async fn npm_update_base(
         .bytes()
         .await?;
 
-    Ok(format!(
-        "https://cdn.jsdelivr.net/npm/{}@{}",
-        package,
-        parse_npm_latest(&latest)?
-    ))
+    Ok(npm_cdn_base(package, &parse_npm_latest(&latest)?))
 }
 
 /// Fetches and verifies the manifest from the first channel that answers.
@@ -1456,6 +1467,22 @@ mod tests {
         // then uses the release mirror instead.
         assert!(parse_npm_latest(b"not json").is_err());
         assert!(parse_npm_latest(br#"{"dist-tags":{"latest":"1.2.3"}}"#).is_err());
+    }
+
+    #[test]
+    fn scoped_package_names_are_encoded_only_for_the_registry() {
+        assert_eq!(
+            npm_registry_latest_url("hoppscotch-desktop-updates"),
+            "https://registry.npmjs.org/hoppscotch-desktop-updates/latest"
+        );
+        assert_eq!(
+            npm_registry_latest_url("@triple3h/hoppscotch-updates"),
+            "https://registry.npmjs.org/@triple3h%2Fhoppscotch-updates/latest"
+        );
+        assert_eq!(
+            npm_cdn_base("@triple3h/hoppscotch-updates", "1.2.1"),
+            "https://cdn.jsdelivr.net/npm/@triple3h/hoppscotch-updates@1.2.1"
+        );
     }
 
     #[test]

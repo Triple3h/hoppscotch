@@ -59,9 +59,8 @@ export const baseTheme = EditorView.theme({
   },
   ".cm-selectionBackground": {
     backgroundColor: "var(--accent-dark-color)",
-    color: "var(--accent-contrast-color)",
     borderRadius: "2px",
-    opacity: "0.4",
+    opacity: "0.3",
   },
   ".cm-panels": {
     backgroundColor: "var(--primary-light-color)",

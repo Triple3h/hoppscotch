@@ -474,14 +474,17 @@ pre.ace_editor {
 }
 
 .cm-editor {
-  .cm-line::selection {
-    @apply bg-accentDark;
-    @apply text-accentContrast;
+  /* drawSelection forces the system highlight color on the focused editor at
+     runtime with !important, which leaves the global contrast text color
+     unreadable. Higher specificity + !important restores the accent band. */
+  .cm-scroller .cm-content .cm-line::selection,
+  .cm-scroller .cm-content .cm-line ::selection {
+    background-color: var(--accent-dark-color) !important;
   }
 
-  .cm-line ::selection {
-    @apply bg-accentDark;
-    @apply text-accentContrast;
+  .cm-selectionLayer .cm-selectionBackground {
+    /* Same runtime override, for the drawn band shown when unfocused */
+    background-color: var(--accent-dark-color) !important;
   }
 }
 

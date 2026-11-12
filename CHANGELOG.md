@@ -6,12 +6,6 @@
 
 ## [未发布]
 
-## [1.2.1] - 2026-11-12
-
-### 变更
-
-- 应用内增量更新改为优先从 npm 获取（registry 解析版本、jsDelivr 下载），不可用时回退 GitHub Releases
-
 ## [1.2.0] - 2026-11-12
 
 ### 新增
@@ -173,8 +167,7 @@
 - 登录、云同步、团队工作区、分享短链、发布文档、Mock Server、Admin 面板等云端能力
 - 后端、CLI 与 Docker / Firebase 部署文件，仅保留桌面形态
 
-[未发布]: https://github.com/Triple3h/hoppscotch/compare/v1.2.1...HEAD
-[1.2.1]: https://github.com/Triple3h/hoppscotch/compare/v1.2.0...v1.2.1
+[未发布]: https://github.com/Triple3h/hoppscotch/compare/v1.2.0...HEAD
 [1.2.0]: https://github.com/Triple3h/hoppscotch/compare/v1.1.8...v1.2.0
 [1.1.8]: https://github.com/Triple3h/hoppscotch/compare/v1.1.7...v1.1.8
 [1.1.7]: https://github.com/Triple3h/hoppscotch/compare/v1.1.6...v1.1.7

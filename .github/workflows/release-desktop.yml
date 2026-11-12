@@ -2,8 +2,7 @@ name: Build & Release Desktop
 
 # 本仓库为本地化 fork：无 Apple/Windows 代码签名证书，安装包本身未签名，
 # 但启用 Tauri updater 签名产物（minisign 内容签名），更新源指向本仓库 GitHub Release。
-# 构建前需在仓库设置 TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD
-# 与 NPM_TOKEN（发布增量更新包用）secrets。
+# 构建前需在仓库设置 TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD secrets。
 #
 # 发布规则：Release 与更新清单只能由推送 v* 标签创建；
 # 手动触发（workflow_dispatch）只构建产物，永远不发布。
@@ -581,42 +580,6 @@ jobs:
             --tag "$APP_TAG" \
             --notes update-notes.md \
             --output release-assets/hoppscotch-desktop-latest.json
-
-      - name: Publish web bundle to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "::warning::NPM_TOKEN is not set; skipping the npm update package (the release mirror still serves updates)"
-            exit 0
-          fi
-          # 应用内增量更新优先读这个包（见 tauri.conf.json 的 plugins.web-update）：
-          # 壳先用 registry 解析 latest 版本，再从 jsDelivr 取该版本的文件。
-          NPM_PACKAGE="$(node -p "require('./packages/hoppscotch-desktop/src-tauri/tauri.conf.json').plugins['web-update'].npmPackage")"
-          # 预发布不能占用 latest，否则所有正式用户都会被推到测试包上。
-          NPM_TAG="latest"
-          case "${APP_TAG}" in *-*) NPM_TAG="beta" ;; esac
-          if npm view "${NPM_PACKAGE}@${APP_VERSION}" version >/dev/null 2>&1; then
-            echo "${NPM_PACKAGE}@${APP_VERSION} is already published; skipping"
-            exit 0
-          fi
-          mkdir -p npm-update-package
-          cp release-assets/manifest.json release-assets/manifest.json.sig release-assets/bundle.zip npm-update-package/
-          cat > npm-update-package/package.json <<EOF
-          {
-            "name": "${NPM_PACKAGE}",
-            "version": "${APP_VERSION}",
-            "description": "Signed web bundle for Hoppscotch Desktop incremental updates",
-            "license": "MIT",
-            "files": [
-              "bundle.zip",
-              "manifest.json",
-              "manifest.json.sig"
-            ]
-          }
-          EOF
-          (cd npm-update-package && npm publish --access public --tag "${NPM_TAG}")
 
       - name: Create or update GitHub Release
         env:

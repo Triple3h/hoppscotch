@@ -1,26 +1,27 @@
 <template>
   <div>
-    <AppSidebarSearch
-      v-model="filterText"
-      class="sticky top-upperPrimaryStickyFold z-10"
-    >
-      <template #actions>
-        <HoppButtonSecondary
-          v-tippy="{ theme: 'tooltip' }"
-          :title="t('action.new')"
-          :icon="IconPlus"
-          class="!px-2"
-          @click="displayModalAdd(true)"
-        />
-        <HoppButtonSecondary
-          v-tippy="{ theme: 'tooltip' }"
-          :icon="IconImport"
-          :title="t('modal.import_export')"
-          class="!px-2"
-          @click="displayModalImportExport(true)"
-        />
-      </template>
-    </AppSidebarSearch>
+    <div class="sticky top-0 z-10 bg-primary">
+      <slot name="header" />
+      <AppSidebarSearch v-model="filterText">
+        <template #actions>
+          <HoppButtonSecondary
+            v-tippy="{ theme: 'tooltip' }"
+            :title="t('action.new')"
+            :icon="IconPlus"
+            class="!px-2"
+            @click="displayModalAdd(true)"
+          />
+          <HoppButtonSecondary
+            v-tippy="{ theme: 'tooltip' }"
+            :icon="IconImport"
+            :title="t('modal.import_export')"
+            class="!px-2"
+            @click="displayModalImportExport(true)"
+          />
+        </template>
+      </AppSidebarSearch>
+      <slot name="pinned" />
+    </div>
 
     <EnvironmentsMyEnvironment
       v-for="{ env, index } in filteredAndAlphabetizedPersonalEnvs"

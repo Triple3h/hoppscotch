@@ -1,21 +1,24 @@
 <template>
   <div>
-    <div
-      class="sticky top-0 z-10 flex flex-shrink-0 flex-col overflow-x-auto bg-primary"
-    >
-      <WorkspaceCurrent :section="t('tab.environments')" />
-      <EnvironmentsMyEnvironment
-        environment-index="Global"
-        :environment="globalEnvironment"
-        :duplicate-global-environment-loading="
-          duplicateGlobalEnvironmentLoading
-        "
-        class="border-b border-dividerLight"
-        @duplicate-global-environment="duplicateGlobalEnvironment"
-        @edit-environment="editEnvironment('Global')"
-      />
-    </div>
-    <EnvironmentsMy @select-environment="handleEnvironmentChange" />
+    <EnvironmentsMy @select-environment="handleEnvironmentChange">
+      <template #header>
+        <div class="flex flex-shrink-0 flex-col overflow-x-auto">
+          <WorkspaceCurrent :section="t('tab.environments')" />
+        </div>
+      </template>
+      <template #pinned>
+        <EnvironmentsMyEnvironment
+          environment-index="Global"
+          :environment="globalEnvironment"
+          :duplicate-global-environment-loading="
+            duplicateGlobalEnvironmentLoading
+          "
+          class="border-b border-dividerLight"
+          @duplicate-global-environment="duplicateGlobalEnvironment"
+          @edit-environment="editEnvironment('Global')"
+        />
+      </template>
+    </EnvironmentsMy>
     <EnvironmentsAdd
       :show="showModalNew"
       :name="editingVariableName"

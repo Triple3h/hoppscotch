@@ -230,7 +230,7 @@ select,
 textarea,
 button {
   @apply truncate;
-  @apply transition;
+  @apply transition-colors;
   @apply text-body;
   @apply leading-body;
   @apply focus:outline-none;

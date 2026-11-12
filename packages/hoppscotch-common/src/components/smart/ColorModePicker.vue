@@ -5,6 +5,7 @@
       :key="`color-${index}`"
       v-tippy="{ theme: 'tooltip' }"
       :title="t(getColorModeName(color))"
+      :aria-label="t(getColorModeName(color))"
       :class="{
         'bg-primaryLight !text-accent hover:text-accent': color === active,
       }"
@@ -18,7 +19,7 @@
 <script setup lang="ts">
 import IconMonitor from "~icons/lucide/monitor"
 import IconSun from "~icons/lucide/sun"
-import IconCloud from "~icons/lucide/cloud"
+import IconMoonStar from "~icons/lucide/moon-star"
 import IconMoon from "~icons/lucide/moon"
 import { applySetting, HoppBgColor, HoppBgColors } from "~/newstore/settings"
 import { useSetting } from "@composables/settings"
@@ -40,9 +41,9 @@ const getIcon = (color: HoppBgColor) => {
     case "light":
       return IconSun
     case "dark":
-      return IconCloud
-    case "black":
       return IconMoon
+    case "black":
+      return IconMoonStar
     default:
       return IconMonitor
   }

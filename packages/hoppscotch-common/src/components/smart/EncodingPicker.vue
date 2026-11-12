@@ -35,9 +35,9 @@ const changeMode = (mode: EncodeMode) => {
 const getEncodingModeName = (mode: string) => {
   switch (mode) {
     case "enable":
-      return "action.enable"
+      return "state.enabled"
     case "disable":
-      return "action.disable"
+      return "state.disabled"
     case "auto":
       return "settings.auto_encode_mode"
     default:

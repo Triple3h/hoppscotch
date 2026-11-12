@@ -14,9 +14,9 @@
       :key="`color-${index}`"
       v-tippy="{ theme: 'tooltip' }"
       :title="`${color.charAt(0).toUpperCase()}${color.slice(1)}`"
-      :class="[{ 'bg-primaryLight': color === active }]"
-      class="rounded"
+      :aria-label="`${color.charAt(0).toUpperCase()}${color.slice(1)}`"
       :icon="color === active ? IconCircleDot : IconCircle"
+      class="rounded"
       :color="color"
       @click="setActiveColor(color)"
     />

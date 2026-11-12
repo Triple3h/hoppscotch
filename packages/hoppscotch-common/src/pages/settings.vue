@@ -1,249 +1,272 @@
 <template>
   <div>
-    <div class="mx-auto max-w-3xl divide-y divide-dividerLight px-8 py-10">
-      <section class="pb-10">
-        <h3 class="heading">
-          {{ t("settings.general") }}
-        </h3>
-        <p class="mt-2 text-secondaryLight">
-          {{ t("settings.general_description") }}
-        </p>
-        <div class="mt-8 space-y-8">
-          <section>
-            <h4 class="font-semibold text-secondaryDark">
-              {{ t("settings.language") }}
-            </h4>
-            <div class="mt-4">
-              <SmartChangeLanguage />
-            </div>
-          </section>
+    <div
+      class="mx-auto flex max-w-6xl justify-center gap-8 self-start px-8 py-10"
+    >
+      <nav
+        class="sticky top-10 hidden w-52 shrink-0 flex-col gap-1 self-start lg:flex"
+        :aria-label="t('navigation.settings')"
+      >
+        <button
+          v-for="section in sections"
+          :key="section.id"
+          type="button"
+          class="flex h-9 items-center gap-2 rounded px-3 text-secondary hover:bg-primaryLight hover:text-secondaryDark"
+          :class="{
+            'bg-primaryLight !text-accent hover:!text-accent':
+              activeSection === section.id,
+          }"
+          :aria-current="activeSection === section.id ? 'true' : undefined"
+          @click="goToSection(section.id)"
+        >
+          <component :is="section.icon" class="h-4 w-4 shrink-0" />
+          {{ section.label }}
+        </button>
+      </nav>
+      <div class="w-full max-w-3xl divide-y divide-dividerLight">
+        <section id="general" class="scroll-mt-10 pb-10">
+          <h3 class="heading">
+            {{ t("settings.general") }}
+          </h3>
+          <p class="mt-2 text-secondaryLight">
+            {{ t("settings.general_description") }}
+          </p>
+          <div class="mt-8 space-y-8">
+            <section>
+              <h4 class="font-semibold text-secondaryDark">
+                {{ t("settings.language") }}
+              </h4>
+              <div class="mt-4">
+                <SmartChangeLanguage />
+              </div>
+            </section>
 
-          <section>
-            <h4 class="font-semibold text-secondaryDark">
-              {{ t("settings.query_parameters_encoding") }}
-            </h4>
-            <div class="my-1 text-secondaryLight">
-              {{ t("settings.query_parameters_encoding_description") }}
-            </div>
-            <div class="mt-4">
-              <SmartEncodingPicker />
-            </div>
-          </section>
+            <section>
+              <h4 class="font-semibold text-secondaryDark">
+                {{ t("settings.query_parameters_encoding") }}
+              </h4>
+              <div class="my-1 text-secondaryLight">
+                {{ t("settings.query_parameters_encoding_description") }}
+              </div>
+              <div class="mt-4">
+                <SmartEncodingPicker />
+              </div>
+            </section>
 
-          <section>
-            <h4 class="font-semibold text-secondaryDark">
-              {{ t("settings.experiments") }}
-            </h4>
-            <div class="my-1 text-secondaryLight">
-              {{ t("settings.experiments_notice") }}
-              <HoppSmartAnchor
-                class="link"
-                to="https://github.com/hoppscotch/hoppscotch/issues/new/choose"
-                blank
-                :label="t('app.contact_us')"
-              />.
-            </div>
-            <div class="space-y-4 py-4">
-              <div class="flex items-center">
-                <HoppSmartToggle
-                  v-if="hasPlatformTelemetry"
-                  :on="TELEMETRY_ENABLED"
-                  @change="showConfirmModal"
-                >
-                  {{ t("settings.telemetry") }}
-                </HoppSmartToggle>
+            <section>
+              <h4 class="font-semibold text-secondaryDark">
+                {{ t("settings.experiments") }}
+              </h4>
+              <div class="my-1 text-secondaryLight">
+                {{ t("settings.experiments_notice") }}
+                <HoppSmartAnchor
+                  class="link"
+                  to="https://github.com/Triple3h/hoppscotch/issues/new/choose"
+                  blank
+                  :label="t('settings.report_bug')"
+                />.
               </div>
-              <div class="flex items-center">
-                <HoppSmartToggle
-                  :on="EXPAND_NAVIGATION"
-                  @change="toggleSetting('EXPAND_NAVIGATION')"
+              <div class="space-y-4 py-4">
+                <div class="flex items-center">
+                  <HoppSmartToggle
+                    v-if="hasPlatformTelemetry"
+                    :on="TELEMETRY_ENABLED"
+                    @change="showConfirmModal"
+                  >
+                    {{ t("settings.telemetry") }}
+                  </HoppSmartToggle>
+                </div>
+                <div class="flex items-center">
+                  <HoppSmartToggle
+                    :on="EXPAND_NAVIGATION"
+                    @change="toggleSetting('EXPAND_NAVIGATION')"
+                  >
+                    {{ t("settings.expand_navigation") }}
+                  </HoppSmartToggle>
+                </div>
+                <div class="flex items-center">
+                  <HoppSmartToggle
+                    :on="SIDEBAR_ON_LEFT"
+                    @change="toggleSetting('SIDEBAR_ON_LEFT')"
+                  >
+                    {{ t("settings.sidebar_on_left") }}
+                  </HoppSmartToggle>
+                </div>
+                <div v-if="hasAIExperimentsSupport" class="flex items-center">
+                  <HoppSmartToggle
+                    :on="ENABLE_AI_EXPERIMENTS"
+                    @change="toggleSetting('ENABLE_AI_EXPERIMENTS')"
+                  >
+                    {{ t("settings.ai_experiments") }}
+                  </HoppSmartToggle>
+                </div>
+                <div
+                  v-if="hasAIExperimentsSupport && ENABLE_AI_EXPERIMENTS"
+                  class="flex items-center"
                 >
-                  {{ t("settings.expand_navigation") }}
-                </HoppSmartToggle>
-              </div>
-              <div class="flex items-center">
-                <HoppSmartToggle
-                  :on="SIDEBAR_ON_LEFT"
-                  @change="toggleSetting('SIDEBAR_ON_LEFT')"
-                >
-                  {{ t("settings.sidebar_on_left") }}
-                </HoppSmartToggle>
-              </div>
-              <div v-if="hasAIExperimentsSupport" class="flex items-center">
-                <HoppSmartToggle
-                  :on="ENABLE_AI_EXPERIMENTS"
-                  @change="toggleSetting('ENABLE_AI_EXPERIMENTS')"
-                >
-                  {{ t("settings.ai_experiments") }}
-                </HoppSmartToggle>
-              </div>
-              <div
-                v-if="hasAIExperimentsSupport && ENABLE_AI_EXPERIMENTS"
-                class="flex items-center"
-              >
-                <div class="flex flex-col space-y-2 w-full">
-                  <label class="text-secondaryLight">{{
-                    t("settings.ai_request_naming_style")
-                  }}</label>
-                  <div class="flex flex-col space-y-4">
-                    <div class="flex">
-                      <tippy
-                        interactive
-                        trigger="click"
-                        theme="popover"
-                        :on-shown="() => namingStyleTippyActions?.focus()"
-                      >
-                        <HoppSmartSelectWrapper>
-                          <HoppButtonSecondary
-                            class="flex flex-1 !justify-start rounded-none pr-8"
-                            :label="activeNamingStyle?.label"
-                            outline
-                          />
-                        </HoppSmartSelectWrapper>
-                        <template #content="{ hide }">
-                          <div
-                            ref="namingStyleTippyActions"
-                            class="flex flex-col focus:outline-none"
-                            tabindex="0"
-                            @keyup.escape="hide()"
-                          >
-                            <HoppSmartLink
-                              v-for="style in supportedNamingStyles"
-                              :key="style.id"
-                              class="flex flex-1"
-                              @click="
-                                () => {
-                                  AI_REQUEST_NAMING_STYLE = style.id
-                                  hide()
-                                }
-                              "
+                  <div class="flex flex-col space-y-2 w-full">
+                    <label class="text-secondaryLight">{{
+                      t("settings.ai_request_naming_style")
+                    }}</label>
+                    <div class="flex flex-col space-y-4">
+                      <div class="flex">
+                        <tippy
+                          interactive
+                          trigger="click"
+                          theme="popover"
+                          :on-shown="() => namingStyleTippyActions?.focus()"
+                        >
+                          <HoppSmartSelectWrapper>
+                            <HoppButtonSecondary
+                              class="flex flex-1 !justify-start rounded-none pr-8"
+                              :label="activeNamingStyle?.label"
+                              outline
+                            />
+                          </HoppSmartSelectWrapper>
+                          <template #content="{ hide }">
+                            <div
+                              ref="namingStyleTippyActions"
+                              class="flex flex-col focus:outline-none"
+                              tabindex="0"
+                              @keyup.escape="hide()"
                             >
-                              <HoppSmartItem
-                                :label="style.label"
-                                :active-info-icon="
-                                  AI_REQUEST_NAMING_STYLE === style.id
+                              <HoppSmartLink
+                                v-for="style in supportedNamingStyles"
+                                :key="style.id"
+                                class="flex flex-1"
+                                @click="
+                                  () => {
+                                    AI_REQUEST_NAMING_STYLE = style.id
+                                    hide()
+                                  }
                                 "
-                                :info-icon="
-                                  AI_REQUEST_NAMING_STYLE === style.id
-                                    ? IconDone
-                                    : null
-                                "
-                              />
-                            </HoppSmartLink>
-                          </div>
-                        </template>
-                      </tippy>
-                    </div>
-                    <div
-                      v-if="AI_REQUEST_NAMING_STYLE === 'CUSTOM'"
-                      class="flex"
-                    >
-                      <textarea
-                        v-model="CUSTOM_NAMING_STYLE"
-                        class="flex flex-1 bg-primaryLight px-4 py-2 rounded border border-dividerLight focus:border-divider transition resize-none"
-                        :placeholder="
-                          t(
-                            'settings.ai_request_naming_style_custom_placeholder'
-                          )
-                        "
-                        rows="4"
+                              >
+                                <HoppSmartItem
+                                  :label="style.label"
+                                  :active-info-icon="
+                                    AI_REQUEST_NAMING_STYLE === style.id
+                                  "
+                                  :info-icon="
+                                    AI_REQUEST_NAMING_STYLE === style.id
+                                      ? IconDone
+                                      : null
+                                  "
+                                />
+                              </HoppSmartLink>
+                            </div>
+                          </template>
+                        </tippy>
+                      </div>
+                      <div
+                        v-if="AI_REQUEST_NAMING_STYLE === 'CUSTOM'"
+                        class="flex"
                       >
-                      </textarea>
+                        <textarea
+                          v-model="CUSTOM_NAMING_STYLE"
+                          class="flex flex-1 bg-primaryLight px-4 py-2 rounded border border-dividerLight focus:border-divider transition resize-none"
+                          :placeholder="
+                            t(
+                              'settings.ai_request_naming_style_custom_placeholder'
+                            )
+                          "
+                          rows="4"
+                        >
+                        </textarea>
+                      </div>
                     </div>
                   </div>
                 </div>
+                <div class="flex items-center">
+                  <HoppSmartToggle
+                    :on="EXPERIMENTAL_SCRIPTING_SANDBOX"
+                    @change="toggleSetting('EXPERIMENTAL_SCRIPTING_SANDBOX')"
+                  >
+                    {{ t("settings.experimental_scripting_sandbox") }}
+                  </HoppSmartToggle>
+                </div>
+                <div class="flex items-center">
+                  <HoppSmartToggle
+                    :on="ENABLE_GQL_IN_REST_WORKSPACE"
+                    @change="toggleSetting('ENABLE_GQL_IN_REST_WORKSPACE')"
+                  >
+                    {{ t("settings.enable_gql_in_rest_workspace") }}
+                  </HoppSmartToggle>
+                </div>
               </div>
-            </div>
+            </section>
+          </div>
+        </section>
 
-            <div class="flex flex-col space-y-4 py-4">
-              <div class="flex items-center">
-                <HoppSmartToggle
-                  :on="EXPERIMENTAL_SCRIPTING_SANDBOX"
-                  @change="toggleSetting('EXPERIMENTAL_SCRIPTING_SANDBOX')"
-                >
-                  {{ t("settings.experimental_scripting_sandbox") }}
-                </HoppSmartToggle>
+        <section id="theme" class="py-10">
+          <h3 class="heading">
+            {{ t("settings.theme") }}
+          </h3>
+          <p class="mt-2 text-secondaryLight">
+            {{ t("settings.theme_description") }}
+          </p>
+          <div class="mt-8 space-y-8">
+            <section>
+              <h4 class="font-semibold text-secondaryDark">
+                {{ t("settings.background") }}
+              </h4>
+              <div class="my-1 text-secondaryLight">
+                {{ t(getColorModeName(colorMode.preference)) }}
+                <span v-if="colorMode.preference === 'system'">
+                  ({{ t(getColorModeName(colorMode.value)) }})
+                </span>
               </div>
-              <div class="flex items-center">
-                <HoppSmartToggle
-                  :on="ENABLE_GQL_IN_REST_WORKSPACE"
-                  @change="toggleSetting('ENABLE_GQL_IN_REST_WORKSPACE')"
-                >
-                  {{ t("settings.enable_gql_in_rest_workspace") }}
-                </HoppSmartToggle>
+              <div class="mt-4">
+                <SmartColorModePicker />
               </div>
-            </div>
-          </section>
-        </div>
-      </section>
+            </section>
+            <section>
+              <h4 class="font-semibold text-secondaryDark">
+                {{ t("settings.accent_color") }}
+              </h4>
+              <div class="my-1 text-secondaryLight">
+                {{
+                  ACCENT_COLOR.charAt(0).toUpperCase() + ACCENT_COLOR.slice(1)
+                }}
+              </div>
+              <div class="mt-4">
+                <SmartAccentModePicker />
+              </div>
+            </section>
+          </div>
+        </section>
 
-      <section class="py-10">
-        <h3 class="heading">
-          {{ t("settings.theme") }}
-        </h3>
-        <p class="mt-2 text-secondaryLight">
-          {{ t("settings.theme_description") }}
-        </p>
-        <div class="mt-8 space-y-8">
-          <section>
-            <h4 class="font-semibold text-secondaryDark">
-              {{ t("settings.background") }}
-            </h4>
-            <div class="my-1 text-secondaryLight">
-              {{ t(getColorModeName(colorMode.preference)) }}
-              <span v-if="colorMode.preference === 'system'">
-                ({{ t(getColorModeName(colorMode.value)) }})
-              </span>
-            </div>
-            <div class="mt-4">
-              <SmartColorModePicker />
-            </div>
-          </section>
-          <section>
-            <h4 class="font-semibold text-secondaryDark">
-              {{ t("settings.accent_color") }}
-            </h4>
-            <div class="my-1 text-secondaryLight">
-              {{ ACCENT_COLOR.charAt(0).toUpperCase() + ACCENT_COLOR.slice(1) }}
-            </div>
-            <div class="mt-4">
-              <SmartAccentModePicker />
-            </div>
-          </section>
-        </div>
-      </section>
+        <section id="interceptor" class="py-10">
+          <h3 class="heading">
+            {{ t("settings.kernel_interceptor") }}
+          </h3>
+          <p class="mt-2 text-secondaryLight">
+            {{ t("settings.kernel_interceptor_description") }}
+          </p>
+          <div class="mt-8 space-y-8">
+            <section>
+              <AppKernelInterceptor :is-tooltip-component="false" />
+            </section>
+            <section
+              v-for="[id, settings] in kernelInterceptorsWithSettings"
+              :key="id"
+            >
+              <component :is="settings.component" />
+            </section>
+          </div>
+        </section>
 
-      <section class="py-10">
-        <h3 class="heading">
-          {{ t("settings.kernel_interceptor") }}
-        </h3>
-        <p class="mt-2 text-secondaryLight">
-          {{ t("settings.kernel_interceptor_description") }}
-        </p>
-        <div class="mt-8 space-y-8">
-          <section>
-            <AppKernelInterceptor :is-tooltip-component="false" />
-          </section>
-          <section
-            v-for="[id, settings] in kernelInterceptorsWithSettings"
-            :key="id"
-          >
-            <h4 class="font-semibold text-secondaryDark">
-              {{ settings.title(t) }}
-            </h4>
-            <component :is="settings.component" />
-          </section>
-        </div>
-      </section>
-
-      <template v-if="platform.ui?.additionalSettingsSections?.length">
-        <template
-          v-for="item in platform.ui?.additionalSettingsSections"
-          :key="item.id"
+        <div
+          v-if="platform.ui?.additionalSettingsSections?.length"
+          id="desktop"
         >
-          <component :is="item" />
-        </template>
-      </template>
+          <template
+            v-for="item in platform.ui?.additionalSettingsSections"
+            :key="item.id"
+          >
+            <component :is="item" />
+          </template>
+        </div>
+      </div>
     </div>
     <HoppSmartConfirmModal
       :show="confirmRemove"
@@ -262,7 +285,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue"
+import { ref, computed, onBeforeUnmount, onMounted } from "vue"
 import { toggleSetting } from "~/newstore/settings"
 import { useSetting } from "@composables/settings"
 import { useI18n } from "@composables/i18n"
@@ -274,6 +297,10 @@ import * as O from "fp-ts/Option"
 import * as A from "fp-ts/Array"
 import { platform } from "~/platform"
 import IconDone from "~icons/lucide/check"
+import IconSlidersHorizontal from "~icons/lucide/sliders-horizontal"
+import IconPalette from "~icons/lucide/palette"
+import IconPlug from "~icons/lucide/plug"
+import IconMonitor from "~icons/lucide/monitor"
 import { KernelInterceptorService } from "~/services/kernel-interceptor.service"
 
 const t = useI18n()
@@ -283,6 +310,59 @@ usePageHead({
   title: computed(() => t("navigation.settings")),
 })
 
+const activeSection = ref("general")
+
+const sections = computed(() => {
+  const items = [
+    {
+      id: "general",
+      label: t("settings.general"),
+      icon: IconSlidersHorizontal,
+    },
+    { id: "theme", label: t("settings.theme"), icon: IconPalette },
+    {
+      id: "interceptor",
+      label: t("settings.kernel_interceptor"),
+      icon: IconPlug,
+    },
+  ]
+  if (platform.ui?.additionalSettingsSections?.length)
+    items.push({
+      id: "desktop",
+      label: t("settings.desktop"),
+      icon: IconMonitor,
+    })
+  return items
+})
+
+const goToSection = (id: string) => {
+  document
+    .getElementById(id)
+    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+}
+
+let scrollContainer: HTMLElement | null = null
+
+const updateActiveSection = () => {
+  for (const section of sections.value) {
+    const el = document.getElementById(section.id)
+    if (el && el.getBoundingClientRect().top <= 100)
+      activeSection.value = section.id
+  }
+}
+
+onMounted(() => {
+  scrollContainer = document.querySelector("main")
+  scrollContainer?.addEventListener("scroll", updateActiveSection, {
+    passive: true,
+  })
+  updateActiveSection()
+})
+
+onBeforeUnmount(() => {
+  scrollContainer?.removeEventListener("scroll", updateActiveSection)
+})
+
 const kernelInterceptorService: KernelInterceptorService = useService(
   KernelInterceptorService
 )
@@ -290,6 +370,7 @@ const kernelInterceptorsWithSettings = computed(() =>
   pipe(
     kernelInterceptorService.available.value,
     A.filterMap((kernelInterceptor) =>
+      kernelInterceptor.id === kernelInterceptorService.current.value?.id &&
       kernelInterceptor.settingsEntry
         ? O.some([
             kernelInterceptor.id,
